@@ -1,0 +1,20 @@
+[Unit]
+Description=Mount and prepare TactiQ data partition
+After=systemd-udevd.service local-fs.target
+Before=tactiq-agent.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/sbin/udevadm settle --timeout=30
+ExecStart=/bin/sh -c '\
+    mkdir -p /run/tactiq-data && \
+    mount -t ext4 -o noatime,nosuid,nodev /dev/vdb /run/tactiq-data && \
+    mount --bind /run/tactiq-data /data && \
+    mkdir -p /data/tactiq/counter /data/tactiq/audit /data/tactiq/keys /data/tactiq/certs && \
+    chmod 0700 /data/tactiq/counter /data/tactiq/audit && \
+    chmod 0755 /data/tactiq/keys /data/tactiq/certs'
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target
