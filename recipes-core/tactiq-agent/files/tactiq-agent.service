@@ -1,0 +1,19 @@
+[Unit]
+ConditionPathExists=/dev/tpmrm0
+Description=TactiQ Attestation Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/tactiq/bin/tactiq-agent
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=3
+WatchdogSec=120
+MemoryMax=128M
+CPUQuota=25%
+
+[Install]
+WantedBy=multi-user.target

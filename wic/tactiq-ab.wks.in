@@ -1,0 +1,30 @@
+# TactiQ OS A/B Partition Layout
+# Target: Rock 5B (RK3588) with NVMe or eMMC
+#
+# Layout:
+#   [Rockchip loader area - no partition table]
+#     idbloader.img @ 64 sectors
+#     u-boot.itb    @ 16384 sectors
+#   [GPT partition table]
+#     Part 1: boot_a   (256MB, ext4) - kernel + dtb + initramfs
+#     Part 2: rootfs_a  (2GB, ext4)  - active root filesystem
+#     Part 3: boot_b   (256MB, ext4) - standby kernel
+#     Part 4: rootfs_b  (2GB, ext4)  - standby root filesystem
+#     Part 5: data      (4GB, ext4)  - persistent data (counters, keys, config, audit)
+
+# Rockchip loader blobs (written directly, no partition)
+part --source rawcopy --sourceparams="file=idbloader.img" --no-table --align 64
+part --source rawcopy --sourceparams="file=u-boot.itb" --no-table --align 16384
+
+# Partition A (active)
+part /boot --source bootimg-partition --fstype=ext4 --label boot_a --align 4096 --size 256M --active
+part / --source rootfs --fstype=ext4 --label rootfs_a --align 4096 --size 2048M
+
+# Partition B (standby - empty initially, populated by RAUC in Phase 4)
+part --fstype=ext4 --label boot_b --align 4096 --size 256M
+part --fstype=ext4 --label rootfs_b --align 4096 --size 2048M
+
+# Persistent data partition (survives A/B updates)
+part /data --fstype=ext4 --label data --align 4096 --size 4096M
+
+bootloader --ptable gpt

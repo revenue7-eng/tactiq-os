@@ -1,0 +1,6 @@
+verifier_url: https://localhost:8443
+attestation_interval: 30s
+key_path: /data/tactiq/keys/device.key
+counter_path: /data/tactiq/counter.bin
+audit_log: /data/tactiq/audit/chain.log
+tpm_device: /dev/tpmrm0
