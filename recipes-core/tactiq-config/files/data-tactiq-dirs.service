@@ -6,10 +6,14 @@ Before=tactiq-agent.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStartPre=/sbin/udevadm settle --timeout=30
+ExecStartPre=/sbin/udevadm settle --timeout=10
 ExecStart=/bin/sh -c '\
     mkdir -p /run/tactiq-data && \
-    mount -t ext4 -o noatime,nosuid,nodev /dev/vdb /run/tactiq-data && \
+    for i in 1 2 3 4 5 6 7 8 9 10; do \
+        umount /dev/vdb 2>/dev/null; \
+        mount -t ext4 -o noatime,nosuid,nodev /dev/vdb /run/tactiq-data 2>/dev/null && break; \
+        sleep 1; \
+    done && \
     mount --bind /run/tactiq-data /data && \
     mkdir -p /data/tactiq/counter /data/tactiq/audit /data/tactiq/keys /data/tactiq/certs && \
     chmod 0700 /data/tactiq/counter /data/tactiq/audit && \
