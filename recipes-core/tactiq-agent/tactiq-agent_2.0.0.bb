@@ -5,13 +5,13 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 inherit systemd
 
-SRC_URI = "file://tactiq-agent.service"
-
-TACTIQ_AGENT_BIN ?= ""
+SRC_URI = "file://tactiq-agent.service \
+           file://tactiq-agent-stub.sh \
+          "
 
 do_install() {
     install -d ${D}/opt/tactiq/bin
-    install -m 0755 ${TACTIQ_AGENT_BIN} ${D}/opt/tactiq/bin/tactiq-agent
+    install -m 0755 ${WORKDIR}/tactiq-agent-stub.sh ${D}/opt/tactiq/bin/tactiq-agent
 
     install -d ${D}${systemd_unitdir}/system
     install -m 0644 ${WORKDIR}/tactiq-agent.service ${D}${systemd_unitdir}/system/
@@ -32,5 +32,3 @@ FILES:${PN} = " \
     ${systemd_unitdir}/system/tactiq-agent.service \
     /data/tactiq \
 "
-
-INSANE_SKIP:${PN} = "already-stripped ldflags file-rdeps"

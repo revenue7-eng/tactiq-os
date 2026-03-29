@@ -14,7 +14,7 @@ if [ ! -f "${DATA_IMG}" ]; then
     RAW_TMP=$(mktemp /tmp/data-raw-XXXXXX.img)
     dd if=/dev/zero of="${RAW_TMP}" bs=1M count=512
     mkfs.ext4 -L data -q "${RAW_TMP}"
-    qemu-img convert -f raw -O qcow2 "${RAW_TMP}" "${DATA_IMG}"
+    cp "${RAW_TMP}" "${DATA_IMG}"
     rm -f "${RAW_TMP}"
     echo ">>> Data disk created: ${DATA_IMG}"
 fi
