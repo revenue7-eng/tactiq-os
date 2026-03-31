@@ -21,9 +21,6 @@ IMAGE_INSTALL:append = " \
 # Crypto — для TPM, mTLS, dm-verity
 IMAGE_INSTALL:append = " \
     kernel-module-af-alg \
-    kernel-module-algif-hash \
-    kernel-module-algif-skcipher \
-    kernel-module-algif-aead \
     kernel-module-algif-rng \
 "
 
@@ -38,37 +35,20 @@ IMAGE_INSTALL:append = " \
     kernel-module-nf-nat \
     kernel-module-nf-defrag-ipv4 \
     kernel-module-nf-defrag-ipv6 \
-    kernel-module-nf-log-syslog \
     kernel-module-nf-reject-ipv4 \
     kernel-module-nfnetlink \
-    kernel-module-nfnetlink-log \
     kernel-module-x-tables \
     kernel-module-xt-conntrack \
     kernel-module-xt-state \
     kernel-module-xt-tcpudp \
-    kernel-module-xt-mark \
-    kernel-module-xt-log \
-    kernel-module-xt-multiport \
-    kernel-module-xt-nat \
-    kernel-module-xt-masquerade \
-    kernel-module-ipt-reject \
 "
 
 # System — watchdog, TUN (VPN), FUSE
 IMAGE_INSTALL:append = " \
-    kernel-module-softdog \
-    kernel-module-watchdog \
-    kernel-module-tun \
-    kernel-module-fuse \
-    kernel-module-configfs \
 "
 
 # IPsec — для VPN если понадобится
 IMAGE_INSTALL:append = " \
-    kernel-module-esp4 \
-    kernel-module-ah4 \
-    kernel-module-af-key \
-    kernel-module-xfrm-user \
 "
 
 # ---------------------------------------------------------------------------
