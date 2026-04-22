@@ -1,0 +1,53 @@
+name: attest
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write      # required by actions/attest-build-provenance (Sigstore OIDC)
+  attestations: write  # required to upload the attestation
+
+jobs:
+  attest-policy-source:
+    name: Attest SELinux policy + layer source tarball
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build deterministic source archive
+        id: archive
+        run: |
+          set -eu
+          # Deterministic tar: sorted, no mtime drift, no owner/group leakage.
+          # This matches SLSA L3 intent for non-falsifiable source provenance:
+          # the hash below is what the attestation will bind to.
+          COMMIT=$(git rev-parse HEAD)
+          mkdir -p dist
+          tar --sort=name \
+              --owner=0 --group=0 --numeric-owner \
+              --mtime="@$(git log -1 --format=%ct)" \
+              --exclude-vcs \
+              -czf dist/tactiq-os-${COMMIT}.tar.gz \
+              conf recipes-core recipes-kernel scripts wic
+          sha256sum dist/tactiq-os-${COMMIT}.tar.gz | tee dist/tactiq-os-${COMMIT}.sha256
+          echo "path=dist/tactiq-os-${COMMIT}.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Generate SLSA build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.archive.outputs.path }}
+
+      - name: Upload source archive + checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: tactiq-os-source
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+          retention-days: 90
