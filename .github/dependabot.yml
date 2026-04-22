@@ -1,0 +1,31 @@
+# Dependabot configuration
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Watches the action versions pinned in .github/workflows/ and opens a pull
+# request when an update is available. PRs go through the same CI and branch
+# protection as any other change, so no update lands without passing checks.
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Dubai"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    groups:
+      # Group minor and patch bumps together to reduce PR churn. Major
+      # version bumps still come as individual PRs so they get proper review.
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
