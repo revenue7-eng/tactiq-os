@@ -14,7 +14,7 @@ jobs:
     name: Yocto recipe lint (oelint-adv)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -41,13 +41,13 @@ jobs:
     # compile via bitbake; this CI job only validates .te syntax statically.
     if: ${{ false }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
   shellcheck:
     name: Shellcheck scripts
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Run shellcheck
         uses: ludeeus/action-shellcheck@master
         with:
@@ -58,7 +58,7 @@ jobs:
     name: YAML + config validation
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -74,7 +74,7 @@ jobs:
     name: Distro config sanity
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert security features present
         run: |
           set -e
