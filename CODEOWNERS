@@ -1,0 +1,19 @@
+# CODEOWNERS for meta-tactiq
+# https://docs.github.com/articles/about-code-owners
+#
+# This file declares the default reviewers for changes in this repository.
+# Order matters: the last matching pattern takes precedence. Keep entries
+# alphabetised within a section.
+
+# Default owner for everything not matched below.
+*                                       @revenue7-eng
+
+# Supply-chain and security-sensitive surfaces. Changes here must be
+# reviewed with extra care: a regression silently weakens the security
+# posture that downstream integrations rely on.
+/.github/workflows/                     @revenue7-eng
+/SECURITY.md                            @revenue7-eng
+/SUPPLY_CHAIN.md                        @revenue7-eng
+/conf/distro/tactiq.conf                @revenue7-eng
+/recipes-core/rauc/                     @revenue7-eng
+/recipes-kernel/linux/                  @revenue7-eng
