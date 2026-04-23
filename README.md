@@ -34,8 +34,24 @@ Short version:
 ## Build
 
 See `scripts/run-qemu.sh` for the reference local workflow.
+
 Supported machines: `tactiq-qemu-x86`, `tactiq-rock5a`, `tactiq-rock5b`,
 `tactiq-rock5t`, `tactiq-generic-arm64`.
+
+## Hardware support and performance reporting
+
+Target platforms: Rock 5A (RK3588S), Rock 5B (RK3588), Rock 5T (RK3588),
+generic ARM64 via Yocto machine configs. Additional RK3588-family boards
+and a `qemu-x86_64` configuration are supported for build and functional
+validation.
+
+Performance metrics are published according to our measurement standard:
+multi-sample variance across board units, thermal envelopes under sustained
+load, and runtime data from representative workloads. Publication follows
+the full qualification cycle.
+
+Board-specific qualification data, once released, will be linked from this
+section.
 
 ## License
 
