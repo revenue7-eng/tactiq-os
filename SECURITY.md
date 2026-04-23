@@ -13,7 +13,9 @@ and are not maintained.
 
 | Version        | Supported          |
 |----------------|--------------------|
-| v2.1.0-rc1     | :white_check_mark: |
+| v2.1.0-rc3     | :white_check_mark: (canonical) |
+| v2.1.0-rc2     | :warning: deprecated — use rc3 (binary payload identical; see [`docs/release-notes/v2.1.0-rc2-deprecated.md`](docs/release-notes/v2.1.0-rc2-deprecated.md)) |
+| v2.1.0-rc1     | :x:                |
 | v2.0.1         | :white_check_mark: (critical fixes only) |
 | v2.0.0-alpha1  | :x:                |
 | < v2.0.0       | :x:                |
@@ -66,6 +68,8 @@ Verification (requires the `gh` CLI):
 gh attestation verify <downloaded-source-archive> \
     --repo revenue7-eng/tactiq-os
 ```
+
+Full consumer-side verification procedure: [`VERIFY.md`](VERIFY.md).
 
 ## Security hardening summary
 
