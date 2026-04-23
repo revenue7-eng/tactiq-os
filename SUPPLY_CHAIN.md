@@ -48,8 +48,10 @@ Last reviewed: 2026-04-23.
 
 ### Empirical reproducibility test (v2.1.0-rc2)
 
-Two consecutive builds, ~17 minutes apart, identical recipe state, warm
-sstate cache (89% hit rate on the second build).
+Two consecutive builds against the same tagged source state, with `sstate`
+cache reused on the second build. Full methodology, raw `cmp(1)` output,
+and per-region analysis are in
+[`docs/reproducibility/v2.1.0-rc2.md`](docs/reproducibility/v2.1.0-rc2.md).
 
 | Metric                     | Value                                |
 |----------------------------|--------------------------------------|
