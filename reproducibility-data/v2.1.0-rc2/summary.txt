@@ -1,0 +1,110 @@
+=== SHA-256 hashes ===
+55425ccc8b6d2a01ee9824fe96436ebb632b5a25ecc504d0ff4f7cca71b7e0e4  /home/andrew/tactiq-os/sbom-release/v2.1.0-rc2/rootfs-rock5a.ext4
+61368e5b1916b8608341494d2e95e826307c61572e1777ec4c7a513ef0045934  /home/andrew/build-rock5a/tmp-glibc/deploy/images/tactiq-rock5a/tactiq-image-tactiq-rock5a.rootfs-20260423040505.ext4
+
+=== File metadata ===
+  File: /home/andrew/tactiq-os/sbom-release/v2.1.0-rc2/rootfs-rock5a.ext4
+  Size: 369253376 	Blocks: 453608     IO Block: 4096   regular file
+Device: 8,48	Inode: 446678      Links: 1
+Access: (0644/-rw-r--r--)  Uid: ( 1000/  andrew)   Gid: ( 1000/  andrew)
+Access: 2026-04-23 06:18:47.008155885 +0300
+Modify: 2026-04-23 06:16:57.080358364 +0300
+Change: 2026-04-23 06:16:57.080358364 +0300
+ Birth: 2026-04-23 06:16:56.196360051 +0300
+---
+  File: /home/andrew/build-rock5a/tmp-glibc/deploy/images/tactiq-rock5a/tactiq-image-tactiq-rock5a.rootfs-20260423040505.ext4
+  Size: 369253376 	Blocks: 453744     IO Block: 4096   regular file
+Device: 8,48	Inode: 1204788     Links: 1
+Access: (0644/-rw-r--r--)  Uid: ( 1000/  andrew)   Gid: ( 1000/  andrew)
+Access: 2026-04-23 07:27:10.771917619 +0300
+Modify: 2026-04-23 07:20:36.488685014 +0300
+Change: 2026-04-23 07:21:18.500591551 +0300
+ Birth: 2026-04-23 07:20:09.656734598 +0300
+
+cmp exit code: 1
+
+=== Diff statistics ===
+Total size:       369253376 bytes
+Differing bytes:  209509
+Identical bytes:  369043867
+Bit-identity:     99.9433%
+
+=== Diff range analysis ===
+Total differing offsets: 209509
+Distinct contiguous ranges: 54024
+Mean range size: 3.88 bytes
+Max range size: 252 bytes
+Min range size: 1 bytes
+
+=== Offset distribution (first 20 byte-position modulos) ===
+
+
+=== Diff distribution by 1 MiB buckets (top 20 hottest) ===
+  MiB offset    # diff bytes                    region
+           1           40910      primary block groups
+         237           34164 block group / inode table
+           0           29393 superblock + group 0 desc
+           2           17746      primary block groups
+          60            7895 block group / inode table
+         214            6210 block group / inode table
+         216            5664 block group / inode table
+         185            4778 block group / inode table
+         213            4761 block group / inode table
+         217            4537 block group / inode table
+         215            3262 block group / inode table
+         126            3202 block group / inode table
+         218            3063 block group / inode table
+         158            2289 block group / inode table
+         171            2286 block group / inode table
+         208            2198 block group / inode table
+          71            2131 block group / inode table
+         136            1520 block group / inode table
+         222            1405 block group / inode table
+         220            1382 block group / inode table
+
+=== Superblock region (offsets 1024-2048, ext4 primary superblock) ===
+Differing bytes in primary superblock: 46
+  First 20 offsets in SB range: [13, 49, 50, 65, 66, 105, 106, 107, 108, 109, 110, 111, 112, 114, 115, 116, 117, 118, 119, 120]
+  s_mtime (mount time) (SB offset 0x2c): 2 diff bytes
+  s_wtime (write time) (SB offset 0x30): 2 diff bytes
+  s_uuid (16 bytes) (SB offset 0x68): 14 diff bytes
+  s_last_error_time (SB offset 0xe4): 7 diff bytes
+  s_first_error_time (SB offset 0x108): 2 diff bytes
+
+=== 10 largest contiguous diff runs ===
+    start offset (hex)     start (dec)     length   ~MiB pos
+             0xd5f61ed       224354797        252     213.96
+             0x3c3f654        63174228        244      60.25
+             0xd66dd99       224845209        212     214.43
+             0xd621e6d       224534125        207     214.13
+             0x7ed8510       133006608        206     126.84
+             0xa28c8a2       170444962        205     162.55
+             0x7ebc502       132891906        203     126.74
+             0xd00b119       218149145        198     208.04
+             0x5146442        85222466        188      81.27
+             0xed0bd97       248561047        188     237.05
+
+=== Diff clustering (runs with gaps < 4KB merged) ===
+Total clusters: 791
+Top 20 largest clusters (by diff bytes within):
+   start (hex)         span   diff bytes   ~MiB pos    density
+       0x49409      2251402        87765       0.29      3.90%
+     0xed02ffd        64516        34164     237.01     52.95%
+     0x3c3e401         5120         1509      60.24     29.47%
+     0xd96d001         5120          822     217.43     16.05%
+     0xa1ef401         1024          820     161.93     80.08%
+     0xd5ea401         2048          819     213.92     39.99%
+     0xd600c01         5120          817     214.00     15.96%
+     0x99d7801         1024          814     153.84     79.49%
+     0x8fd3401         1024          813     143.83     79.39%
+     0xd7d8c01         1024          813     215.85     79.39%
+     0x3c60001         1024          812      60.38     79.30%
+     0x7a3f401         2048          812     122.25     39.65%
+     0xb91fffd         3076          810     185.12     26.33%
+     0x7e6b001         1024          805     126.42     78.61%
+     0xd621c01         1024          804     214.13     78.52%
+     0xd5f6001         1024          802     213.96     78.32%
+     0xb928c01         1024          800     185.16     78.12%
+     0xd871c01         1024          798     216.44     77.93%
+     0xd92b401         1024          795     217.17     77.64%
+     0xd5d4001         1024          793     213.83     77.44%

@@ -1,0 +1,9 @@
+[0000] ERROR failed to fetch latest version: Get "https://toolbox-data.anchore.io/syft/releases/latest/VERSION": read tcp 172.26.63.207:44926->8.6.112.0:443: read: connection reset by peer
+[0000]  WARN no explicit name and version provided for directory source, deriving artifact ID from the given path (which is not ideal)
+[0000]  WARN unable to access path="/mnt/rootfs-a/data/tactiq/keys": open /mnt/rootfs-a/data/tactiq/keys: permission denied
+[0000]  WARN unable to access path="/mnt/rootfs-a/etc/credstore": open /mnt/rootfs-a/etc/credstore: permission denied
+[0000]  WARN unable to access path="/mnt/rootfs-a/etc/credstore.encrypted": open /mnt/rootfs-a/etc/credstore.encrypted: permission denied
+[0000]  WARN unable to access path="/mnt/rootfs-a/etc/selinux/targeted/policy": open /mnt/rootfs-a/etc/selinux/targeted/policy: permission denied
+[0000]  WARN unable to access path="/mnt/rootfs-a/home/root": open /mnt/rootfs-a/home/root: permission denied
+[0000]  WARN unable to access path="/mnt/rootfs-a/lost+found": open /mnt/rootfs-a/lost+found: permission denied
+[0010]  WARN unable to access path="/mnt/rootfs-a/var/lib/selinux/targeted/active": open /mnt/rootfs-a/var/lib/selinux/targeted/active: permission denied
