@@ -1,0 +1,118 @@
+name: release-sign
+
+# Keyless cosign signing of release `SHA256SUMS` under the GitHub Actions
+# workflow identity. Produces two additional release assets next to the
+# existing personal-identity signature:
+#
+#   SHA256SUMS.workflow.pem  - Fulcio-issued cert whose SAN is this workflow
+#                              path at the triggering ref
+#   SHA256SUMS.workflow.sig  - cosign signature over the release's SHA256SUMS
+#
+# Rationale: the initial cosign signature on a release is produced interactively
+# by a maintainer and is bound to a personal OIDC identity (GitHub OAuth via
+# the maintainer's email). That is cryptographically sound but its trust root
+# is a personal account. Adding a second signature produced inside a scripted
+# workflow, bound to a public workflow path, gives consumers a separate
+# verification path whose trust root is GitHub Actions' OIDC provider and the
+# (publicly reviewable, branch-protected) workflow code. Either signature
+# suffices; having both makes the migration from personal to workflow identity
+# transparent in the Rekor transparency log.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to sign (e.g. v2.1.0-rc2)'
+        required: true
+        type: string
+
+permissions:
+  contents: write    # required to upload the signature assets back to the release
+  id-token: write    # required for Sigstore keyless OIDC
+
+jobs:
+  sign-release-sha256sums:
+    name: Sign SHA256SUMS with workflow OIDC identity
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Signing release: ${TAG}"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Download SHA256SUMS from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          cd work
+          gh release download "${TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern 'SHA256SUMS'
+          if [[ ! -s SHA256SUMS ]]; then
+            echo "::error::SHA256SUMS not found in release ${TAG}"
+            exit 1
+          fi
+          echo "SHA256SUMS size: $(wc -c < SHA256SUMS) bytes"
+          echo "SHA256SUMS sha256: $(sha256sum SHA256SUMS)"
+
+      - name: Sign SHA256SUMS (keyless, workflow identity)
+        env:
+          COSIGN_YES: 'true'
+        run: |
+          set -euo pipefail
+          cd work
+          cosign sign-blob \
+            --output-certificate SHA256SUMS.workflow.pem \
+            --output-signature   SHA256SUMS.workflow.sig \
+            SHA256SUMS
+          echo "--- signature file ---"
+          ls -la SHA256SUMS.workflow.pem SHA256SUMS.workflow.sig
+          echo "--- certificate SAN ---"
+          openssl x509 -in SHA256SUMS.workflow.pem -noout -ext subjectAltName || true
+
+      - name: Upload signature assets to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd work
+          gh release upload "${TAG}" \
+            SHA256SUMS.workflow.pem \
+            SHA256SUMS.workflow.sig \
+            --repo "${GITHUB_REPOSITORY}" \
+            --clobber
+
+      - name: Verify signature as published
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd work
+          EXPECTED_IDENTITY="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release-sign.yml@refs/tags/${TAG}"
+          echo "Expected identity: ${EXPECTED_IDENTITY}"
+          cosign verify-blob \
+            --certificate       SHA256SUMS.workflow.pem \
+            --signature         SHA256SUMS.workflow.sig \
+            --certificate-identity       "${EXPECTED_IDENTITY}" \
+            --certificate-oidc-issuer    https://token.actions.githubusercontent.com \
+            SHA256SUMS
+          echo "Workflow-identity signature verified."
