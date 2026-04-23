@@ -1,0 +1,46 @@
+# Yocto build outputs
+build/
+build-*/
+tmp/
+tmp-*/
+sstate-cache/
+downloads/
+
+# Large binary artifacts - go to GitHub Releases, not git
+*.wic
+*.wic.bmap
+*.ext4
+*.tar.gz
+*.tar.xz
+*.bin
+
+# tar.zst allowed only for SBOM (it's canonical compressed form)
+*.tar.zst
+!sbom-release/**/*.spdx.tar.zst
+
+# SHA256SUMS family - always in git
+!sbom-release/**/SHA256SUMS*
+
+# Exclude raw binaries from sbom-release (they're Release assets)
+sbom-release/**/rootfs-*.ext4
+sbom-release/**/kernel-*.bin
+sbom-release/**/*.dtb
+
+# CVE reports — only compressed versions go to git
+sbom-release/**/cve-full-rock5a.json
+sbom-release/**/cve-full-rock5a.txt
+sbom-release/**/cve-image-rock5a.txt
+sbom-release/**/cve-manifest-rock5a.json
+
+# Aggregate SBOM — only compressed (.tar.zst) version
+sbom-release/**/sbom-image-rock5a-aggregate.spdx.json
+
+# Reproducibility — only compressed version of raw log
+reproducibility-data/**/cmp-raw.log
+
+# Local state
+*.swp
+*.swo
+.DS_Store
+.env
+.envrc
