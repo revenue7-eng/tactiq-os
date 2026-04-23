@@ -96,14 +96,15 @@ the verification step is not running on every merge.
 ## Release-artifact signing (Sigstore keyless)
 
 - v2.1.0-rc2 release artifacts are protected by a Sigstore signature over
-  `SHA256SUMS`, which transitively covers every other release artifact
-  (SBOM bundle, aggregate SPDX, CVE reports, manifest, buildinfo).
+  `SHA256SUMS`, which transitively covers every release artifact — the
+  rootfs image, kernel binary, device tree, SBOM bundle, aggregate SPDX,
+  CVE reports, manifest, and buildinfo.
 - Signing identity: `revenue7@gmail.com` via GitHub OIDC issuer
   (`https://github.com/login/oauth`).
 - Tooling: `cosign sign-blob` with a Fulcio-issued ephemeral X.509 cert.
   No long-lived keys.
-- Public Rekor transparency log entry: `1361007070`
-  (https://search.sigstore.dev/?logIndex=1361007070).
+- Public Rekor transparency log entry: `1361157130`
+  (https://search.sigstore.dev/?logIndex=1361157130).
 
 Verification:
 
