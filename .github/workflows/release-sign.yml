@@ -22,12 +22,6 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Existing release tag to sign (e.g. v2.1.0-rc2)'
-        required: true
-        type: string
 
 permissions:
   contents: write    # required to upload the signature assets back to the release
@@ -42,11 +36,7 @@ jobs:
         id: tag
         run: |
           set -euo pipefail
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAG="${{ inputs.tag }}"
-          else
-            TAG="${GITHUB_REF#refs/tags/}"
-          fi
+          TAG="${GITHUB_REF#refs/tags/}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Signing release: ${TAG}"
 
