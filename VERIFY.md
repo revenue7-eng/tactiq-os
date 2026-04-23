@@ -218,7 +218,7 @@ Known Rekor indices:
 | Release     | Index                | Identity  |
 |-------------|----------------------|-----------|
 | v2.1.0-rc2  | `1361157130`         | personal  |
-| v2.1.0-rc3  | see release notes    | workflow  |
+| v2.1.0-rc3  | `1361817475`         | workflow  |
 
 ---
 
