@@ -14,6 +14,14 @@ for edge AI deployments on Rockchip RK3588 and compatible ARM64 targets.
 - `recipes-core/tactiq-{agent,config,release}` — attestation agent (Ed25519), runtime config, build info embedded at `/etc/tactiq-release`.
 - `recipes-kernel/linux/` — linux-yocto 6.6 LTS pinned, security fragment enabling IMA, SELinux, kernel lockdown groundwork.
 
+## Architectural principles
+
+See [`DESIGN_PRINCIPLES.md`](DESIGN_PRINCIPLES.md) for the per-domain
+rationale behind the layer — what the current release realizes, what
+is tracked but not yet shipped, and what is out of scope. Organized
+by chain of trust from the source archive up to the runtime
+attestation agent.
+
 ## Supply-chain posture
 
 Self-assessed, not certified. See [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md) for the
