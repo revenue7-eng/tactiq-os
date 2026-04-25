@@ -4,9 +4,11 @@ This document describes the architectural principles realized in the
 meta-tactiq layer at the current release, what is tracked but not yet
 shipped, and what is out of scope. It sits alongside `THREAT_MODEL.md`
 (consolidated adversary model that motivates the principles below),
-`SUPPLY_CHAIN.md` (supply-chain posture), `SECURITY.md` (vulnerability
-policy), and `VERIFY.md` (consumer verification procedure). Each
-statement about the current state is backed by a file in this repository.
+`ATTESTATION.md` (architectural specification of the attestation
+framework), `SUPPLY_CHAIN.md` (supply-chain posture), `SECURITY.md`
+(vulnerability policy), and `VERIFY.md` (consumer verification
+procedure). Each statement about the current state is backed by a
+file in this repository.
 
 Last reviewed: 2026-04-25.
 
@@ -145,21 +147,32 @@ explicitly marked as "CHANGE IN PRODUCTION").
 **Principle.** The device is able to prove to a remote party what it
 is running.
 
-**Current state.** The `tactiq-agent` binary is installed at
-`/opt/tactiq/bin/tactiq-agent` and runs as a systemd service
-(`tactiq-agent.service` in `recipes-core/tactiq-agent/files/`). The
-agent signs with Ed25519. `tactiq-release` writes build identity into
-`/etc/tactiq-release` on every image (version, codename, UTC build
-date, machine target, meta-layer git short hash, image basename) so
-that a remote verifier can correlate the running system with a build
-attestation. mTLS 1.3 is the transport.
+**Current state.** The supporting infrastructure for an attestation
+agent is in place: kernel TPM drivers compiled in (see Hardware root
+of trust above); IMA machinery enabled at PCR 10; a systemd unit
+(`tactiq-agent.service` in `recipes-core/tactiq-agent/files/`); a
+SELinux domain (`tactiq_agent_t`) with permissions to access TPM
+device nodes through the `tactiq_tpm_access` macro; a vault domain
+(`tactiq_vault_t`) for sealed key material; build identity written
+into `/etc/tactiq-release` on every image (version, codename, UTC
+build date, machine target, meta-layer git short hash, image
+basename) by the `tactiq-release` recipe, so that a remote verifier
+can correlate a running system with a specific build artifact. The
+binary at `/opt/tactiq/bin/tactiq-agent` in v2.1.0-rc3 is a stub
+(`recipes-core/tactiq-agent/files/tactiq-agent-stub.sh`) that holds
+the systemd unit, SELinux domain, and TPM access primitives in place
+while the real implementation is built.
 
-**Tracked.** Remote attestation protocol specification. Reference
-verifier implementation. TPM-quote integration: the attestation agent
-does not yet include a TPM quote in its signed payload, so the current
-agent attests to what the userspace declares rather than to what the
-hardware measured. This is the primary gap between "the agent signs"
-and "the system proves what it ran".
+**Tracked.** The full architectural specification of the attestation
+framework — payload structure, key management, freshness mechanism,
+verification protocol, what attestation does and does not prove — is
+in [`ATTESTATION.md`](ATTESTATION.md). The implementation roadmap
+from the current stub state to the specification is also there. The
+key items: real agent binary (Ed25519 signing with TPM-resident
+non-exportable keys, mTLS 1.3 transport); TPM-quote integration that
+closes the gap between "the agent signs" and "the system proves what
+it ran"; reference verifier implementation; per-build Reference
+Integrity Manifest (RIM) generation in the release pipeline.
 
 ## Out of scope for the current release
 
@@ -185,6 +198,8 @@ artifacts of the current release:
 ## References
 
 - `THREAT_MODEL.md` — consolidated adversary model.
+- `ATTESTATION.md` — architectural specification of the attestation
+  framework.
 - `SUPPLY_CHAIN.md` — per-SLSA-requirement self-assessment and roadmap.
 - `SECURITY.md` — vulnerability disclosure policy and security hardening
   summary.

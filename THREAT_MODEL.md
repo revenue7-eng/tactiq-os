@@ -4,9 +4,10 @@ This document is the consolidated adversary model for TactiQ OS. It
 describes what the operating system layer is designed to protect, against
 which classes of adversary, and where the trust boundaries are drawn. It
 sits alongside `DESIGN_PRINCIPLES.md` (per-domain rationale),
-`SUPPLY_CHAIN.md` (supply-chain self-assessment), `SECURITY.md`
-(vulnerability disclosure policy), and `VERIFY.md` (consumer verification
-procedure).
+`ATTESTATION.md` (architectural specification of the attestation
+framework), `SUPPLY_CHAIN.md` (supply-chain self-assessment),
+`SECURITY.md` (vulnerability disclosure policy), and `VERIFY.md`
+(consumer verification procedure).
 
 This is a v0.1 document. It is the first consolidated articulation of the
 adversary model and it will iterate as the platform matures, as
@@ -302,6 +303,11 @@ This boundary is the central reason why production deployment of
 TactiQ OS in trust-critical scenarios is a future state, not a
 present one.
 
+The full architectural specification of the attestation framework —
+what is signed, freshness, replay defence, verification protocol,
+key management, and the implementation roadmap from the current
+stub state — is in [`ATTESTATION.md`](ATTESTATION.md).
+
 ## Per-platform variations
 
 The architectural threat model above applies uniformly across all
@@ -374,6 +380,8 @@ part of the current state and are not on the near-term roadmap.
 ## References
 
 - `DESIGN_PRINCIPLES.md` — per-domain rationale and current state.
+- `ATTESTATION.md` — architectural specification of the attestation
+  framework.
 - `SUPPLY_CHAIN.md` — supply-chain self-assessment and roadmap.
 - `SECURITY.md` — vulnerability disclosure policy.
 - `VERIFY.md` — consumer verification procedure.
