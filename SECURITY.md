@@ -53,6 +53,9 @@ attestation workflows under `.github/workflows/`. It does not cover
 upstream dependencies (poky, meta-rockchip, linux-yocto, etc.) — please
 report those directly to the relevant upstream project.
 
+The consolidated adversary model that motivates the hardening described
+below is in [`THREAT_MODEL.md`](THREAT_MODEL.md).
+
 ## Supply-chain posture
 
 TactiQ OS publishes its supply-chain self-assessment in
