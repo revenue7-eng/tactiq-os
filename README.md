@@ -26,6 +26,12 @@ The consolidated adversary model — what TactiQ OS is designed to
 defend against, against which classes of adversary, and where the
 trust boundaries are drawn — is in [`THREAT_MODEL.md`](THREAT_MODEL.md).
 
+The architectural specification of the attestation framework — what
+the device is built to prove to a remote party, the protocol toward
+which the agent is being implemented, and what attestation does and
+does not prove at the current implementation stage — is in
+[`ATTESTATION.md`](ATTESTATION.md).
+
 ## Supply-chain posture
 
 Self-assessed, not certified. See [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md) for the
