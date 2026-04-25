@@ -5,7 +5,8 @@ meta-tactiq layer at the current release, what is tracked but not yet
 shipped, and what is out of scope. It sits alongside `THREAT_MODEL.md`
 (consolidated adversary model that motivates the principles below),
 `ATTESTATION.md` (architectural specification of the attestation
-framework), `SUPPLY_CHAIN.md` (supply-chain posture), `SECURITY.md`
+framework), `KERNEL_HARDENING.md` (kernel hardening posture and
+rationale), `SUPPLY_CHAIN.md` (supply-chain posture), `SECURITY.md`
 (vulnerability policy), and `VERIFY.md` (consumer verification
 procedure). Each statement about the current state is backed by a
 file in this repository.
@@ -200,6 +201,7 @@ artifacts of the current release:
 - `THREAT_MODEL.md` — consolidated adversary model.
 - `ATTESTATION.md` — architectural specification of the attestation
   framework.
+- `KERNEL_HARDENING.md` — kernel hardening posture and rationale.
 - `SUPPLY_CHAIN.md` — per-SLSA-requirement self-assessment and roadmap.
 - `SECURITY.md` — vulnerability disclosure policy and security hardening
   summary.
