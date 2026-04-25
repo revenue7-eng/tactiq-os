@@ -6,10 +6,11 @@ shipped, and what is out of scope. It sits alongside `THREAT_MODEL.md`
 (consolidated adversary model that motivates the principles below),
 `ATTESTATION.md` (architectural specification of the attestation
 framework), `KERNEL_HARDENING.md` (kernel hardening posture and
-rationale), `SUPPLY_CHAIN.md` (supply-chain posture), `SECURITY.md`
-(vulnerability policy), and `VERIFY.md` (consumer verification
-procedure). Each statement about the current state is backed by a
-file in this repository.
+rationale), `BOOT_CHAIN.md` (chain of trust from silicon root to
+running attestation agent), `SUPPLY_CHAIN.md` (supply-chain posture),
+`SECURITY.md` (vulnerability policy), and `VERIFY.md` (consumer
+verification procedure). Each statement about the current state is
+backed by a file in this repository.
 
 Last reviewed: 2026-04-25.
 
@@ -202,6 +203,7 @@ artifacts of the current release:
 - `ATTESTATION.md` — architectural specification of the attestation
   framework.
 - `KERNEL_HARDENING.md` — kernel hardening posture and rationale.
+- `BOOT_CHAIN.md` — chain of trust from silicon root to attestation.
 - `SUPPLY_CHAIN.md` — per-SLSA-requirement self-assessment and roadmap.
 - `SECURITY.md` — vulnerability disclosure policy and security hardening
   summary.

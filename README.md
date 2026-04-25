@@ -37,6 +37,11 @@ module signing, memory and execution hardening, and the transitions
 that move the posture from current to enforcing — is in
 [`KERNEL_HARDENING.md`](KERNEL_HARDENING.md).
 
+The chain of trust from the silicon root to the running attestation
+agent — what each stage verifies and measures, where the chain is
+anchored, and the state of each stage in the current release — is
+in [`BOOT_CHAIN.md`](BOOT_CHAIN.md).
+
 ## Supply-chain posture
 
 Self-assessed, not certified. See [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md) for the
