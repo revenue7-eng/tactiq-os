@@ -2,12 +2,13 @@
 
 This document describes the architectural principles realized in the
 meta-tactiq layer at the current release, what is tracked but not yet
-shipped, and what is out of scope. It sits alongside `SUPPLY_CHAIN.md`
-(supply-chain posture), `SECURITY.md` (vulnerability policy), and
-`VERIFY.md` (consumer verification procedure). Each statement about the
-current state is backed by a file in this repository.
+shipped, and what is out of scope. It sits alongside `THREAT_MODEL.md`
+(consolidated adversary model that motivates the principles below),
+`SUPPLY_CHAIN.md` (supply-chain posture), `SECURITY.md` (vulnerability
+policy), and `VERIFY.md` (consumer verification procedure). Each
+statement about the current state is backed by a file in this repository.
 
-Last reviewed: 2026-04-24.
+Last reviewed: 2026-04-25.
 
 Sections follow the chain of trust from the source archive up to the
 runtime attestation agent.
@@ -177,14 +178,13 @@ artifacts of the current release:
 - IMA appraisal enforced in userspace. Kernel machinery is present,
   on-disk policy is not deployed.
 - `dm-verity` on rootfs. Tracked in the kernel fragment as phase 3.
-- A threat model document. Individual components (SELinux policy, RAUC
-  signing, IMA posture, attestation agent, release-signing pipeline)
-  are each documented in place; a consolidated adversary model tying
-  them together is not yet published and is acknowledged as a gap in
-  `docs/release-notes/v2.1.0-rc3.md`.
+- A threat model document. The consolidated adversary model is now
+  published in [`THREAT_MODEL.md`](THREAT_MODEL.md). It is a v0.1
+  document and iterates as the platform matures.
 
 ## References
 
+- `THREAT_MODEL.md` — consolidated adversary model.
 - `SUPPLY_CHAIN.md` — per-SLSA-requirement self-assessment and roadmap.
 - `SECURITY.md` — vulnerability disclosure policy and security hardening
   summary.

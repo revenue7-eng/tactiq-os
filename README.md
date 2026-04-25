@@ -22,6 +22,10 @@ is tracked but not yet shipped, and what is out of scope. Organized
 by chain of trust from the source archive up to the runtime
 attestation agent.
 
+The consolidated adversary model — what TactiQ OS is designed to
+defend against, against which classes of adversary, and where the
+trust boundaries are drawn — is in [`THREAT_MODEL.md`](THREAT_MODEL.md).
+
 ## Supply-chain posture
 
 Self-assessed, not certified. See [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md) for the
