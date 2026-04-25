@@ -3,13 +3,6 @@
 Yocto layer for TactiQ OS — a security-hardened embedded Linux distribution
 for edge AI deployments on Rockchip RK3588 and compatible ARM64 targets.
 
-> **Status: pre-production.** Hardware bring-up phase, no customer
-> deployments at this time. Documentation maturity precedes
-> implementation maturity at this stage of the project — the
-> architectural framework is described in the documents linked from
-> the *Architectural principles* section below, while several of the
-> implementation steps those documents target are still in progress.
-
 [![ci](https://github.com/revenue7-eng/tactiq-os/actions/workflows/ci.yml/badge.svg)](https://github.com/revenue7-eng/tactiq-os/actions/workflows/ci.yml)
 
 ## Scope
@@ -90,4 +83,29 @@ section.
 
 ## License
 
-MIT unless noted per file.
+The `meta-tactiq` Yocto layer is licensed under GNU General Public
+License version 3 or later (GPL-3.0-or-later). The full text of the
+license is in [`LICENSE`](LICENSE).
+
+This applies to the layer code shipped in this repository: machine
+configurations, distribution configuration, image recipes, the
+TactiQ-specific recipes (`tactiq-agent`, `tactiq-release`,
+`tactiq-config`), kernel security fragment, RAUC integration, and
+documentation. Components from upstream projects pulled in by the
+build retain their own licenses; the resulting image is a
+combined work whose distribution follows the requirements of all
+constituent licenses.
+
+The license choice reflects the project's positioning. TactiQ OS
+is a sovereign edge AI platform foundation: the source must be
+available to consumers under terms that guarantee, juridically, the
+ability to audit, modify, and redistribute. GPL-3.0-or-later
+provides that guarantee. It also aligns with the licenses already
+governing the kernel and large parts of the GNU userspace that the
+distribution is built on.
+
+Components that may be licensed differently (the TactiQ Edge
+ML pipeline, bootloader firmware on TactiQ Module hardware, signed
+Doctrine Updates bundles) are separate from this layer and are
+licensed according to their own terms; this repository covers the
+operating system layer only.

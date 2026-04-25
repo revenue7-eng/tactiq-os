@@ -4,7 +4,7 @@
 # Оригинал сохранён в backups/
 # ============================================================================
 SUMMARY = "TactiQ OS - Secure Edge Computing Platform"
-LICENSE = "MIT"
+LICENSE = "GPL-3.0-or-later"
 inherit core-image
 inherit selinux-image
 

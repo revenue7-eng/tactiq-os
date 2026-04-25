@@ -1,7 +1,7 @@
 SUMMARY = "TactiQ Attestation Agent"
 DESCRIPTION = "Secure attestation agent with Ed25519 signing"
-LICENSE = "MIT"
-LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
+LICENSE = "GPL-3.0-or-later"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/GPL-3.0-or-later;md5=1ebbd3e34237af26da5dc08a4e440464"
 
 inherit systemd
 
