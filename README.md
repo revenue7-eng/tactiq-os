@@ -32,6 +32,11 @@ which the agent is being implemented, and what attestation does and
 does not prove at the current implementation stage — is in
 [`ATTESTATION.md`](ATTESTATION.md).
 
+The kernel hardening posture — LSM choices, IMA configuration,
+module signing, memory and execution hardening, and the transitions
+that move the posture from current to enforcing — is in
+[`KERNEL_HARDENING.md`](KERNEL_HARDENING.md).
+
 ## Supply-chain posture
 
 Self-assessed, not certified. See [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md) for the
