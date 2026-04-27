@@ -10,7 +10,13 @@ for edge AI deployments on Rockchip RK3588 and compatible ARM64 targets.
 > the *Architectural principles* section below, while several of the
 > implementation steps those documents target are still in progress.
 
-[![ci](https://github.com/revenue7-eng/tactiq-os/actions/workflows/ci.yml/badge.svg)](https://github.com/revenue7-eng/tactiq-os/actions/workflows/ci.yml)
+> **Continuous integration:** the CI configuration in `.github/workflows/`
+> is preserved as a historical record of the lint and attestation
+> pipeline that ran while the project was hosted on GitHub Actions.
+> Migration of CI to Codeberg's Forgejo Actions or Woodpecker CI is
+> tracked separately and not yet active. The lint, shell-check, and
+> YAML validation steps the historical workflow performed are described
+> in [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md).
 
 ## Scope
 

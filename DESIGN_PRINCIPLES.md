@@ -35,10 +35,15 @@ byte-identity on `rootfs.ext4` between two consecutive builds;
 remaining 0.057% localized to ext4 inode metadata and filesystem
 headers). Source archiver retains upstream tarballs. A cosign keyless
 signature over `SHA256SUMS` transitively covers every release artifact;
-`rc3` and later are signed under the workflow identity of
-`.github/workflows/release-sign.yml`, not under a personal account.
-A SLSA v1.0 build-provenance attestation over the deterministic source
-archive is produced by `.github/workflows/attest.yml`.
+`v2.1.0-rc3` was signed under the workflow identity of
+`.github/workflows/release-sign.yml` running on GitHub Actions at the
+time of tagging — not under a personal account — and the signing path
+for releases produced after `rc3` is documented in the release notes
+of each such release. A SLSA v1.0 build-provenance attestation over
+the deterministic source archive was produced by the same workflow
+runtime and is recorded on the public Sigstore Rekor transparency log;
+the consumer-side status of that attestation file is in
+[`VERIFY.md`](VERIFY.md) §5.
 
 **Tracked.** Filesystem-image bit-identity (pending `mkfs.ext4 --uuid`
 pinning, inode-timestamp normalization, deterministic `machine-id` and
