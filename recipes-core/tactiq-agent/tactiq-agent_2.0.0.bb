@@ -11,7 +11,7 @@ inherit systemd useradd
 # tactiq_agent_t domain.
 USERADD_PACKAGES = "${PN}"
 USERADD_PARAM:${PN} = "--system --no-create-home --shell /sbin/nologin \
-                       --home-dir /var/lib/tactiq-agent --gid tactiq-agent \
+                       --home-dir /var/lib/tactiq-agent --user-group \
                        tactiq-agent"
 GROUPADD_PARAM:${PN} = "--system tactiq-agent"
 
