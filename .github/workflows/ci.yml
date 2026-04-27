@@ -90,3 +90,26 @@ jobs:
           grep -q 'INHERIT *+= *"cve-check"' "$f" \
             || { echo "::error::cve-check not inherited"; exit 1; }
           echo "distro config sanity: OK"
+
+      - name: Assert production image profile is hardened
+        run: |
+          set -e
+          prod=recipes-core/images/tactiq-image.bb
+          dev=recipes-core/images/tactiq-image-dev.bb
+          # Production recipe must exist
+          test -f "$prod" \
+            || { echo "::error::production image recipe missing: $prod"; exit 1; }
+          # Production recipe must remove debug-tweaks (it is appended in
+          # the dev recipe; production inherits via `require` and must
+          # cancel that append).
+          grep -q 'EXTRA_IMAGE_FEATURES:remove.*debug-tweaks' "$prod" \
+            || { echo "::error::production image does not remove debug-tweaks"; exit 1; }
+          # Production recipe must not ship an SSH server.
+          grep -q 'IMAGE_FEATURES:remove.*ssh-server-openssh' "$prod" \
+            || { echo "::error::production image still ships ssh-server-openssh"; exit 1; }
+          # Dev recipe must exist and must NOT be the build target for
+          # tagged releases. (CI does not enforce that here; that gate
+          # belongs to the release workflow.)
+          test -f "$dev" \
+            || { echo "::error::dev image recipe missing: $dev"; exit 1; }
+          echo "image profile sanity: OK"
