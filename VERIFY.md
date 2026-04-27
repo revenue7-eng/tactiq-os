@@ -48,13 +48,15 @@ A TactiQ OS release carries three independent layers of evidence:
    `SHA256SUMS` (layer 2 above), whose Rekor index is published below.
    See §5 for the full status and the limits of what each layer proves.
 
-Either cosign signature suffices on its own; both point at the same
-`SHA256SUMS` file and both are recorded in the public Rekor transparency
-log. For `v2.1.0-rc3` the workflow-identity signature is the canonical
-form — its trust root is a publicly reviewable workflow rather than a
-personal account, and it is the path with no caveats. The personal
-signature on rc1 and rc2 remains valid for anyone who needs to verify
-those earlier tags.
+Each TactiQ OS release carries exactly one cosign signature over its
+`SHA256SUMS`. The signing identity differs between release generations:
+the personal-identity signature applies to `v2.1.0-rc1` and
+`v2.1.0-rc2`, the workflow-identity signature applies to `v2.1.0-rc3`
+and later. The workflow identity is the canonical form going forward
+because its trust root is a publicly reviewable workflow rather than a
+personal account. The personal signature on rc1 and rc2 remains valid
+for anyone who needs to verify those earlier tags. Section 7 lists the
+Rekor index for each release.
 
 ## 1. Prerequisites
 
