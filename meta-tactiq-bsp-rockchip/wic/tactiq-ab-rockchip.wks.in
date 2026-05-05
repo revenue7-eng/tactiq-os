@@ -1,5 +1,6 @@
-# TactiQ OS A/B Partition Layout
-# Target: Rock 5B (RK3588) with NVMe or eMMC
+# TactiQ OS A/B Partition Layout — Rockchip BSP
+# Target: RK3588 family — Rock 5A (RK3588S), Rock 5T (RK3588), other RK3588(S) boards
+# Storage: microSD / eMMC / NVMe (loader area written to raw sectors before GPT)
 #
 # Layout:
 #   [Rockchip loader area - no partition table]
