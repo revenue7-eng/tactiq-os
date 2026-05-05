@@ -29,8 +29,11 @@ require conf/machine/include/arm/armv8-2a/tune-cortexa76-cortexa55.inc
 PREFERRED_PROVIDER_virtual/bootloader = "u-boot-rockchip"
 
 # ---- Kernel ----
+# PREFERRED_PROVIDER + PREFERRED_VERSION live in core layer's linux-yocto
+# bbappend (recipes-kernel/linux/linux-yocto_%.bbappend) — kernel version
+# is a distro-level decision, not a vendor BSP one. BSP layer only owns
+# bootloader and SoC-specific defconfig knobs.
 PREFERRED_PROVIDER_virtual/kernel = "linux-yocto"
-PREFERRED_VERSION_linux-yocto = "6.6%"
 KBUILD_DEFCONFIG = "defconfig"
 KCONFIG_MODE = "alldefconfig"
 
