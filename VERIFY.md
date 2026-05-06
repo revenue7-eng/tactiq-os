@@ -2,11 +2,23 @@
 
 This document specifies the canonical verification procedure for TactiQ OS
 release artifacts. It is intended for security engineers, integrators, and
-anyone establishing a chain of trust from a published GitHub release down
-to a local root filesystem image.
+anyone establishing a chain of trust from a published TactiQ OS release on
+Codeberg down to a local root filesystem image.
 
-All commands assume a POSIX shell with `cosign` v2.x, the GitHub CLI `gh`
-v2.x (with `gh attestation`), `openssl`, and standard GNU coreutils.
+All commands assume a POSIX shell with `cosign` v2.x, `curl`, `openssl`,
+`zstd`, `jq`, and standard GNU coreutils.
+
+A note on identity strings before you start. Several `--certificate-identity`
+values below contain `https://github.com/...`. These are the **immutable
+historical identities under which the release artifacts were originally
+signed**: the workflow ran on GitHub Actions, Sigstore Fulcio recorded
+that path in the certificate's Subject Alternative Name, and the
+corresponding Rekor entries are append-only. The strings are reproduced
+verbatim because `cosign verify-blob` will fail if they are altered. They
+do **not** imply that the project is currently hosted on GitHub — the
+canonical home is this Codeberg repository. The signing path used for
+releases produced after `v2.1.0-rc3` is documented in the release notes
+of each such release.
 
 ---
 
@@ -28,27 +40,37 @@ A TactiQ OS release carries three independent layers of evidence:
       [`.github/workflows/release-sign.yml`](.github/workflows/release-sign.yml).
       Assets: `SHA256SUMS.workflow.pem`, `SHA256SUMS.workflow.sig`.
 3. **SLSA build-provenance attestation** over the deterministic source
-   archive, produced by
-   [`.github/workflows/attest.yml`](.github/workflows/attest.yml) via
-   `actions/attest-build-provenance@v2`. Retrieved with
-   `gh attestation verify`.
+   archive, originally produced by GitHub Actions
+   (`actions/attest-build-provenance@v2`) at the time the release was
+   tagged. For `v2.1.0-rc3` the attestation is a historical record on
+   the Sigstore Rekor transparency log; the integrity binding consumers
+   rely on for this release is the workflow-identity signature over
+   `SHA256SUMS` (layer 2 above), whose Rekor index is published below.
+   See §5 for the full status and the limits of what each layer proves.
 
-Either cosign signature suffices on its own; both point at the same
-`SHA256SUMS` file and both are recorded in the public Rekor transparency
-log. The workflow-identity signature is the long-term canonical form:
-its trust root is a branch-protected workflow on a public repository,
-not a personal account.
+Each TactiQ OS release carries exactly one cosign signature over its
+`SHA256SUMS`. The signing identity differs between release generations:
+the personal-identity signature applies to `v2.1.0-rc1` and
+`v2.1.0-rc2`, the workflow-identity signature applies to `v2.1.0-rc3`
+and later. The workflow identity is the canonical form going forward
+because its trust root is a publicly reviewable workflow rather than a
+personal account. The personal signature on rc1 and rc2 remains valid
+for anyone who needs to verify those earlier tags. Section 7 lists the
+Rekor index for each release.
 
 ## 1. Prerequisites
 
 ```sh
 cosign version          # expect >= 2.2
-gh --version            # expect >= 2.40
+curl --version          # any recent
 openssl version         # any recent
+zstd --version          # for SBOM tarball decompression
+jq --version            # for SBOM JSON inspection
 sha256sum --version     # GNU coreutils
 ```
 
-If `cosign` is missing:
+`cosign` is published on GitHub by the upstream Sigstore project. If
+it is missing:
 
 ```sh
 # Linux x86_64
@@ -64,11 +86,30 @@ full asset set into a clean working directory.
 
 ```sh
 TAG=v2.1.0-rc3
+BASE=https://codeberg.org/revenue7-eng/tactiq-os/releases/download/${TAG}
+
 mkdir -p "tactiq-os-${TAG}" && cd "tactiq-os-${TAG}"
 
-gh release download "${TAG}" \
-    --repo revenue7-eng/tactiq-os
+# Step 1: fetch SHA256SUMS and its signature assets first.
+for f in SHA256SUMS \
+         SHA256SUMS.workflow.pem SHA256SUMS.workflow.sig \
+         SHA256SUMS.pem SHA256SUMS.sig; do
+    curl -fsSL --retry 3 -O "${BASE}/${f}" || \
+        echo "note: ${f} not present for ${TAG} (rc1/rc2 lack workflow.* ; rc3 lacks personal *.pem/*.sig only if absent on the release page)"
+done
+
+# Step 2: derive the artifact list from SHA256SUMS itself, then fetch
+# every file named in it. This guarantees the download set matches the
+# integrity manifest exactly — no drift between docs and the release.
+awk '{print $2}' SHA256SUMS | while read -r f; do
+    [ -f "${f}" ] && continue
+    curl -fsSL --retry 3 -O "${BASE}/${f}"
+done
 ```
+
+The release `SHA256SUMS` itself is signed; once §4 succeeds you have
+verified that the list of filenames you used to drive this download
+came from the maintainer, not from a man-in-the-middle.
 
 You should now see, at minimum:
 
@@ -92,6 +133,13 @@ Every line must print `OK`. A single `FAILED` line invalidates the
 release — stop and report.
 
 ## 4. Verify the signature over `SHA256SUMS`
+
+The `--certificate-identity` and `--certificate-oidc-issuer` values
+below are reproduced exactly as they were recorded by Sigstore Fulcio
+when the releases were signed. They are not editable: changing them
+will cause `cosign verify-blob` to reject a valid signature. See the
+preamble for why these strings reference `github.com` even though the
+project lives on Codeberg.
 
 ### 4.1 Workflow identity (canonical, `v2.1.0-rc3` and later)
 
@@ -145,41 +193,50 @@ Error: invalid signature when validating ASN.1 encoded signature
 
 Do not proceed past this point if cosign reports an error of any kind.
 
-## 5. Verify the SLSA build-provenance attestation
+## 5. SLSA build-provenance attestation — status for `v2.1.0-rc3`
 
-The attestation is produced on the deterministic source archive
-(`tactiq-os-<commit>.tar.gz`), not on the binary rootfs. It is therefore
-verified against the source archive retrieved from the `attest.yml`
-workflow-run artifacts for that tag.
+A SLSA v1.0 build-provenance attestation was generated for `v2.1.0-rc3`
+at the time of tagging. The attestation was produced by GitHub Actions
+running `actions/attest-build-provenance@v2`, bound to the deterministic
+source archive `tactiq-os-<commit>.tar.gz` covering the trees `conf/`,
+`recipes-core/`, `recipes-kernel/`, `scripts/`, `wic/` at the tagged
+commit. The attestation event is recorded on the public Sigstore Rekor
+transparency log and remains independently inspectable through
+<https://search.sigstore.dev>.
 
-```sh
-# Pull the source archive that attest.yml uploaded for this tag
-gh run download --repo revenue7-eng/tactiq-os \
-    -n tactiq-os-source \
-    -D src/
+**Reproducible verification of the attestation file itself by an
+external auditor is not provided for `v2.1.0-rc3` on Codeberg.** The
+canonical retrieval path for an `attest-build-provenance` attestation
+is the GitHub-specific `gh attestation verify` command, which is not
+applicable to a release hosted outside GitHub. The attestation was
+produced before the project's release-publishing path moved to
+Codeberg; re-issuing an equivalent attestation on the Codeberg-hosted
+release is a separate engineering task tracked alongside the CI
+migration.
 
-# Verify
-gh attestation verify \
-    src/tactiq-os-<commit>.tar.gz \
-    --repo revenue7-eng/tactiq-os
-```
+**What this means for trust in `v2.1.0-rc3`:**
 
-Expected output includes a line confirming the predicate type
-`https://slsa.dev/provenance/v1` and a valid OIDC identity matching the
-`attest.yml` workflow path.
+- **Integrity binding is provided by §4.1** — the workflow-identity
+  Sigstore signature over `SHA256SUMS`, which transitively covers
+  every release artifact. Rekor index for this signature: `1361817475`.
+  This is the binding consumers should rely on.
+- **Provenance binding** (which workflow, on which commit, produced the
+  source archive) is recorded on Rekor at the time of signing and can
+  be observed there, but is not redistributed as a standalone
+  verifiable file alongside the Codeberg release for `v2.1.0-rc3`.
+- **No SLSA attestation binds the binary artifacts** themselves —
+  rootfs, kernel, device tree. These are built locally (WSL2 + Docker),
+  not in a hosted builder. This is the largest open gap toward
+  end-to-end SLSA L3 on the image and is tracked in
+  [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md).
 
-**What the attestation binds to — and what it does not:**
-
-- **Binds to:** the deterministic source archive
-  `tactiq-os-<commit>.tar.gz` produced by `attest.yml`, covering the
-  trees `conf/`, `recipes-core/`, `recipes-kernel/`, `scripts/`, `wic/`
-  at the tagged commit.
-- **Does not bind to:** the rootfs image, kernel binary, or device tree
-  blob. These are built outside GitHub Actions today (the full Yocto
-  build does not yet run in the hosted builder), so there is no SLSA
-  provenance attestation on the binary artifacts. This is the single
-  largest gap toward end-to-end SLSA L3 on the image and is tracked as
-  a roadmap item in [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md).
+**Going forward.** The signing and attestation path for releases
+produced after `v2.1.0-rc3` is documented in the release notes of
+each such release. Releases that ship a standalone, externally
+verifiable attestation file as a release asset will document the
+exact verification command in their own release notes; absence of
+such a file means the release inherits the same status as `rc3`
+above.
 
 ## 6. Verify SBOM integrity
 
@@ -203,8 +260,8 @@ SBOM scope — what is included, what is not — is documented in
 ## 7. Transparency-log lookup
 
 Every cosign signature above is anchored in the public Rekor log. The
-log index is recorded in the release notes for each tag; Rekor can also
-be queried directly:
+log index for each release is published below; Rekor can also be
+queried directly by hash to discover the entry independently:
 
 ```sh
 # By hash of SHA256SUMS
@@ -224,15 +281,25 @@ Known Rekor indices:
 
 ## Appendix A — expected identity strings, in full
 
+These strings reproduce verbatim what Sigstore Fulcio recorded in the
+respective release certificates. They are not configurable on the
+verifier side; passing different values will cause `cosign verify-blob`
+to reject a valid signature. The `github.com` URLs reflect the build
+infrastructure on which the releases were originally signed and are
+preserved as immutable historical artifacts.
+
 ```
 # Personal identity (rc1, rc2)
 --certificate-identity    revenue7@gmail.com
 --certificate-oidc-issuer https://github.com/login/oauth
 
-# Workflow identity (rc3+), parameterised by tag
+# Workflow identity (rc3), parameterised by tag
 --certificate-identity    https://github.com/revenue7-eng/tactiq-os/.github/workflows/release-sign.yml@refs/tags/<TAG>
 --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
+
+Identity strings used by releases produced after `v2.1.0-rc3` are
+documented in the release notes of each such release.
 
 ## Appendix B — why the tag-SAN check matters
 

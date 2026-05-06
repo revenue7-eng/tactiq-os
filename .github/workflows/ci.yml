@@ -90,3 +90,64 @@ jobs:
           grep -q 'INHERIT *+= *"cve-check"' "$f" \
             || { echo "::error::cve-check not inherited"; exit 1; }
           echo "distro config sanity: OK"
+
+      - name: Assert production image profile is hardened
+        run: |
+          set -e
+          prod=recipes-core/images/tactiq-image.bb
+          dev=recipes-core/images/tactiq-image-dev.bb
+          # Production recipe must exist
+          test -f "$prod" \
+            || { echo "::error::production image recipe missing: $prod"; exit 1; }
+          # Production recipe must remove debug-tweaks (it is appended in
+          # the dev recipe; production inherits via `require` and must
+          # cancel that append).
+          grep -q 'EXTRA_IMAGE_FEATURES:remove.*debug-tweaks' "$prod" \
+            || { echo "::error::production image does not remove debug-tweaks"; exit 1; }
+          # Production recipe must not ship an SSH server.
+          grep -q 'IMAGE_FEATURES:remove.*ssh-server-openssh' "$prod" \
+            || { echo "::error::production image still ships ssh-server-openssh"; exit 1; }
+          # Dev recipe must exist and must NOT be the build target for
+          # tagged releases. (CI does not enforce that here; that gate
+          # belongs to the release workflow.)
+          test -f "$dev" \
+            || { echo "::error::dev image recipe missing: $dev"; exit 1; }
+          echo "image profile sanity: OK"
+
+      - name: Assert kernel security fragment is wired for every kernel provider
+        run: |
+          set -e
+          frag=recipes-kernel/linux/linux-yocto/tactiq-security.cfg
+          test -f "$frag" \
+            || { echo "::error::kernel security fragment missing: $frag"; exit 1; }
+          # Every kernel recipe used by any tactiq machine.conf must have a
+          # bbappend that pulls in tactiq-security.cfg. Today that is
+          # linux-yocto today; if a new kernel provider gets
+          # introduced via a machine.conf, this check forces an explicit
+          # decision about its hardening posture.
+          providers=$(grep -h "PREFERRED_PROVIDER_virtual/kernel" conf/machine/*.conf \
+                      | awk -F'"' '{print $2}' | sort -u)
+          for p in $providers; do
+            ba=recipes-kernel/linux/${p}_%.bbappend
+            test -f "$ba" \
+              || { echo "::error::no bbappend for kernel provider '$p' (expected $ba)"; exit 1; }
+            grep -q 'tactiq-security.cfg' "$ba" \
+              || { echo "::error::$ba does not pull in tactiq-security.cfg"; exit 1; }
+          done
+          echo "kernel security fragment wiring: OK"
+
+      - name: Assert RAUC keyring is overridable from CI
+        run: |
+          set -e
+          ba=recipes-core/rauc/rauc_%.bbappend
+          # The development cert must be assigned with weak '?=' so a
+          # CI-provided RAUC_KEYRING_FILE override takes effect. Strong
+          # '=' assignment would silently win over the CI override and
+          # ship the public dev cert in a production image.
+          grep -qE 'RAUC_KEYRING_FILE *\?= *"\$\{THISDIR\}/files/development-1\.cert\.pem"' "$ba" \
+            || { echo "::error::RAUC_KEYRING_FILE is not weak-assigned (?=) in $ba"; exit 1; }
+          # Development cert must carry a header that flags it as such.
+          grep -q 'DEVELOPMENT-ONLY RAUC SIGNING CERTIFICATE' \
+                  recipes-core/rauc/files/development-1.cert.pem \
+            || { echo "::error::development cert is missing the DEVELOPMENT-ONLY header"; exit 1; }
+          echo "rauc keyring posture: OK"

@@ -1,0 +1,171 @@
+# TactiQ OS — DEVELOPMENT image profile
+# ============================================================================
+# This profile retains debug-tweaks (passwordless root, root-login over SSH)
+# and an OpenSSH server for bring-up and integration debugging. It is NOT
+# suitable for production deployments and is NEVER signed as a release
+# artifact. The production profile is `tactiq-image.bb`; CI gates ensure
+# tagged releases build from the production recipe.
+#
+# Build: MACHINE=tactiq-rock5a bitbake tactiq-image-dev
+# ============================================================================
+SUMMARY = "TactiQ OS — development profile (debug-tweaks, SSH server)"
+LICENSE = "MIT"
+inherit core-image
+inherit selinux-image
+
+# ---------------------------------------------------------------------------
+# Base: core-image-minimal (no kernel-modules group!)
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " \
+    packagegroup-core-boot \
+"
+
+# ---------------------------------------------------------------------------
+# Kernel modules: only what the runtime needs (instead of kernel-modules
+# which pulls in all ~500 modules built for the kernel).
+# ---------------------------------------------------------------------------
+# Crypto — required for TPM, mTLS, dm-verity
+IMAGE_INSTALL:append = " \
+    kernel-module-af-alg \
+    kernel-module-algif-rng \
+"
+
+# Netfilter — required for the iptables firewall
+IMAGE_INSTALL:append = " \
+    kernel-module-ip-tables \
+    kernel-module-ip6-tables \
+    kernel-module-iptable-filter \
+    kernel-module-iptable-nat \
+    kernel-module-iptable-mangle \
+    kernel-module-nf-conntrack \
+    kernel-module-nf-nat \
+    kernel-module-nf-defrag-ipv4 \
+    kernel-module-nf-defrag-ipv6 \
+    kernel-module-nf-reject-ipv4 \
+    kernel-module-nfnetlink \
+    kernel-module-x-tables \
+    kernel-module-xt-conntrack \
+    kernel-module-xt-state \
+    kernel-module-xt-tcpudp \
+"
+
+# System — watchdog, TUN (VPN), FUSE
+IMAGE_INSTALL:append = " \
+"
+
+# IPsec — placeholder for VPN modules if a deployment requires them
+IMAGE_INSTALL:append = " \
+"
+
+# ---------------------------------------------------------------------------
+# Networking (required for mTLS attestation)
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " \
+    openssh-sshd \
+    openssh-ssh \
+    openssh-keygen \
+    openssl \
+    openssl-bin \
+    ca-certificates \
+    chrony \
+    iproute2 \
+    iptables \
+"
+
+# ---------------------------------------------------------------------------
+# TactiQ components
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " \
+    tactiq-agent \
+    tactiq-config \
+    tactiq-release \
+"
+
+# ---------------------------------------------------------------------------
+# OTA Updates (RAUC A/B)
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " rauc"
+
+# ---------------------------------------------------------------------------
+# System utilities — minimal set
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " \
+    bash \
+    curl \
+    jq \
+    procps \
+"
+
+# util-linux: install only the binaries the runtime uses, not the full
+# package (~80 utilities).
+IMAGE_INSTALL:append = " \
+    util-linux-mount \
+    util-linux-umount \
+    util-linux-blkid \
+    util-linux-lsblk \
+    util-linux-findmnt \
+    util-linux-dmesg \
+    util-linux-hwclock \
+    util-linux-losetup \
+    util-linux-flock \
+    util-linux-nsenter \
+    util-linux-unshare \
+    util-linux-agetty \
+    util-linux-sulogin \
+    util-linux-switch-root \
+    util-linux-fsck \
+    util-linux-fdisk \
+"
+
+# ---------------------------------------------------------------------------
+# Security: SELinux + audit
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " \
+    libselinux \
+    libselinux-python \
+    policycoreutils \
+    policycoreutils-setfiles \
+    selinux-autorelabel \
+    refpolicy-targeted \
+    audit \
+"
+# setools and selinux-python are kept for the development phase.
+# Production can drop them (saves ~50MB of Python).
+
+# ---------------------------------------------------------------------------
+# Debug tools — REMOVE BEFORE PRODUCTION
+# ---------------------------------------------------------------------------
+# IMAGE_INSTALL:append = " strace tcpdump nano less"
+
+# ---------------------------------------------------------------------------
+# Image features
+# ---------------------------------------------------------------------------
+IMAGE_FEATURES += "ssh-server-openssh"
+IMAGE_FEATURES += "read-only-rootfs"
+# package-management is dropped — opkg is not useful on a read-only rootfs.
+
+# ---------------------------------------------------------------------------
+# Disk space — trimmed
+# ---------------------------------------------------------------------------
+IMAGE_ROOTFS_EXTRA_SPACE = "65536"
+IMAGE_OVERHEAD_FACTOR = "1.15"
+# Was: 524288 (512MB headroom). Now: 65536 (64MB) — enough for logs.
+
+# ---------------------------------------------------------------------------
+# Boot infrastructure — kernel devicetree blobs in rootfs /boot/
+# ---------------------------------------------------------------------------
+# extlinux loads the FDT from a path inside the rootfs (FDT = /boot/<dtb>).
+# Without kernel-devicetree in IMAGE_INSTALL the .dtb files are deployed
+# only to the boot_a FAT partition via IMAGE_BOOT_FILES (wic mechanism)
+# and are absent from the rootfs, which causes extlinux to fail FDT load.
+IMAGE_INSTALL:append = " kernel-devicetree"
+
+# ---------------------------------------------------------------------------
+# Root password (CHANGE IN PRODUCTION)
+# ---------------------------------------------------------------------------
+EXTRA_IMAGE_FEATURES:append = " debug-tweaks"
+
+# ---------------------------------------------------------------------------
+# SBOM generation
+# ---------------------------------------------------------------------------
+INHERIT += "create-spdx"

@@ -1,155 +1,47 @@
-# TactiQ OS Image Recipe — OPTIMIZED
+# TactiQ OS — PRODUCTION image profile
 # ============================================================================
-# Оптимизирован для минимального размера при сохранении полного security стека.
-# Оригинал сохранён в backups/
+# Canonical image for tagged releases. Hardened posture:
+#   - No debug-tweaks (root account is locked, no passwordless login)
+#   - No OpenSSH server in the image
+#   - No interactive debug tooling
+#
+# Built from the same component set as the development profile
+# (`tactiq-image-dev.bb`) but with development-only IMAGE_FEATURES and
+# packages explicitly removed.
+#
+# Build: MACHINE=tactiq-rock5a bitbake tactiq-image
 # ============================================================================
-SUMMARY = "TactiQ OS - Secure Edge Computing Platform"
-LICENSE = "MIT"
-inherit core-image
-inherit selinux-image
+SUMMARY = "TactiQ OS — production profile"
+
+require tactiq-image-dev.bb
 
 # ---------------------------------------------------------------------------
-# Base: core-image-minimal (без kernel-modules!)
+# Disable development conveniences
 # ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " \
-    packagegroup-core-boot \
-"
+# Remove debug-tweaks (it is appended unconditionally in the dev recipe).
+# Yocto resolves _append/_remove against the same scope, so the override
+# below cancels the dev recipe's append for this build target.
+EXTRA_IMAGE_FEATURES:remove = "debug-tweaks"
+
+# Production root account is locked. The agent and its services run under
+# their SELinux domains; there is no interactive root login path on a
+# production image. Lock the account by setting an invalid password hash
+# via the extrausers class.
+INHERIT += "extrausers"
+EXTRA_USERS_PARAMS = "usermod -p '!' root;"
 
 # ---------------------------------------------------------------------------
-# Kernel modules: ТОЛЬКО нужные (вместо kernel-modules который тянет ВСЕ ~500)
+# No SSH server in the production image
 # ---------------------------------------------------------------------------
-# Crypto — для TPM, mTLS, dm-verity
-IMAGE_INSTALL:append = " \
-    kernel-module-af-alg \
-    kernel-module-algif-rng \
-"
-
-# Netfilter — для iptables firewall
-IMAGE_INSTALL:append = " \
-    kernel-module-ip-tables \
-    kernel-module-ip6-tables \
-    kernel-module-iptable-filter \
-    kernel-module-iptable-nat \
-    kernel-module-iptable-mangle \
-    kernel-module-nf-conntrack \
-    kernel-module-nf-nat \
-    kernel-module-nf-defrag-ipv4 \
-    kernel-module-nf-defrag-ipv6 \
-    kernel-module-nf-reject-ipv4 \
-    kernel-module-nfnetlink \
-    kernel-module-x-tables \
-    kernel-module-xt-conntrack \
-    kernel-module-xt-state \
-    kernel-module-xt-tcpudp \
-"
-
-# System — watchdog, TUN (VPN), FUSE
-IMAGE_INSTALL:append = " \
-"
-
-# IPsec — для VPN если понадобится
-IMAGE_INSTALL:append = " \
-"
+IMAGE_FEATURES:remove = "ssh-server-openssh"
+IMAGE_INSTALL:remove = "openssh-sshd openssh-ssh openssh-keygen"
 
 # ---------------------------------------------------------------------------
-# Networking (required for mTLS attestation)
+# No interactive debug tooling
 # ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " \
-    openssh-sshd \
-    openssh-ssh \
-    openssh-keygen \
-    openssl \
-    openssl-bin \
-    ca-certificates \
-    chrony \
-    iproute2 \
-    iptables \
-"
-
-# ---------------------------------------------------------------------------
-# TactiQ components
-# ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " \
-    tactiq-agent \
-    tactiq-config \
-    tactiq-release \
-"
-
-# ---------------------------------------------------------------------------
-# OTA Updates (RAUC A/B)
-# ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " rauc"
-
-# ---------------------------------------------------------------------------
-# System utilities — МИНИМАЛЬНЫЙ набор
-# ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " \
-    bash \
-    curl \
-    jq \
-    procps \
-"
-
-# util-linux: только нужные утилиты (вместо полного пакета ~80 утилит)
-IMAGE_INSTALL:append = " \
-    util-linux-mount \
-    util-linux-umount \
-    util-linux-blkid \
-    util-linux-lsblk \
-    util-linux-findmnt \
-    util-linux-dmesg \
-    util-linux-hwclock \
-    util-linux-losetup \
-    util-linux-flock \
-    util-linux-nsenter \
-    util-linux-unshare \
-    util-linux-agetty \
-    util-linux-sulogin \
-    util-linux-switch-root \
-    util-linux-fsck \
-    util-linux-fdisk \
-"
-
-# ---------------------------------------------------------------------------
-# Security: SELinux + audit
-# ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " \
-    libselinux \
-    libselinux-python \
-    policycoreutils \
-    policycoreutils-setfiles \
-    selinux-autorelabel \
-    refpolicy-targeted \
-    audit \
-"
-# setools и selinux-python оставляем пока для dev-фазы
-# В production можно убрать (сэкономит ~50MB Python)
-
-# ---------------------------------------------------------------------------
-# Debug tools — УБРАТЬ ПЕРЕД PRODUCTION
-# ---------------------------------------------------------------------------
-# IMAGE_INSTALL:append = " strace tcpdump nano less"
-
-# ---------------------------------------------------------------------------
-# Image features
-# ---------------------------------------------------------------------------
-IMAGE_FEATURES += "ssh-server-openssh"
-IMAGE_FEATURES += "read-only-rootfs"
-# Убран package-management — на read-only rootfs opkg бесполезен
-
-# ---------------------------------------------------------------------------
-# Disk space — убран лишний запас
-# ---------------------------------------------------------------------------
-IMAGE_ROOTFS_EXTRA_SPACE = "65536"
-IMAGE_OVERHEAD_FACTOR = "1.15"
-# Было: 524288 (512MB запаса!) Стало: 65536 (64MB) — достаточно для логов
-
-# ---------------------------------------------------------------------------
-# Root password (CHANGE IN PRODUCTION)
-# ---------------------------------------------------------------------------
-EXTRA_IMAGE_FEATURES:append = " debug-tweaks"
-
-# ---------------------------------------------------------------------------
-# SBOM generation
-# ---------------------------------------------------------------------------
-INHERIT += "create-spdx"
+# Reserved as the canonical place to remove tooling that may be appended
+# in the dev recipe for bring-up convenience. Dev recipe currently has
+# strace/tcpdump/nano/less commented out; if they get re-enabled there
+# in future, listing them here keeps the production image clean by
+# default.
+IMAGE_INSTALL:remove = "strace tcpdump nano less"

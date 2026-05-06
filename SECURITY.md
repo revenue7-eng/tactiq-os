@@ -22,14 +22,21 @@ and are not maintained.
 
 ## Reporting a vulnerability
 
-Please do **not** open a public GitHub issue for security-sensitive
-reports. Instead use one of the channels below.
+Please do **not** open a public issue for security-sensitive reports.
 
-- **Preferred:** GitHub private vulnerability report — on this repository,
-  `Security → Report a vulnerability`. This keeps the report private and
-  tied to the repo.
-- **Email:** `security@tactiqedge.com`. Reports sent to this address are
-  triaged by the maintainers.
+- **Primary channel:** email `security@tactiqedge.com`. Reports sent to
+  this address are triaged by the maintainers.
+- **Out-of-band coordination:** if you need to establish a different
+  channel before sending the report itself (for example, to confirm key
+  material, to agree on an encrypted transport, or for highly sensitive
+  details), email the same address and ask to coordinate before
+  disclosure.
+
+The Forgejo software powering Codeberg does not currently provide a
+private vulnerability-reporting feature on the repository itself
+(tracked upstream as
+<https://codeberg.org/forgejo/forgejo/issues/142>). Email remains the
+sole confidential channel until that feature lands.
 
 When reporting, please include:
 
@@ -49,19 +56,19 @@ available.
 
 A public key for encrypted email reports is in preparation and will
 be published at `keys/security@tactiqedge.com.asc` once it is
-provisioned in the production key custody setup. Until then, the
-GitHub private vulnerability report channel is the strongest
-available encrypted channel — reports submitted through GitHub are
-encrypted in transit through GitHub's infrastructure and are
-visible only to the maintainers granted access.
+provisioned in the production key custody setup. Until that key is
+in place, email to `security@tactiqedge.com` traverses standard
+opportunistic TLS between mail servers and is not end-to-end
+encrypted.
 
-Reporters preferring an out-of-band channel for highly sensitive
-details may contact `security@tactiqedge.com` to coordinate before
-sending the report itself, so that an appropriate channel can be
-established. We will publish the production key fingerprint here
-once the key is in place; until then, this section will continue
-to point to GitHub as the primary encrypted channel rather than
-publishing a key that is not in production custody.
+Reporters preferring a stronger channel before publication of the
+production key may email the address above to coordinate an
+out-of-band path — for example, exchanging a per-report key, using
+an existing OpenPGP identity the reporter trusts, or moving to a
+real-time channel after initial contact. We will publish the
+production key fingerprint here once the key is in production
+custody; until then, this section will not point to a key that has
+not been provisioned in custody.
 
 ## CVE handling
 
@@ -126,18 +133,27 @@ The relevant upstreams and the channels we monitor are:
 **CVE assignment for TactiQ OS code.** If a vulnerability is
 identified in code that originates in `meta-tactiq` or
 `meta-tactiq-selinux` (rather than in an upstream dependency), and
-the maintainers determine it warrants a CVE identifier, the CVE
-will be requested through GitHub's CNA process and disclosed
-through GitHub Security Advisories on the relevant repository.
-External reporters who request a CVE identifier as part of their
-disclosure are accommodated through the same channel.
+the maintainers determine it warrants a CVE identifier, the CVE is
+requested through MITRE directly via
+<https://cveform.mitre.org/>. TactiQ Technologies is not currently
+a CVE Numbering Authority (CNA); CVE assignment proceeds through
+the MITRE Root CNA. External reporters who request a CVE
+identifier as part of their disclosure are accommodated through
+the same channel.
 
 **Public disclosure.** Coordinated public disclosure happens
-through GitHub Security Advisories on the relevant repository,
-which provides a structured advisory record with affected versions,
-CVSS score, patch references, and credit. The advisory is
-published at the agreed disclosure date or when a fix is
-generally available, whichever is later.
+through a written advisory published in this repository at
+`docs/advisories/<CVE-ID>.md` (or, for issues without a CVE
+identifier, `docs/advisories/<YYYY-MM-DD>-<short-slug>.md`). Each
+advisory carries the affected versions, severity and CVSS score,
+patch references with commit hashes, credit to the reporter (with
+their consent), and the disclosure timeline. The advisory is
+published at the agreed disclosure date or when a fix is generally
+available, whichever is later. Forgejo, the software powering
+Codeberg, does not currently provide a structured Security
+Advisory feature equivalent to GitHub's; the repository-hosted
+markdown record is the canonical advisory location until such a
+feature lands upstream.
 
 ## Scope
 
@@ -153,20 +169,21 @@ below is in [`THREAT_MODEL.md`](THREAT_MODEL.md).
 ## Supply-chain posture
 
 TactiQ OS publishes its supply-chain self-assessment in
-[`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md). Tagged releases carry a signed
-SLSA build-provenance attestation generated by
+[`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md). For `v2.1.0-rc3` a SLSA v1.0
+build-provenance attestation was generated at the time of tagging
+on the GitHub Actions runtime that hosted the project's CI at the
+time, using
 [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
-via Sigstore OIDC. Attestations for this repository are available at
-<https://github.com/revenue7-eng/tactiq-os/attestations>.
+via Sigstore OIDC; the attestation event is recorded on the public
+Sigstore Rekor transparency log at index `1361817475` and remains
+inspectable through <https://search.sigstore.dev>.
 
-Verification (requires the `gh` CLI):
-
-```bash
-gh attestation verify <downloaded-source-archive> \
-    --repo revenue7-eng/tactiq-os
-```
-
-Full consumer-side verification procedure: [`VERIFY.md`](VERIFY.md).
+The integrity binding consumers should rely on for `v2.1.0-rc3` is
+the workflow-identity Sigstore signature over `SHA256SUMS`. The
+full consumer-side verification procedure, the current status of
+the SLSA attestation file with respect to Codeberg-hosted releases,
+and the path forward for releases produced after `v2.1.0-rc3` are
+documented in [`VERIFY.md`](VERIFY.md).
 
 ## Security hardening summary
 

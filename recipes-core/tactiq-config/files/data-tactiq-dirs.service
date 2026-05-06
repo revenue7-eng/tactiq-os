@@ -2,20 +2,31 @@
 Description=Mount and prepare TactiQ data partition
 After=systemd-udevd.service local-fs.target
 Before=tactiq-agent.service
+RequiresMountsFor=/data
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStartPre=/sbin/udevadm settle --timeout=10
+# Mount the data partition by LABEL and prepare the per-component
+# directory layout. Permissions are tight by default:
+#   /data/tactiq/keys      0700  — Ed25519 device key (sealed material)
+#   /data/tactiq/counter   0700  — replay counter mirror
+#   /data/tactiq/audit     0750  — append-only audit log directory
+#   /data/tactiq/certs     0755  — public certificates and CA bundles
+# Ownership is tactiq-agent:tactiq-agent. The tactiq-agent user is
+# created by the tactiq-agent recipe at image build time.
 ExecStart=/bin/sh -c '\
-    mkdir -p /run/tactiq-data && \
-    DATA_DEV=$(blkid -l -t LABEL=data -o device 2>/dev/null) && \
-    if [ -z "$DATA_DEV" ]; then echo "ERROR: No partition with LABEL=data found"; exit 1; fi && \
-    mount -t ext4 -o noatime,nosuid,nodev "$DATA_DEV" /run/tactiq-data && \
-    mount --bind /run/tactiq-data /data && \
-    mkdir -p /data/tactiq/counter /data/tactiq/audit /data/tactiq/keys /data/tactiq/certs && \
-    chmod 0700 /data/tactiq/counter /data/tactiq/audit && \
-    chmod 0755 /data/tactiq/keys /data/tactiq/certs'
+    set -eu; \
+    mkdir -p /run/tactiq-data; \
+    DATA_DEV=$(blkid -l -t LABEL=data -o device 2>/dev/null); \
+    if [ -z "$DATA_DEV" ]; then echo "ERROR: No partition with LABEL=data found"; exit 1; fi; \
+    mount -t ext4 -o noatime,nosuid,nodev "$DATA_DEV" /run/tactiq-data; \
+    mount --bind /run/tactiq-data /data; \
+    install -d -m 0700 -o tactiq-agent -g tactiq-agent /data/tactiq/keys; \
+    install -d -m 0700 -o tactiq-agent -g tactiq-agent /data/tactiq/counter; \
+    install -d -m 0750 -o tactiq-agent -g tactiq-agent /data/tactiq/audit; \
+    install -d -m 0755 -o tactiq-agent -g tactiq-agent /data/tactiq/certs'
 TimeoutStartSec=60
 
 [Install]

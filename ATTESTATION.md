@@ -24,7 +24,10 @@ built.
 What exists in v2.1.0-rc3 is the supporting infrastructure: kernel
 TPM drivers compiled in, IMA machinery enabled at PCR 10, SELinux
 domain (`tactiq_agent_t`) with permissions to access the TPM device
-nodes through the `tactiq_tpm_access` macro, vault domain
+nodes through the `tactiq_tpm_access` interface macro (defined in
+`meta-tactiq-selinux/policy/modules/services/tactiq_tpm.if`; it grants
+read/write on `/dev/tpm0` and `/dev/tpmrm0` and append on
+`tpm_log_t`-labelled kernel TPM event log files), vault domain
 (`tactiq_vault_t`) for sealed key material, and the build-identity
 manifest at `/etc/tactiq-release` written by the `tactiq-release`
 recipe. These are the parts that an attestation agent will use; the

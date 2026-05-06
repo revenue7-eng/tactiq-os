@@ -20,8 +20,20 @@ Last reviewed: 2026-04-25.
 The kernel security fragment lives at
 `recipes-kernel/linux/linux-yocto/tactiq-security.cfg` and is applied
 on top of the kernel defconfig for each machine. The fragment is
-applied uniformly across all supported `MACHINE` configurations; the
-posture described here applies to the distribution as a whole.
+applied uniformly across all supported `MACHINE` configurations through
+a pair of bbappends:
+
+- `recipes-kernel/linux/linux-yocto_%.bbappend` for machines using the
+  upstream `linux-yocto` recipe (rock5a, rock5t, generic-arm64,
+  qemu-x86).
+- `recipes-kernel/linux/linux-rockchip_%.bbappend` for the rock5b
+  machine, which uses the `linux-rockchip` recipe from meta-rockchip.
+
+Both bbappends point at the same fragment file, so the posture
+described here is the same posture across every supported target.
+The CI distro-config-sanity job enforces that every kernel provider
+referenced by a tactiq machine.conf has a corresponding bbappend that
+pulls the fragment in.
 
 This document is the rationale layer. It explains the choices the
 project has made, not the line-by-line meaning of each kernel
