@@ -152,6 +152,15 @@ IMAGE_OVERHEAD_FACTOR = "1.15"
 # Was: 524288 (512MB headroom). Now: 65536 (64MB) — enough for logs.
 
 # ---------------------------------------------------------------------------
+# Boot infrastructure — kernel devicetree blobs in rootfs /boot/
+# ---------------------------------------------------------------------------
+# extlinux loads the FDT from a path inside the rootfs (FDT = /boot/<dtb>).
+# Without kernel-devicetree in IMAGE_INSTALL the .dtb files are deployed
+# only to the boot_a FAT partition via IMAGE_BOOT_FILES (wic mechanism)
+# and are absent from the rootfs, which causes extlinux to fail FDT load.
+IMAGE_INSTALL:append = " kernel-devicetree"
+
+# ---------------------------------------------------------------------------
 # Root password (CHANGE IN PRODUCTION)
 # ---------------------------------------------------------------------------
 EXTRA_IMAGE_FEATURES:append = " debug-tweaks"

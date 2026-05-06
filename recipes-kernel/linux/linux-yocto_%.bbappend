@@ -4,7 +4,7 @@
 # regardless of which BSP is active:
 #   1. Security kernel fragment delivery (tactiq-security.cfg)
 #   2. Supply-chain version pinning (PREFERRED_VERSION)
-#   3. extlinux configuration via uboot-extlinux-config.bbclass
+#   3. extlinux configuration via tactiq-extlinux-deploy.bbclass
 #
 # Per-vendor adjustments (serial console etc.) are made by overriding
 # individual UBOOT_EXTLINUX_* variables in BSP layer includes
@@ -29,13 +29,16 @@ PREFERRED_VERSION_linux-yocto = "6.6.66%"
 # scarthgap build. Tracking: internal issue "supply-chain pinning".
 
 # ===========================================================================
-# 3. extlinux configuration (uboot-extlinux-config.bbclass)
+# 3. extlinux configuration (tactiq-extlinux-deploy.bbclass)
 # ===========================================================================
-# Output: extlinux.conf is deployed to ${DEPLOY_DIR_IMAGE}/extlinux-${MACHINE}/
-# and installed into the target rootfs at /boot/extlinux/extlinux.conf.
-# U-Boot distroboot finds it via PARTLABEL=rootfs_a scan.
+# The tactiq-extlinux-deploy class (in core layer classes-recipe/) wraps
+# oe-core's uboot-extlinux-config.bbclass and adds the install + deploy
+# stages that the upstream class deliberately leaves to consumers. It also
+# sets the master flag UBOOT_EXTLINUX = "1" so we do not need to repeat it
+# here. See classes-recipe/tactiq-extlinux-deploy.bbclass for the contract.
 
-inherit uboot-extlinux-config
+inherit tactiq-extlinux-deploy
+
 
 # ---- Label / menu identity ----
 # Generic label "tactiq" — board-agnostic. RAUC will switch between
