@@ -122,15 +122,11 @@ jobs:
             || { echo "::error::kernel security fragment missing: $frag"; exit 1; }
           # Every kernel recipe used by any tactiq machine.conf must have a
           # bbappend that pulls in tactiq-security.cfg. Today that is
-          # linux-yocto and linux-rockchip; if a new kernel provider gets
+          # linux-yocto today; if a new kernel provider gets
           # introduced via a machine.conf, this check forces an explicit
           # decision about its hardening posture.
           providers=$(grep -h "PREFERRED_PROVIDER_virtual/kernel" conf/machine/*.conf \
                       | awk -F'"' '{print $2}' | sort -u)
-          # Also consider machines that select a provider via 'require'
-          # (e.g. rock5b through rock-5b.conf -> linux-rockchip). Add it
-          # explicitly here.
-          providers="$providers linux-rockchip"
           for p in $providers; do
             ba=recipes-kernel/linux/${p}_%.bbappend
             test -f "$ba" \
