@@ -1,3 +1,5 @@
+require conf/machine/include/rk3588-bootrom.inc
+
 # tactiq-rockchip-rk3588.inc
 #
 # Rockchip RK3588 / RK3588S SoC family include.
