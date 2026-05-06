@@ -61,3 +61,12 @@ MACHINE_FEATURES ?= "alsa usbhost ext2 ext3 ext4 vfat"
 # rc4 wic produced 9.88 GB. Keep ceiling explicit so accidental bloat fails fast.
 IMAGE_OVERHEAD_FACTOR ?= "1.0"
 IMAGE_ROOTFS_EXTRA_SPACE ?= "524288"
+
+# ---- wic dependency on vendor bootloader ----
+# Any ARM64 board booting via U-Boot needs the bootloader artefacts
+# (idbloader.img, u-boot.itb, fip, cboot, ...) staged in DEPLOY_DIR_IMAGE
+# before wic runs rawcopy. Without this, wic silently consumes whatever
+# stale artefacts happen to be in deploy from a previous build —
+# bitbake reports SUCCESS while the resulting wic is unbootable.
+# This append is vendor-agnostic: every BSP sets PREFERRED_PROVIDER_virtual/bootloader.
+WKS_FILE_DEPENDS:append = " virtual/bootloader"
