@@ -86,13 +86,11 @@ the verification step is not running on every merge.
   `/etc/tactiq-release` into every image — version, codename, UTC build
   date, machine target, meta-layer git short hash, image basename.
 - For `v2.1.0-rc3`, a SLSA build-provenance attestation was generated
-  on the GitHub Actions runtime that hosted the project's CI at the
-  time of tagging, using `actions/attest-build-provenance@v2` with
-  GitHub's OIDC identity and Sigstore as a non-falsifiable generator.
-  The attestation was bound to the SHA-256 of a deterministic source
-  archive and recorded on the public Sigstore Rekor transparency log.
-  Re-issuing an equivalent attestation on the Codeberg-hosted release
-  is tracked alongside the CI migration. The current status of the
+  on GitHub Actions at the time of tagging, using
+  `actions/attest-build-provenance@v2` with GitHub's OIDC identity and
+  Sigstore as a non-falsifiable generator. The attestation was bound
+  to the SHA-256 of a deterministic source archive and recorded on the
+  public Sigstore Rekor transparency log. The current status of the
   attestation file with respect to consumer-side verification is in
   [`VERIFY.md`](VERIFY.md) §5.
 - **Not yet done:** even when re-issued, the attestation binds to the
@@ -221,36 +219,28 @@ SLSA v1.0 build track, per the current posture:
 | Build process documented                    | Met      |
 | Provenance exists                           | Met for `v2.1.0-rc3` (recorded on Rekor at tagging time) |
 | Provenance authentic (signed, non-falsifiable generator) | Met for tagged source archives via Sigstore OIDC |
-| Provenance service-generated                | Met historically for `v2.1.0-rc3` (GitHub Actions); CI port to Codeberg pending |
-| Hosted build platform                       | Partial — historical lint and attestation ran on GitHub Actions for `rc3`; CI not currently active on Codeberg; full image build is local (WSL2 + Docker) |
+| Provenance service-generated                | Met for `v2.1.0-rc3` (GitHub Actions) |
+| Hosted build platform                       | Partial — lint and attestation pipeline runs on GitHub Actions; full image build is local (WSL2 + Docker) |
 | Hermetic build                              | Not met  |
 | Two-person review gate on builder config    | Not met  |
 | Parameterless / reproducible                | Partial — machinery on; per-file content reproducibility empirically verified (see above); filesystem-image bit-identity not yet achieved |
 
 **Claimed level: L2 posture for `v2.1.0-rc3` source-archive provenance
-(historically generated; verifiable via Rekor index `1361817475`). L1
-for the full rootfs image, pending migration of the image build into
-a hosted builder. Re-issuing the source-archive attestation on the
-Codeberg-hosted release path is tracked separately.**
+(verifiable via Rekor index `1361817475`). L1 for the full rootfs
+image, pending migration of the image build into a hosted builder.**
 
 ## Short-term roadmap
 
-1. Port the historical lint and attestation pipeline (currently
-   captured under `.github/workflows/` as a record of what ran on
-   GitHub Actions for `rc3`) to a Codeberg-native CI — Forgejo Actions
-   or Woodpecker CI — and re-issue the source-archive SLSA attestation
-   on the active CI path.
-2. Once Codeberg-native CI is running, move a minimal rootfs build
-   (qemu-x86_64) into it and extend the attestation to the image
-   artifact. This is the single biggest lift toward end-to-end L2 on
-   the image itself.
-3. Wire the two-independent-builds bit-for-bit diff as a required check
+1. Move a minimal rootfs build (qemu-x86_64) into GitHub Actions and
+   extend the SLSA attestation to the image artifact. This is the
+   single biggest lift toward end-to-end L2 on the image itself.
+2. Wire the two-independent-builds bit-for-bit diff as a required check
    (machinery already exists; needs CI job).
-4. Eliminate remaining non-deterministic sources in `do_image_ext4` and
+3. Eliminate remaining non-deterministic sources in `do_image_ext4` and
    `do_rootfs` (mkfs UUID pinning, inode timestamp normalization,
    deterministic machine-id and random-seed) to push filesystem-image
    reproducibility from per-file content to bit-identity.
-5. Replace the development RAUC keyring in the production build path with
+4. Replace the development RAUC keyring in the production build path with
    a keyring loaded from CI secrets at build time.
-6. Stand up IMA appraisal with a minimal policy covering `/opt/tactiq/`
+5. Stand up IMA appraisal with a minimal policy covering `/opt/tactiq/`
    and `/usr/lib/systemd/system/tactiq-*`.

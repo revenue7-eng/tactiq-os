@@ -13,8 +13,9 @@ and are not maintained.
 
 | Version        | Supported          |
 |----------------|--------------------|
-| v2.1.0-rc3     | :white_check_mark: (canonical) |
-| v2.1.0-rc2     | :warning: deprecated — use rc3 (binary payload identical; see [`docs/release-notes/v2.1.0-rc2-deprecated.md`](docs/release-notes/v2.1.0-rc2-deprecated.md)) |
+| v2.1.0-rc4     | :white_check_mark: (canonical) |
+| v2.1.0-rc3     | :warning: superseded by rc4 |
+| v2.1.0-rc2     | :warning: deprecated — use rc4 (binary payload identical to rc3; see [`docs/release-notes/v2.1.0-rc2-deprecated.md`](docs/release-notes/v2.1.0-rc2-deprecated.md)) |
 | v2.1.0-rc1     | :x:                |
 | v2.0.1         | :white_check_mark: (critical fixes only) |
 | v2.0.0-alpha1  | :x:                |
@@ -24,19 +25,8 @@ and are not maintained.
 
 Please do **not** open a public issue for security-sensitive reports.
 
-- **Primary channel:** email `security@tactiqedge.com`. Reports sent to
-  this address are triaged by the maintainers.
-- **Out-of-band coordination:** if you need to establish a different
-  channel before sending the report itself (for example, to confirm key
-  material, to agree on an encrypted transport, or for highly sensitive
-  details), email the same address and ask to coordinate before
-  disclosure.
-
-The Forgejo software powering Codeberg does not currently provide a
-private vulnerability-reporting feature on the repository itself
-(tracked upstream as
-<https://codeberg.org/forgejo/forgejo/issues/142>). Email remains the
-sole confidential channel until that feature lands.
+Email security reports to `security@tactiqedge.com`. Reports sent to this
+address are triaged by the maintainers.
 
 When reporting, please include:
 
@@ -51,24 +41,6 @@ status update within seven business days. Coordinated disclosure timelines
 are agreed case-by-case with the reporter; the default is 90 days from
 initial report to public disclosure, shortened if a fix is already
 available.
-
-## Encrypted reporting
-
-A public key for encrypted email reports is in preparation and will
-be published at `keys/security@tactiqedge.com.asc` once it is
-provisioned in the production key custody setup. Until that key is
-in place, email to `security@tactiqedge.com` traverses standard
-opportunistic TLS between mail servers and is not end-to-end
-encrypted.
-
-Reporters preferring a stronger channel before publication of the
-production key may email the address above to coordinate an
-out-of-band path — for example, exchanging a per-report key, using
-an existing OpenPGP identity the reporter trusts, or moving to a
-real-time channel after initial contact. We will publish the
-production key fingerprint here once the key is in production
-custody; until then, this section will not point to a key that has
-not been provisioned in custody.
 
 ## CVE handling
 
@@ -135,9 +107,7 @@ identified in code that originates in `meta-tactiq` or
 `meta-tactiq-selinux` (rather than in an upstream dependency), and
 the maintainers determine it warrants a CVE identifier, the CVE is
 requested through MITRE directly via
-<https://cveform.mitre.org/>. TactiQ Technologies is not currently
-a CVE Numbering Authority (CNA); CVE assignment proceeds through
-the MITRE Root CNA. External reporters who request a CVE
+<https://cveform.mitre.org/>. External reporters who request a CVE
 identifier as part of their disclosure are accommodated through
 the same channel.
 
@@ -149,11 +119,7 @@ advisory carries the affected versions, severity and CVSS score,
 patch references with commit hashes, credit to the reporter (with
 their consent), and the disclosure timeline. The advisory is
 published at the agreed disclosure date or when a fix is generally
-available, whichever is later. Forgejo, the software powering
-Codeberg, does not currently provide a structured Security
-Advisory feature equivalent to GitHub's; the repository-hosted
-markdown record is the canonical advisory location until such a
-feature lands upstream.
+available, whichever is later.
 
 ## Scope
 
@@ -171,8 +137,7 @@ below is in [`THREAT_MODEL.md`](THREAT_MODEL.md).
 TactiQ OS publishes its supply-chain self-assessment in
 [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md). For `v2.1.0-rc3` a SLSA v1.0
 build-provenance attestation was generated at the time of tagging
-on the GitHub Actions runtime that hosted the project's CI at the
-time, using
+using
 [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
 via Sigstore OIDC; the attestation event is recorded on the public
 Sigstore Rekor transparency log at index `1361817475` and remains
@@ -180,10 +145,8 @@ inspectable through <https://search.sigstore.dev>.
 
 The integrity binding consumers should rely on for `v2.1.0-rc3` is
 the workflow-identity Sigstore signature over `SHA256SUMS`. The
-full consumer-side verification procedure, the current status of
-the SLSA attestation file with respect to Codeberg-hosted releases,
-and the path forward for releases produced after `v2.1.0-rc3` are
-documented in [`VERIFY.md`](VERIFY.md).
+full consumer-side verification procedure is documented in
+[`VERIFY.md`](VERIFY.md).
 
 ## Security hardening summary
 

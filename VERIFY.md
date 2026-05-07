@@ -2,8 +2,7 @@
 
 This document specifies the canonical verification procedure for TactiQ OS
 release artifacts. It is intended for security engineers, integrators, and
-anyone establishing a chain of trust from a published TactiQ OS release on
-Codeberg down to a local root filesystem image.
+anyone establishing a chain of trust from a published TactiQ OS release on GitHub
 
 All commands assume a POSIX shell with `cosign` v2.x, `curl`, `openssl`,
 `zstd`, `jq`, and standard GNU coreutils.
@@ -15,8 +14,7 @@ signed**: the workflow ran on GitHub Actions, Sigstore Fulcio recorded
 that path in the certificate's Subject Alternative Name, and the
 corresponding Rekor entries are append-only. The strings are reproduced
 verbatim because `cosign verify-blob` will fail if they are altered. They
-do **not** imply that the project is currently hosted on GitHub — the
-canonical home is this Codeberg repository. The signing path used for
+are reproduced verbatim because Sigstore Fulcio recorded them at signing time.
 releases produced after `v2.1.0-rc3` is documented in the release notes
 of each such release.
 
@@ -86,7 +84,7 @@ full asset set into a clean working directory.
 
 ```sh
 TAG=v2.1.0-rc3
-BASE=https://codeberg.org/revenue7-eng/tactiq-os/releases/download/${TAG}
+BASE=https://github.com/revenue7-eng/tactiq-os/releases/download/${TAG}
 
 mkdir -p "tactiq-os-${TAG}" && cd "tactiq-os-${TAG}"
 
@@ -138,8 +136,7 @@ The `--certificate-identity` and `--certificate-oidc-issuer` values
 below are reproduced exactly as they were recorded by Sigstore Fulcio
 when the releases were signed. They are not editable: changing them
 will cause `cosign verify-blob` to reject a valid signature. See the
-preamble for why these strings reference `github.com` even though the
-project lives on Codeberg.
+preamble for the historical context of these identity strings.
 
 ### 4.1 Workflow identity (canonical, `v2.1.0-rc3` and later)
 
@@ -204,15 +201,14 @@ commit. The attestation event is recorded on the public Sigstore Rekor
 transparency log and remains independently inspectable through
 <https://search.sigstore.dev>.
 
-**Reproducible verification of the attestation file itself by an
-external auditor is not provided for `v2.1.0-rc3` on Codeberg.** The
-canonical retrieval path for an `attest-build-provenance` attestation
-is the GitHub-specific `gh attestation verify` command, which is not
-applicable to a release hosted outside GitHub. The attestation was
-produced before the project's release-publishing path moved to
-Codeberg; re-issuing an equivalent attestation on the Codeberg-hosted
-release is a separate engineering task tracked alongside the CI
-migration.
+**Standalone verifiable attestation file is not redistributed for
+`v2.1.0-rc3`.** The attestation event itself is recorded on the
+Sigstore Rekor transparency log at the time of signing and can be
+inspected there; what is not provided alongside the release is a
+distinct attestation asset that an external auditor could fetch and
+verify independently of Rekor lookup. Future releases may ship such
+an asset directly with the release; absence of it does not affect the
+integrity binding established in §4.1.
 
 **What this means for trust in `v2.1.0-rc3`:**
 
@@ -223,7 +219,7 @@ migration.
 - **Provenance binding** (which workflow, on which commit, produced the
   source archive) is recorded on Rekor at the time of signing and can
   be observed there, but is not redistributed as a standalone
-  verifiable file alongside the Codeberg release for `v2.1.0-rc3`.
+  verifiable file alongside the `v2.1.0-rc3` release.
 - **No SLSA attestation binds the binary artifacts** themselves —
   rootfs, kernel, device tree. These are built locally (WSL2 + Docker),
   not in a hosted builder. This is the largest open gap toward
