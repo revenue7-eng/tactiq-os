@@ -129,6 +129,15 @@ IMAGE_INSTALL:append = " \
     refpolicy-targeted \
     audit \
 "
+
+# ---------------------------------------------------------------------------
+# Boot infrastructure — kernel devicetree blobs in rootfs /boot/
+# ---------------------------------------------------------------------------
+# extlinux loads the FDT from a path inside the rootfs (FDT = /boot/<dtb>).
+# Without kernel-devicetree in IMAGE_INSTALL the .dtb files are deployed
+# only to the boot_a FAT partition via IMAGE_BOOT_FILES (wic mechanism)
+# and are absent from the rootfs, which causes extlinux to fail FDT load.
+IMAGE_INSTALL:append = " kernel-devicetree"
 # setools and selinux-python are kept for the development phase.
 # Production can drop them (saves ~50MB of Python).
 
