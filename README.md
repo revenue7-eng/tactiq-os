@@ -11,12 +11,9 @@ for edge AI deployments on Rockchip RK3588 and compatible ARM64 targets.
 > implementation steps those documents target are still in progress.
 
 > **Continuous integration:** the CI configuration in `.github/workflows/`
-> is preserved as a historical record of the lint and attestation
-> pipeline that ran while the project was hosted on GitHub Actions.
-> Migration of CI to Codeberg's Forgejo Actions or Woodpecker CI is
-> tracked separately and not yet active. The lint, shell-check, and
-> YAML validation steps the historical workflow performed are described
-> in [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md).
+> runs on GitHub Actions and includes lint, shell-check, YAML
+> validation, and Yocto recipe lint steps. The full set of checks is
+> described in [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md).
 
 ## Scope
 
