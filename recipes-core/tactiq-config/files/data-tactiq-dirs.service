@@ -23,10 +23,13 @@ ExecStart=/bin/sh -c '\
     if [ -z "$DATA_DEV" ]; then echo "ERROR: No partition with LABEL=data found"; exit 1; fi; \
     mount -t ext4 -o noatime,nosuid,nodev "$DATA_DEV" /run/tactiq-data; \
     mount --bind /run/tactiq-data /data; \
-    install -d -m 0700 -o tactiq-agent -g tactiq-agent /data/tactiq/keys; \
-    install -d -m 0700 -o tactiq-agent -g tactiq-agent /data/tactiq/counter; \
-    install -d -m 0750 -o tactiq-agent -g tactiq-agent /data/tactiq/audit; \
-    install -d -m 0755 -o tactiq-agent -g tactiq-agent /data/tactiq/certs'
+    for d in keys counter audit certs; do \
+        mkdir -p /data/tactiq/$d; \
+    done; \
+    chmod 0700 /data/tactiq/keys /data/tactiq/counter; \
+    chmod 0750 /data/tactiq/audit; \
+    chmod 0755 /data/tactiq/certs; \
+    chown -R tactiq-agent:tactiq-agent /data/tactiq'
 TimeoutStartSec=60
 
 [Install]
