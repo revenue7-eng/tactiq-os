@@ -18,7 +18,7 @@ SRC_URI[sha256sum] = "18bde6ce71df308197db0e1d95fd73a19b6a32f4f0b6f5567333ef3c5b
 
 TACTIQ_MIRROR ?= "file:///mnt/c/Users/UserHome/Downloads"
 
-S = "${WORKDIR}/rkbin-7c35e21a8529b3758d1f051d1a5dc62aae934b2b"
+S = "${UNPACKDIR}/rkbin-7c35e21a8529b3758d1f051d1a5dc62aae934b2b"
 
 INHIBIT_DEFAULT_DEPS = "1"
 INHIBIT_PACKAGE_STRIP = "1"

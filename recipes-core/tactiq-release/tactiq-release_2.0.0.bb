@@ -2,7 +2,7 @@ SUMMARY = "TactiQ OS Release Information"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 inherit image-buildinfo
 
@@ -37,6 +37,7 @@ do_compile() {
     # SOURCE_DATE_EPOCH is set by Yocto reproducibility machinery;
     # fall back to 0 (1970-01-01) only if entirely absent — this is
     # the same convention image-buildinfo uses.
+    mkdir -p ${S}
     sde="${SOURCE_DATE_EPOCH}"
     if [ -z "$sde" ]; then sde=0; fi
     build_date=$(date -u -d "@$sde" +%Y-%m-%dT%H:%M:%SZ)

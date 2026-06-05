@@ -21,10 +21,10 @@ SRC_URI = "file://tactiq-agent.service \
 
 do_install() {
     install -d ${D}/opt/tactiq/bin
-    install -m 0755 ${WORKDIR}/tactiq-agent-stub.sh ${D}/opt/tactiq/bin/tactiq-agent
+    install -m 0755 ${UNPACKDIR}/tactiq-agent-stub.sh ${D}/opt/tactiq/bin/tactiq-agent
 
     install -d ${D}${systemd_unitdir}/system
-    install -m 0644 ${WORKDIR}/tactiq-agent.service ${D}${systemd_unitdir}/system/
+    install -m 0644 ${UNPACKDIR}/tactiq-agent.service ${D}${systemd_unitdir}/system/
 
     # /data/tactiq directories are owned by tactiq-agent. The data-
     # tactiq-dirs.service unit ensures the runtime mount is in place
