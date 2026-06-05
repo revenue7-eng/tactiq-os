@@ -42,12 +42,14 @@ IMAGE_INSTALL:append = " \
     kernel-module-nf-defrag-ipv4 \
     kernel-module-nf-defrag-ipv6 \
     kernel-module-nf-reject-ipv4 \
-    kernel-module-nfnetlink \
     kernel-module-x-tables \
     kernel-module-xt-conntrack \
     kernel-module-xt-state \
     kernel-module-xt-tcpudp \
 "
+# NOTE(wrynose/6.18): kernel-module-nfnetlink intentionally absent above —
+# CONFIG_NETFILTER_NETLINK is builtin (=y) in the 6.18 linux-yocto config,
+# so no module package is generated; nfnetlink is compiled into Image.
 
 # System — watchdog, TUN (VPN), FUSE
 IMAGE_INSTALL:append = " \
@@ -163,7 +165,7 @@ IMAGE_OVERHEAD_FACTOR = "1.15"
 # ---------------------------------------------------------------------------
 # Root password (CHANGE IN PRODUCTION)
 # ---------------------------------------------------------------------------
-EXTRA_IMAGE_FEATURES:append = " debug-tweaks"
+EXTRA_IMAGE_FEATURES:append = " allow-empty-password allow-root-login empty-root-password post-install-logging"
 
 # ---------------------------------------------------------------------------
 # SBOM generation
