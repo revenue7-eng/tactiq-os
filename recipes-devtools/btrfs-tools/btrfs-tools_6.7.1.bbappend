@@ -1,5 +1,0 @@
-SRC_URI = "https://www.kernel.org/pub/linux/kernel/people/kdave/btrfs-progs/btrfs-progs-v${PV}.tar.xz"
-SRC_URI[sha256sum] = "24dc7b974f0a57ba0eca80f97440b840dfa85b0f1cb2c01bdfd97659a480b200"
-S = "${WORKDIR}/btrfs-progs-v${PV}"
-SRCREV = ""
-SRCREV:class-native = ""
