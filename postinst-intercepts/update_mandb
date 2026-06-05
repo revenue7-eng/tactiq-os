@@ -1,0 +1,17 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# TactiQ defensive override of the oe-core intercept: wrynose runs every
+# intercept unconditionally; the stock script fails on headless images
+# where the relevant tooling/files are absent. Guarded no-op in that case;
+# identical to stock behaviour when the prerequisites exist.
+# (stock uses set -eu; -u dropped so the guard itself can probe unset vars)
+set -e
+if [ ! -e "$D${sysconfdir}/man_db.conf" ] || [ ! -x "$D${bindir}/mandb" ]; then
+    exit 0
+fi
+CONFIG=$(mktemp --tmpdir update-mandb.XXXXX)
+sed "s:\(\s\)/:\1$D/:g" $D${sysconfdir}/man_db.conf > $CONFIG
+mkdir -p $D${localstatedir}/cache/man/
+PSEUDO_UNLOAD=1 ${binprefix}qemuwrapper -L $D $D${bindir}/mandb --config-file $CONFIG --create
+rm -f $CONFIG
+chown -R man:man $D${localstatedir}/cache/man/

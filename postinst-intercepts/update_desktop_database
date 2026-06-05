@@ -1,0 +1,9 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# TactiQ defensive override of the oe-core intercept: wrynose runs every
+# intercept unconditionally; the stock script fails on headless images
+# where the relevant tooling/files are absent. Guarded no-op in that case;
+# identical to stock behaviour when the prerequisites exist.
+if command -v update-desktop-database >/dev/null 2>&1 && [ -n "${desktop_dir}" ] && [ -d "$D${desktop_dir}" ]; then
+    update-desktop-database $D${desktop_dir}
+fi

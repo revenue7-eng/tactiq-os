@@ -1,0 +1,15 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# TactiQ defensive override of the oe-core intercept: wrynose runs every
+# intercept unconditionally; the stock script fails on headless images
+# where the relevant tooling/files are absent. Guarded no-op in that case;
+# identical to stock behaviour when the prerequisites exist.
+set -e
+QL=$D${libdir}/gdk-pixbuf-2.0/gdk-pixbuf-query-loaders
+if [ -x "$QL" ]; then
+    export GDK_PIXBUF_MODULEDIR=$D${libdir}/gdk-pixbuf-2.0/2.10.0/loaders
+    export GDK_PIXBUF_FATAL_LOADER=1
+    PSEUDO_UNLOAD=1 ${binprefix}qemuwrapper -L $D "$QL" \
+        >$GDK_PIXBUF_MODULEDIR/../loaders.cache && \
+        sed -i -e "s:$D::g" $GDK_PIXBUF_MODULEDIR/../loaders.cache
+fi

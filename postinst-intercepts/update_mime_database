@@ -1,0 +1,10 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# TactiQ defensive override of the oe-core intercept: wrynose runs every
+# intercept unconditionally; the stock script fails on headless images
+# where the relevant tooling/files are absent. Guarded no-op in that case;
+# identical to stock behaviour when the prerequisites exist.
+if command -v update-mime-database >/dev/null 2>&1 && [ -n "${mimedir}" ] && [ -d "$D${mimedir}" ]; then
+    echo "Updating MIME database... this may take a while."
+    update-mime-database $D${mimedir}
+fi
