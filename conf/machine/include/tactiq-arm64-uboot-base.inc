@@ -24,7 +24,8 @@
 
 # ---- Kernel ----
 KERNEL_IMAGETYPE ?= "Image"
-KERNEL_CLASSES   ?= "kernel-fitimage"
+# rc5 Stage 1: FIT disabled for extlinux identity-test. Re-add "kernel-fit-image" in rc5/rc6 with fit-signed.
+KERNEL_CLASSES   ?= ""
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
 
 # ---- Extension points ----
@@ -70,3 +71,9 @@ IMAGE_ROOTFS_EXTRA_SPACE ?= "524288"
 # bitbake reports SUCCESS while the resulting wic is unbootable.
 # This append is vendor-agnostic: every BSP sets PREFERRED_PROVIDER_virtual/bootloader.
 WKS_FILE_DEPENDS:append = " virtual/bootloader"
+
+# wrynose: oe-core image_types_wic.bbclass now defaults
+# WKS_FILE_DEPENDS_BOOTLOADERS:aarch64 = "grub-efi systemd-boot".
+# TactiQ arm64 machines boot via U-Boot + extlinux; EFI bootloaders are
+# unused here (and grub-native FTBFS on the build host). Drop them.
+WKS_FILE_DEPENDS:remove = "grub-efi systemd-boot"
