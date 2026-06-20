@@ -40,17 +40,19 @@ IMAGE_FSTYPES ?= "wic wic.bmap wic.gz ext4 tar.gz"
 
 # ---- IMAGE_BOOT_FILES: vendor-agnostic skeleton ----
 #
-# boot_a partition contents: kernel Image + DTB(s).
-# extlinux.conf is NOT in boot_a — it is deployed to rootfs /boot/extlinux/
-# by uboot-extlinux-config.bbclass. U-Boot distroboot scans the rootfs
-# partition (PARTLABEL=rootfs_a) and finds extlinux.conf there. This is
-# vendor-agnostic: same mechanism on Rockchip, MediaTek, Tegra, x86.
+# boot_a partition contents: kernel Image + DTB(s) + extlinux.conf.
+# U-Boot bootstd (2024.x) scans only GPT-bootable partitions as filesystems;
+# only boot_a carries the bootable flag (GPT attrs 0x4). rootfs_a and other
+# partitions are not scanned. extlinux-bootmeth searches /boot/extlinux/extlinux.conf
+# in the scanned partition — verified by bootflow scan -lae on hardware (Rock 5A).
+# Paths inside extlinux.conf are relative to the boot_a root (/Image, /*.dtb).
+# This mechanism is vendor-agnostic: any SoC with U-Boot bootstd behaves the same.
 #
 # Vendor BSP loader blobs (idbloader.img, u-boot.itb on Rockchip; bl2/fip on
-# MediaTek; cboot on Tegra) are NOT in boot_a either — they are written to
+# MediaTek; cboot on Tegra) are NOT in boot_a — they are written to
 # raw sector offsets BEFORE the GPT primary by wic --no-table partition
 # entries in the BSP-specific .wks template.
-IMAGE_BOOT_FILES ?= "${KERNEL_IMAGETYPE} *.dtb"
+IMAGE_BOOT_FILES ?= "${KERNEL_IMAGETYPE} *.dtb boot/extlinux/extlinux.conf"
 
 # ---- Serial ----
 SERIAL_CONSOLES ?= "1500000;ttyS2"

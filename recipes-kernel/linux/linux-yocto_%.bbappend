@@ -48,12 +48,15 @@ inherit tactiq-extlinux-deploy
 UBOOT_EXTLINUX_LABELS = "tactiq"
 UBOOT_EXTLINUX_DEFAULT_LABEL = "tactiq"
 
-# ---- Kernel + DTB paths (in rootfs /boot/) ----
-UBOOT_EXTLINUX_KERNEL_IMAGE = "/boot/${KERNEL_IMAGETYPE}"
+# ---- Kernel + DTB paths (relative to boot_a partition root) ----
+# Image and DTB live in the root of boot_a. U-Boot bootstd finds extlinux.conf
+# at boot_a:/boot/extlinux/extlinux.conf (GPT bootable flag on boot_a only;
+# rootfs_a and other partitions are skipped as non-bootable by bootstd).
+UBOOT_EXTLINUX_KERNEL_IMAGE = "/${KERNEL_IMAGETYPE}"
 
-# Pick the first DTB from KERNEL_DEVICETREE and prepend /boot/ + basename.
+# Pick the first DTB from KERNEL_DEVICETREE; basename only, no /boot/ prefix.
 # Single-DTB convention is enforced by board configs (rock5a → rk3588s-rock-5a.dtb).
-UBOOT_EXTLINUX_FDT = "${@'/boot/' + os.path.basename((d.getVar('KERNEL_DEVICETREE') or '').strip().split()[0]) if (d.getVar('KERNEL_DEVICETREE') or '').strip() else ''}"
+UBOOT_EXTLINUX_FDT = "${@'/' + os.path.basename((d.getVar('KERNEL_DEVICETREE') or '').strip().split()[0]) if (d.getVar('KERNEL_DEVICETREE') or '').strip() else ''}"
 
 # ---- Kernel command line (rc4: slot A only, rc5+ adds RAUC bootcount) ----
 UBOOT_EXTLINUX_ROOT ?= "root=PARTLABEL=rootfs_a"
