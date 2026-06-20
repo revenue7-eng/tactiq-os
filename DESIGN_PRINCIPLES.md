@@ -12,7 +12,7 @@ running attestation agent), `SUPPLY_CHAIN.md` (supply-chain posture),
 verification procedure). Each statement about the current state is
 backed by a file in this repository.
 
-Last reviewed: 2026-04-25.
+Last reviewed: 2026-06-20.
 
 Sections follow the chain of trust from the source archive up to the
 runtime attestation agent.
@@ -88,6 +88,8 @@ Distro-wide compiler hardening in `conf/distro/tactiq.conf`:
 `-fstack-protector-strong`, `_FORTIFY_SOURCE=2`, `relro`, `bind-now`,
 PIE. IMA machinery present: `CONFIG_IMA=y`, `CONFIG_IMA_APPRAISE=y`,
 `CONFIG_IMA_MEASURE_PCR_IDX=10`, `CONFIG_IMA_LSM_RULES=y`.
+
+**Boot delivery (verified 2026-06-20, Rock 5A, wrynose).** `boot_a` (GPT attrs 0x4 — bootable flag) contains the kernel Image, DTB(s), and `boot/extlinux/extlinux.conf`. U-Boot bootstd (2024.07, kwiboo fork) scans only GPT-bootable partitions as filesystems; the extlinux-bootmeth searches `/boot/extlinux/extlinux.conf` in the scanned partition — confirmed by `bootflow scan -lae` on hardware. Kernel and DTB paths inside `extlinux.conf` are relative to the `boot_a` root (`/Image`, `/*.dtb`). `rootfs_a` and all other partitions (attrs 0x0) are not scanned by bootstd and contain no boot files. The mechanism is vendor-agnostic: any SoC running U-Boot bootstd follows the same path; only the BSP layer (U-Boot package, DTB set, loader blob offsets) changes per board family. RAUC slot group A = (`boot_a` + `rootfs_a`) ensures kernel and rootfs are updated atomically.
 
 **Tracked.** `CONFIG_MODULE_SIG_FORCE=y` and
 `CONFIG_IMA_APPRAISE_MODSIG=y` (phase 3 of the security fragment).
