@@ -1,0 +1,76 @@
+From c2f369afde3e5e8d6f68b3b7662f1a1355e6abdf Mon Sep 17 00:00:00 2001
+From: Andrey Lazarev <revenue7@gmail.com>
+Date: Fri, 5 Jun 2026 15:19:52 +0300
+Subject: [PATCH] wrynose: local TactiQ fixes on top of scarthgap branch
+
+- LAYERSERIES_COMPAT: allow wrynose
+- rauc-target.inc / rauc-conf.bb: install file:// payloads from
+  UNPACKDIR (wrynose unpack semantics)
+
+Local carry until meta-rauc ships a wrynose branch; revisit the
+master-tarball-with-pin option then.
+---
+ conf/layer.conf                   | 2 +-
+ recipes-core/rauc/rauc-conf.bb    | 8 ++++----
+ recipes-core/rauc/rauc-target.inc | 4 ++--
+ 3 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/conf/layer.conf b/conf/layer.conf
+index 647f46a..e1b931d 100644
+--- a/conf/layer.conf
++++ b/conf/layer.conf
+@@ -17,7 +17,7 @@ LAYERRECOMMENDS_rauc = "meta-python"
+ # meta-filesystems is needed to build cascync with fuse support (the default)
+ LAYERRECOMMENDS_rauc += "meta-filesystems"
+ 
+-LAYERSERIES_COMPAT_rauc = "nanbield scarthgap"
++LAYERSERIES_COMPAT_rauc = "nanbield scarthgap wrynose"
+ 
+ # Sanity check for meta-rauc layer.
+ # Setting SKIP_META_RAUC_FEATURE_CHECK to "1" would skip the bbappend files check.
+diff --git a/recipes-core/rauc/rauc-conf.bb b/recipes-core/rauc/rauc-conf.bb
+index 85673e0..69e2f8c 100644
+--- a/recipes-core/rauc/rauc-conf.bb
++++ b/recipes-core/rauc/rauc-conf.bb
+@@ -18,16 +18,16 @@ SRC_URI = " \
+ do_install () {
+         # Create rauc config dir
+         # Warn if system configuration was not overwritten
+-        if ! grep -q "^[^#]" ${WORKDIR}/system.conf; then
++        if ! grep -q "^[^#]" ${UNPACKDIR}/system.conf; then
+                 bbwarn "Please overwrite example system.conf with a project specific one!"
+         fi
+         install -d ${D}${sysconfdir}/rauc
+-        install -m 0644 ${WORKDIR}/system.conf ${D}${sysconfdir}/rauc/
++        install -m 0644 ${UNPACKDIR}/system.conf ${D}${sysconfdir}/rauc/
+ 
+         # Warn if CA file was not overwritten
+-        if ! grep -q "^[^#]" ${WORKDIR}/${RAUC_KEYRING_FILE}; then
++        if ! grep -q "^[^#]" ${UNPACKDIR}/${RAUC_KEYRING_FILE}; then
+                 bbwarn "Please overwrite example ca.cert.pem with a project specific one, or set the RAUC_KEYRING_FILE variable with your file!"
+         fi
+         install -d ${D}${sysconfdir}/rauc
+-        install -m 0644 ${WORKDIR}/${RAUC_KEYRING_FILE} ${D}${sysconfdir}/rauc/
++        install -m 0644 ${UNPACKDIR}/${RAUC_KEYRING_FILE} ${D}${sysconfdir}/rauc/
+ }
+diff --git a/recipes-core/rauc/rauc-target.inc b/recipes-core/rauc/rauc-target.inc
+index ad105b6..8c7c5fb 100644
+--- a/recipes-core/rauc/rauc-target.inc
++++ b/recipes-core/rauc/rauc-target.inc
+@@ -22,11 +22,11 @@ do_install () {
+ 	meson_do_install
+ 
+         install -d ${D}${systemd_unitdir}/system/
+-        install -m 0644 ${WORKDIR}/rauc-mark-good.service ${D}${systemd_unitdir}/system/
++        install -m 0644 ${UNPACKDIR}/rauc-mark-good.service ${D}${systemd_unitdir}/system/
+         sed -i -e 's!@BINDIR@!${bindir}!g' ${D}${systemd_unitdir}/system/*.service
+ 
+         install -d "${D}${sysconfdir}/init.d"
+-        install -m 755 "${WORKDIR}/rauc-mark-good.init" "${D}${sysconfdir}/init.d/rauc-mark-good"
++        install -m 755 "${UNPACKDIR}/rauc-mark-good.init" "${D}${sysconfdir}/init.d/rauc-mark-good"
+ }
+ 
+ PACKAGES =+ "${PN}-mark-good"
+-- 
+2.43.0
+

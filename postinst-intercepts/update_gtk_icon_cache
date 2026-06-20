@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# SPDX-License-Identifier: MIT
+#
+# TactiQ override of oe-core's update_gtk_icon_cache intercept.
+# wrynose runs every intercept unconditionally; the stock script assumes
+# gdk-pixbuf-native is staged and dies (exit 127, set -e) on headless
+# images that ship no GTK stack. No-op gracefully when the tooling is
+# absent; otherwise behave exactly like the stock script.
+set -e
+
+PIXBUF_QL="$STAGING_DIR_NATIVE/${libdir_native}/gdk-pixbuf-2.0/gdk-pixbuf-query-loaders"
+if [ -x "$PIXBUF_QL" ]; then
+    "$PIXBUF_QL" --update-cache
+fi
+
+for icondir in $D/usr/share/icons/*/ ; do
+    if [ -d $icondir ] ; then
+        for gtkuic_cmd in gtk-update-icon-cache gtk4-update-icon-cache ; do
+            if [ -n "$(which $gtkuic_cmd)" ]; then
+                $gtkuic_cmd -fqt  $icondir
+            fi
+        done
+    fi
+done

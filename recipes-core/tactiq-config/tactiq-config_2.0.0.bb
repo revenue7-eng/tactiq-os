@@ -6,7 +6,7 @@ SRC_URI = "file://agent.yaml \
            file://data-tactiq-dirs.service \
           "
 
-S = "${WORKDIR}"
+UNPACKDIR = "${WORKDIR}/sources"
 
 inherit systemd
 
@@ -16,11 +16,11 @@ SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 do_install() {
     # Agent config
     install -d ${D}/etc/tactiq
-    install -m 0644 ${WORKDIR}/agent.yaml ${D}/etc/tactiq/agent.yaml
+    install -m 0644 ${UNPACKDIR}/agent.yaml ${D}/etc/tactiq/agent.yaml
 
     # Systemd units
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/data-tactiq-dirs.service ${D}${systemd_system_unitdir}/data-tactiq-dirs.service
+    install -m 0644 ${UNPACKDIR}/data-tactiq-dirs.service ${D}${systemd_system_unitdir}/data-tactiq-dirs.service
 
     # Mount point (empty)
     install -d ${D}/data

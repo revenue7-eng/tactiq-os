@@ -12,7 +12,7 @@
 # Wraps the standard OE uboot-extlinux-config.bbclass which generates
 # ${B}/extlinux.conf but does not install or deploy it. This class adds:
 #   - install to ${D}/boot/extlinux/extlinux.conf (rootfs)
-#   - deploy to ${DEPLOYDIR}/extlinux-${MACHINE}/extlinux.conf (images dir)
+#   - deploy to ${DEPLOYDIR}/boot/extlinux/extlinux.conf (for IMAGE_BOOT_FILES pickup)
 #   - FILES entry for kernel-base package
 #
 # This class is one of several boot configuration delivery mechanisms in
@@ -64,8 +64,8 @@ do_install:append() {
 }
 
 do_deploy:append() {
-    install -d ${DEPLOYDIR}/extlinux-${MACHINE}
-    install -m 0644 ${B}/extlinux.conf ${DEPLOYDIR}/extlinux-${MACHINE}/extlinux.conf
+    install -d ${DEPLOYDIR}/boot/extlinux
+    install -m 0644 ${B}/extlinux.conf ${DEPLOYDIR}/boot/extlinux/extlinux.conf
 }
 
 # extlinux.conf belongs to the same package as /boot/Image and the

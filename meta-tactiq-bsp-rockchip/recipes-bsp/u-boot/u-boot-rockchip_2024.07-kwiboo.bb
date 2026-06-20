@@ -12,9 +12,16 @@ LIC_FILES_CHKSUM = "file://Licenses/README;md5=2ca5f2c35c8cc335f0a19756634782f1"
 SRC_URI = "${TACTIQ_MIRROR}/u-boot-rockchip-8cdf606e616baa36751f3b4adcfaefc781126c8c.tar.gz"
 SRC_URI[sha256sum] = "b6fc46e29457003d86041c299d15bde9dfc6597643d6cd303d4b6925772b24c8"
 
+# wrynose ships swig-native 4.3: SWIG_Python_AppendOutput() grew a third
+# is_void argument; pylibfdt typemaps still use the 2-arg call (FTBFS).
+# Backport of the upstream dtc approach (SWIG_AppendOutput macro).
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
+SRC_URI += "file://0001-pylibfdt-swig-4.3-compat.patch"
+SRC_URI += "file://0002-binman-drop-pkg-resources.patch"
+
 TACTIQ_MIRROR ?= "file:///mnt/c/Users/UserHome/Downloads"
 
-S = "${WORKDIR}/u-boot-rockchip-8cdf606e616baa36751f3b4adcfaefc781126c8c"
+S = "${UNPACKDIR}/u-boot-rockchip-8cdf606e616baa36751f3b4adcfaefc781126c8c"
 B = "${WORKDIR}/build"
 
 DEPENDS = "rkbin-native bc-native dtc-native flex-native bison-native \

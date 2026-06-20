@@ -1,0 +1,39 @@
+binman: drop pkg_resources (removed in setuptools 81)
+
+setuptools 82 (Yocto wrynose) no longer ships pkg_resources, so
+"import pkg_resources" in binman fails under python 3.14. Replace the
+two resource_* calls with plain file access relative to the module
+directory — behaviourally identical for in-tree binman. Upstream
+reworked this area via importlib in later U-Boot releases.
+
+Upstream-Status: Inappropriate [minimal version-specific fix; upstream 2024.10+ solved differently]
+
+--- a/tools/binman/control.py	2026-06-05 12:57:38.740862274 +0300
++++ b/tools/binman/control.py	2026-06-05 12:57:38.752861978 +0300
+@@ -13,7 +13,7 @@
+     # for Python 3.6
+     import importlib_resources
+ import os
+-import pkg_resources
++import os.path
+ import re
+ 
+ import sys
+@@ -96,7 +96,7 @@
+             msg = ''
+         return tag, msg
+ 
+-    my_data = pkg_resources.resource_string(__name__, 'missing-blob-help')
++    my_data = open(os.path.join(os.path.dirname(__file__), 'missing-blob-help'), 'rb').read()
+     re_tag = re.compile('^([-a-z0-9]+):$')
+     result = {}
+     tag = None
+@@ -151,7 +151,7 @@
+     Returns:
+         Set of paths to entry class filenames
+     """
+-    glob_list = pkg_resources.resource_listdir(__name__, 'etype')
++    glob_list = os.listdir(os.path.join(os.path.dirname(__file__), 'etype'))
+     glob_list = [fname for fname in glob_list if fname.endswith('.py')]
+     return set([os.path.splitext(os.path.basename(item))[0]
+                 for item in glob_list

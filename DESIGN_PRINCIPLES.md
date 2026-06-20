@@ -12,7 +12,7 @@ running attestation agent), `SUPPLY_CHAIN.md` (supply-chain posture),
 verification procedure). Each statement about the current state is
 backed by a file in this repository.
 
-Last reviewed: 2026-04-25.
+Last reviewed: 2026-06-20.
 
 Sections follow the chain of trust from the source archive up to the
 runtime attestation agent.
@@ -22,13 +22,14 @@ runtime attestation agent.
 **Principle.** Every shipped artifact is reproducible, inventoried, and
 signed under a non-personal identity.
 
-**Current state.** SPDX 2.2 SBOM per build via `INHERIT += "create-spdx"`
-in `recipes-core/images/tactiq-image.bb`; the `v2.1.0-rc2` and
-`v2.1.0-rc3` releases ship 895 SPDX documents with a single-file
-aggregate of 763 packages and 7,178 files at 100% SHA-256 coverage.
-CVE scanning via `INHERIT += "cve-check"` in `conf/distro/tactiq.conf`
-emits a JSON manifest against the NIST NVD feed on every build; patched
-CVEs are reported rather than hidden (`CVE_CHECK_REPORT_PATCHED = "1"`).
+**Current state.** SPDX 3.0 SBOM per build via the default-inherited
+`create-spdx` class (Yocto wrynose generates SPDX 3.0; SPDX 2.2 support
+was removed upstream). The earlier `v2.1.0-rc2` and `v2.1.0-rc3` releases
+shipped SPDX 2.2 — 895 documents aggregating 763 packages and 7,178 files
+at 100% SHA-256 coverage; rc5 figures are pending re-measurement.
+CVE scanning via the `sbom-cve-check` class
+(`IMAGE_CLASSES:append = " sbom-cve-check"` in `conf/distro/tactiq.conf`)
+runs against the NIST NVD feed on every build.
 `BUILD_REPRODUCIBLE_BINARIES = "1"` and a pinned `linux-yocto` 6.6 LTS
 point-release series produce per-file content reproducibility (99.943%
 byte-identity on `rootfs.ext4` between two consecutive builds;
@@ -88,6 +89,8 @@ Distro-wide compiler hardening in `conf/distro/tactiq.conf`:
 `-fstack-protector-strong`, `_FORTIFY_SOURCE=2`, `relro`, `bind-now`,
 PIE. IMA machinery present: `CONFIG_IMA=y`, `CONFIG_IMA_APPRAISE=y`,
 `CONFIG_IMA_MEASURE_PCR_IDX=10`, `CONFIG_IMA_LSM_RULES=y`.
+
+**Boot delivery (verified 2026-06-20, Rock 5A, wrynose).** `boot_a` (GPT attrs 0x4 — bootable flag) contains the kernel Image, DTB(s), and `boot/extlinux/extlinux.conf`. U-Boot bootstd (2024.07, kwiboo fork) scans only GPT-bootable partitions as filesystems; the extlinux-bootmeth searches `/boot/extlinux/extlinux.conf` in the scanned partition — confirmed by `bootflow scan -lae` on hardware. Kernel and DTB paths inside `extlinux.conf` are relative to the `boot_a` root (`/Image`, `/*.dtb`). `rootfs_a` and all other partitions (attrs 0x0) are not scanned by bootstd and contain no boot files. The mechanism is vendor-agnostic: any SoC running U-Boot bootstd follows the same path; only the BSP layer (U-Boot package, DTB set, loader blob offsets) changes per board family. RAUC slot group A = (`boot_a` + `rootfs_a`) ensures kernel and rootfs are updated atomically.
 
 **Tracked.** `CONFIG_MODULE_SIG_FORCE=y` and
 `CONFIG_IMA_APPRAISE_MODSIG=y` (phase 3 of the security fragment).
