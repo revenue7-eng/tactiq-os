@@ -37,7 +37,7 @@ do_install() {
 }
 
 SYSTEMD_SERVICE:${PN} = "tactiq-agent.service"
-SYSTEMD_AUTO_ENABLE = "enable"
+SYSTEMD_AUTO_ENABLE = "disable"
 
 RDEPENDS:${PN} = "ca-certificates"
 
