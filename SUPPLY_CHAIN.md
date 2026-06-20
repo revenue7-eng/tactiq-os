@@ -25,12 +25,13 @@ Last reviewed: 2026-04-25.
 
 ## CVE scanning
 
-- `INHERIT += "cve-check"` in distro config — every build emits a
-  JSON CVE manifest against the NIST NVD feed.
-- `CVE_CHECK_REPORT_PATCHED = "1"` so patched CVEs are reported, not hidden.
-- The build does not fail on unpatched CVEs in the CI bootstrap phase
-  (report-only). Production builds flip this by setting
-  `CVE_CHECK_FAIL_ON_UNPATCHED = "1"` in `local.conf`.
+- `IMAGE_CLASSES:append = " sbom-cve-check"` in distro config — every
+  build runs CVE analysis against the NIST NVD feed (Yocto wrynose
+  replaced the removed `cve-check` class with `sbom-cve-check`).
+- Patched CVEs are reported rather than hidden.
+- The build is report-only by default (does not fail on unpatched CVEs).
+  Failing on unpatched CVEs is a `local.conf` policy toggle; the exact
+  `sbom-cve-check` variables are pending validation against an rc5 build.
 - **Published in v2.1.0-rc2** as release artifacts:
   - `cve-full-rock5a.json.gz` and `cve-full-rock5a.txt.gz` — full per-recipe
     CVE summary (NVD2 feed snapshot at build time).

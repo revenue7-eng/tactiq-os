@@ -49,10 +49,10 @@ distribution level — both CVEs that surface in the upstream
 components TactiQ OS depends on, and any CVEs that may be assigned
 against TactiQ OS code itself.
 
-**Automated scanning.** Every Yocto build runs `cve-check` against
-the NIST NVD feed; the configuration is set in
-`conf/distro/tactiq.conf` (`INHERIT += "cve-check"`,
-`CVE_CHECK_REPORT_PATCHED = "1"`). Tagged releases publish the
+**Automated scanning.** Every Yocto build runs CVE analysis against
+the NIST NVD feed via the `sbom-cve-check` class; the configuration is
+set in `conf/distro/tactiq.conf`
+(`IMAGE_CLASSES:append = " sbom-cve-check"`). Tagged releases publish the
 resulting CVE manifest as an artifact alongside the SBOM. The
 manifest reports both unpatched and patched CVEs — patched ones
 are not hidden, so a consumer can verify what fixes are in the
@@ -93,12 +93,12 @@ The relevant upstreams and the channels we monitor are:
   pinned linux-yocto version when we update the pin, or through
   back-port if a specific fix is needed sooner.
 - **Yocto / poky** — upstream Yocto release announcements and
-  CVE manifests from the layer's own `cve-check` runs.
+  CVE manifests from the layer's own `sbom-cve-check` runs.
 - **meta-rockchip** — layer-specific upstream tracking, including
   vendor firmware blob updates.
 - **meta-selinux** — upstream policy and SELinux userspace fixes.
 - **Other dependencies** in the SBOM — these are tracked through
-  `cve-check` against the NVD feed; the SBOM ships with each
+  `sbom-cve-check` against the NVD feed; the SBOM ships with each
   release so a consumer can run their own vulnerability
   correlation tooling against it.
 

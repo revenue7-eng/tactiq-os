@@ -87,8 +87,8 @@ jobs:
             || { echo "::error::seccomp DISTRO_FEATURE missing"; exit 1; }
           grep -q 'BUILD_REPRODUCIBLE_BINARIES *= *"1"' "$f" \
             || { echo "::error::reproducible builds flag missing"; exit 1; }
-          grep -q 'INHERIT *+= *"cve-check"' "$f" \
-            || { echo "::error::cve-check not inherited"; exit 1; }
+          grep -q 'IMAGE_CLASSES:append.*sbom-cve-check' "$f" \
+            || { echo "::error::sbom-cve-check not enabled (wrynose: cve-check class removed)"; exit 1; }
           echo "distro config sanity: OK"
 
       - name: Assert production image profile is hardened

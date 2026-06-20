@@ -17,9 +17,9 @@ for edge AI deployments on Rockchip RK3588 and compatible ARM64 targets.
 
 ## Scope
 
-- `conf/distro/tactiq.conf` — systemd + SELinux + TPM2 + seccomp + RAUC; hardened CFLAGS; reproducible-binaries flag on; `cve-check` inherited; source archiver on.
+- `conf/distro/tactiq.conf` — systemd + SELinux + TPM2 + seccomp + RAUC; hardened CFLAGS; reproducible-binaries flag on; `sbom-cve-check` enabled; source archiver on.
 - `conf/machine/*` — Rock 5A, Rock 5B, Rock 5T, generic ARM64, qemu-x86_64.
-- `recipes-core/images/tactiq-image.bb` — production image profile, read-only rootfs, root account locked, no SSH server, `create-spdx` inherited (SPDX 2.2 SBOM per build). This is the canonical recipe for tagged release builds.
+- `recipes-core/images/tactiq-image.bb` — production image profile, read-only rootfs, root account locked, no SSH server, `create-spdx` inherited (SPDX 3.0 SBOM per build). This is the canonical recipe for tagged release builds.
 - `recipes-core/images/tactiq-image-dev.bb` — development profile retaining `debug-tweaks` and `ssh-server-openssh` for bring-up. Never signed as a release artifact; CI guards enforce that the production recipe stays hardened.
 - `recipes-core/rauc/` — RAUC A/B update config. Development keyring shipped in-tree for reproducibility of the development path; production builds override `RAUC_KEYRING_FILE` from CI secrets.
 - `recipes-core/tactiq-{agent,config,release}` — attestation agent (Ed25519, runs as the unprivileged `tactiq-agent` user with full systemd sandboxing), runtime config, build info embedded at `/etc/tactiq-release`.
@@ -63,8 +63,8 @@ Short version:
 
 | Area                   | State                                                  |
 |------------------------|--------------------------------------------------------|
-| SBOM                   | SPDX 2.2 per build (Yocto `create-spdx`)               |
-| CVE scan               | `cve-check` inherited — JSON report per build          |
+| SBOM                   | SPDX 3.0 per build (Yocto `create-spdx`)               |
+| CVE scan               | `sbom-cve-check` enabled — CVE report per build          |
 | Reproducible builds    | `BUILD_REPRODUCIBLE_BINARIES=1`, kernel version pinned |
 | Build provenance       | Signed SLSA provenance on tagged source archives via `actions/attest-build-provenance` (Sigstore) |
 | Source archive         | Yocto `archiver` (original sources retained)           |

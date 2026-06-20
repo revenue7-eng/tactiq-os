@@ -22,13 +22,14 @@ runtime attestation agent.
 **Principle.** Every shipped artifact is reproducible, inventoried, and
 signed under a non-personal identity.
 
-**Current state.** SPDX 2.2 SBOM per build via `INHERIT += "create-spdx"`
-in `recipes-core/images/tactiq-image.bb`; the `v2.1.0-rc2` and
-`v2.1.0-rc3` releases ship 895 SPDX documents with a single-file
-aggregate of 763 packages and 7,178 files at 100% SHA-256 coverage.
-CVE scanning via `INHERIT += "cve-check"` in `conf/distro/tactiq.conf`
-emits a JSON manifest against the NIST NVD feed on every build; patched
-CVEs are reported rather than hidden (`CVE_CHECK_REPORT_PATCHED = "1"`).
+**Current state.** SPDX 3.0 SBOM per build via the default-inherited
+`create-spdx` class (Yocto wrynose generates SPDX 3.0; SPDX 2.2 support
+was removed upstream). The earlier `v2.1.0-rc2` and `v2.1.0-rc3` releases
+shipped SPDX 2.2 — 895 documents aggregating 763 packages and 7,178 files
+at 100% SHA-256 coverage; rc5 figures are pending re-measurement.
+CVE scanning via the `sbom-cve-check` class
+(`IMAGE_CLASSES:append = " sbom-cve-check"` in `conf/distro/tactiq.conf`)
+runs against the NIST NVD feed on every build.
 `BUILD_REPRODUCIBLE_BINARIES = "1"` and a pinned `linux-yocto` 6.6 LTS
 point-release series produce per-file content reproducibility (99.943%
 byte-identity on `rootfs.ext4` between two consecutive builds;
