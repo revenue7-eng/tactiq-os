@@ -18,10 +18,11 @@ require tactiq-image-dev.bb
 # ---------------------------------------------------------------------------
 # Disable development conveniences
 # ---------------------------------------------------------------------------
-# Remove debug-tweaks (it is appended unconditionally in the dev recipe).
-# Yocto resolves _append/_remove against the same scope, so the override
-# below cancels the dev recipe's append for this build target.
-EXTRA_IMAGE_FEATURES:remove = "debug-tweaks"
+# Strip the development debug feature set (passwordless/empty root login).
+# dev appends ${TACTIQ_DEBUG_FEATURES}; production removes exactly that set,
+# referencing the same variable so the two can never drift out of sync.
+# (The previous remove of "debug-tweaks" was a no-op: that token is never set.)
+EXTRA_IMAGE_FEATURES:remove = "${TACTIQ_DEBUG_FEATURES}"
 
 # Production root account is locked. The agent and its services run under
 # their SELinux domains; there is no interactive root login path on a
@@ -45,3 +46,14 @@ IMAGE_INSTALL:remove = "openssh-sshd openssh-ssh openssh-keygen"
 # in future, listing them here keeps the production image clean by
 # default.
 IMAGE_INSTALL:remove = "strace tcpdump nano less"
+
+# ---------------------------------------------------------------------------
+# No SELinux policy-management tooling (drops python3 entirely)
+# ---------------------------------------------------------------------------
+# Full `policycoreutils` hard-RDEPENDS `selinux-python` (semanage/audit2allow),
+# pulling setools + the *-python bindings + the whole python3 runtime
+# (~50 MB, 13 CVEs incl. python3 CVE-2026-7210). None is needed at runtime:
+# enforcement uses libselinux (C) + loaded policy; relabel uses setfiles (C,
+# policycoreutils-setfiles) — the only RDEPENDS of selinux-autorelabel, kept
+# explicitly in the dev recipe. Drop the meta package + the python binding.
+IMAGE_INSTALL:remove = "policycoreutils libselinux-python"
