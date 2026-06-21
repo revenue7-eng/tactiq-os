@@ -165,7 +165,11 @@ IMAGE_OVERHEAD_FACTOR = "1.15"
 # ---------------------------------------------------------------------------
 # Root password (CHANGE IN PRODUCTION)
 # ---------------------------------------------------------------------------
-EXTRA_IMAGE_FEATURES:append = " allow-empty-password allow-root-login empty-root-password post-install-logging"
+# Development debug feature set (passwordless/empty root, root login).
+# Defined once here; the production profile removes exactly this set by
+# referencing ${TACTIQ_DEBUG_FEATURES}, so the two cannot drift apart.
+TACTIQ_DEBUG_FEATURES = "allow-empty-password allow-root-login empty-root-password post-install-logging"
+EXTRA_IMAGE_FEATURES:append = " ${TACTIQ_DEBUG_FEATURES}"
 
 # ---------------------------------------------------------------------------
 # SBOM generation
