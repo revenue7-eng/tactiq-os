@@ -19,7 +19,7 @@ part --source rawcopy --sourceparams="file=u-boot.itb" --no-table --offset ${RK3
 
 # Partition A (active)
 part /boot --source bootimg-partition --fstype=ext4 --label boot_a --align 4096 --size 256M --active
-part / --source rootfs --fstype=ext4 --label rootfs_a --align 4096 --size 2048M
+part / --source rootfs --fstype=ext4 --label rootfs_a --align 4096 --size 2048M --no-fstab-update
 
 # Partition B (standby - empty initially, populated by RAUC in Phase 4)
 part --fstype=ext4 --label boot_b --align 4096 --size 256M
