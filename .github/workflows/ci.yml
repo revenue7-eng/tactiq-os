@@ -99,11 +99,14 @@ jobs:
           # Production recipe must exist
           test -f "$prod" \
             || { echo "::error::production image recipe missing: $prod"; exit 1; }
-          # Production recipe must remove debug-tweaks (it is appended in
-          # the dev recipe; production inherits via `require` and must
-          # cancel that append).
-          grep -q 'EXTRA_IMAGE_FEATURES:remove.*debug-tweaks' "$prod" \
-            || { echo "::error::production image does not remove debug-tweaks"; exit 1; }
+          # Debug-only image features (passwordless login, root login, empty
+          # root password, post-install logging) are defined once as
+          # TACTIQ_DEBUG_FEATURES in the dev recipe and removed by exactly that
+          # variable in production, so the two sides cannot drift apart.
+          grep -qE 'TACTIQ_DEBUG_FEATURES[[:space:]]*=.*empty-root-password' "$dev" \
+            || { echo "::error::dev recipe does not define TACTIQ_DEBUG_FEATURES with debug features"; exit 1; }
+          grep -qE 'EXTRA_IMAGE_FEATURES:remove.*TACTIQ_DEBUG_FEATURES' "$prod" \
+            || { echo "::error::production image does not remove TACTIQ_DEBUG_FEATURES"; exit 1; }
           # Production recipe must not ship an SSH server.
           grep -q 'IMAGE_FEATURES:remove.*ssh-server-openssh' "$prod" \
             || { echo "::error::production image still ships ssh-server-openssh"; exit 1; }
