@@ -4,22 +4,24 @@ This is a self-assessment, not a certification. It describes what the
 meta-tactiq layer does today in terms of SLSA v1.0 build track requirements,
 what is explicitly tracked as not-yet-done, and where the short-term work is.
 
-Last reviewed: 2026-04-25.
+Last reviewed: 2026-06-22.
 
 ## SBOM
 
 - `INHERIT += "create-spdx"` in `recipes-core/images/tactiq-image.bb`.
-- Output: SPDX 2.2, per-recipe and image-level rollup, covering kernel,
-  libc, every runtime package with declared license and upstream source.
+- Output: a single self-contained SPDX 3.0.1 image SBOM covering the kernel,
+  libc, and every runtime package with declared license and upstream source.
+  Under wrynose the image SBOM already *is* the aggregate; there is no
+  per-recipe `.spdx.tar.zst` to unpack.
 - `INHERIT += "archiver"` with `ARCHIVER_MODE[src] = "original"` in
   `conf/distro/tactiq.conf` — upstream source tarballs retained.
-- **Published in v2.1.0-rc2** as release artifacts:
-  - `sbom-image-rock5a.spdx.tar.zst` — primary, 895 SPDX 2.2 documents
-    (per-recipe and per-runtime-package).
-  - `sbom-image-rock5a-aggregate.spdx.json` — single-file rollup,
-    763 packages, 7,178 files with SHA-256 checksums (100% file coverage),
-    51,284 relationships.
-  - `manifest-rock5a.txt` — plain-text package list (336 packages installed
+- `SPDX_INCLUDE_COMPILED_SOURCES:pn-linux-yocto = "1"` in
+  `conf/distro/tactiq.conf` — the kernel SPDX carries its compiled-sources
+  file list, consumed by the CVE enrichment below.
+- **Published** as release artifacts:
+  - `sbom-rock5a.spdx.json` — the SPDX 3.0.1 image SBOM (self-contained
+    aggregate: packages, files with SHA-256, relationships).
+  - `manifest-rock5a.txt` — plain-text package list (273 packages installed
     in the rock5a rootfs).
 - Consumer-side vulnerability correlation tooling is not prescribed.
 
@@ -30,13 +32,29 @@ Last reviewed: 2026-04-25.
   replaced the removed `cve-check` class with `sbom-cve-check`).
 - Patched CVEs are reported rather than hidden.
 - The build is report-only by default (does not fail on unpatched CVEs).
-  Failing on unpatched CVEs is a `local.conf` policy toggle; the exact
-  `sbom-cve-check` variables are pending validation against an rc5 build.
-- **Published in v2.1.0-rc2** as release artifacts:
-  - `cve-full-rock5a.json.gz` and `cve-full-rock5a.txt.gz` — full per-recipe
-    CVE summary (NVD2 feed snapshot at build time).
-  - `cve-image-rock5a.txt` — per-image CVE rollup.
-  - `cve-manifest-rock5a.json` — Yocto-format CVE manifest.
+  Failing on unpatched CVEs is a `local.conf` policy toggle.
+- **Published** as release artifacts:
+  - `cve-rock5a.sbom-cve-check.yocto.json` — the raw per-build CVE report
+    from `sbom-cve-check` (NVD feed snapshot at build time).
+  - `cve-rock5a.enriched.json` — kernel-triaged report. A post-assembly step
+    (`scripts/enrich-cve.sh`, run inside `mk-release.sh`) feeds the raw report,
+    the kernel compiled-sources SPDX, and a linux-vulns snapshot through
+    OE-core's `improve_kernel_cve_report.py`: CVEs in kernel code not compiled
+    into our config are ignored, and version-not-in-range entries resolved.
+
+### CVE posture (v2.1.0-rc5)
+Image-scoped, high-severity (CVSS v3 base ≥ 7.0), status `Unpatched`: **35**
+(21 kernel, 14 userspace). Honest disclosure, not a patched count — rc5 is a
+candidate; drive-to-zero is a GA gate.
+
+Triage notes:
+- 11 are version-confirmed applicable (glibc ×5 incl. the 9.8 `CVE-2026-5450`,
+  curl ×2, expat ×2, systemd ×1, kernel ×1).
+- 20 are kernel CVEs whose CNA records carry no machine-readable version
+  ranges; per-CVE "fixed in 6.18" confirmation is deferred to GA.
+- 4 (`CVE-2016-7545`, SELinux family) are not-applicable: the vulnerable
+  `seunshare` sandbox tool is not packaged (only `policycoreutils-setfiles`
+  is installed). VEX pending.
 
 ## Reproducible builds
 

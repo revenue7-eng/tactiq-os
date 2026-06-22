@@ -111,12 +111,12 @@ came from the maintainer, not from a man-in-the-middle.
 
 You should now see, at minimum:
 
-- `rootfs-rock5a.ext4`, `kernel-rock5a.bin`, `rk3588s-rock-5a.dtb`
-- `manifest-rock5a.txt`, `buildinfo-rock5a.json`
-- `sbom-image-rock5a.spdx.tar.zst`,
-  `sbom-image-rock5a-aggregate.spdx.json`
-- `cve-manifest-rock5a.json`, `cve-full-rock5a.json.gz`,
-  `cve-full-rock5a.txt.gz`, `cve-image-rock5a.txt`
+- `image-rock5a.wic.gz`, `image-rock5a.wic.bmap` (compressed rootfs image + bmap)
+- `kernel-rock5a.bin`, `rk3588s-rock-5a.dtb`
+- `manifest-rock5a.txt`, `testdata-rock5a.json`, `buildinfo-rock5a.json`
+- `sbom-rock5a.spdx.json` (SPDX 3.0.1 image SBOM)
+- `cve-rock5a.sbom-cve-check.yocto.json` (raw),
+  `cve-rock5a.enriched.json` (kernel-triaged)
 - `SHA256SUMS`
 - `SHA256SUMS.workflow.pem`, `SHA256SUMS.workflow.sig` (rc3 and later)
 - `SHA256SUMS.pem`, `SHA256SUMS.sig` (rc1, rc2 only)
@@ -236,18 +236,13 @@ above.
 
 ## 6. Verify SBOM integrity
 
-The SBOM bundle is listed in `SHA256SUMS`; step 3 above already covers
+The SBOM is listed in `SHA256SUMS`; step 3 above already covers
 it. To inspect content:
 
 ```sh
-# Aggregate SPDX JSON — 763 packages, 7,178 files with SHA-256
-jq '.packages | length' sbom-image-rock5a-aggregate.spdx.json
-jq '.files    | length' sbom-image-rock5a-aggregate.spdx.json
-
-# Per-recipe SPDX documents (one per Yocto recipe)
-mkdir -p sbom && cd sbom
-zstd -d ../sbom-image-rock5a.spdx.tar.zst -c | tar -xf -
-ls | wc -l
+# SPDX 3.0.1 image SBOM — count packages and files
+jq '[.["@graph"][] | select(.type=="software_Package")] | length' sbom-rock5a.spdx.json
+jq '[.["@graph"][] | select(.type=="software_File")]    | length' sbom-rock5a.spdx.json
 ```
 
 SBOM scope — what is included, what is not — is documented in

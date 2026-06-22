@@ -56,6 +56,8 @@ BUILDDIR="${BUILDDIR:-$HOME/build-rock5a-wrynose}"
 MACHINE="${MACHINE:-tactiq-rock5a}"
 IMAGE="${IMAGE:-tactiq-image}"
 BOARD="${BOARD:-rock5a}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VULNS_DIR="${VULNS_DIR:-$HOME/vulns-master}"
 
 DEPLOY="${BUILDDIR}/tmp/deploy/images/${MACHINE}"
 PREFIX="${IMAGE}-${MACHINE}.rootfs"
@@ -161,6 +163,21 @@ else
     exit 1
 fi
 
+
+# ---------------------------------------------------------------------------
+# Enriched CVE report — kernel-triaged posture via enrich-cve.sh. Runs BEFORE
+# the SHA256SUMS pass so the enriched file is picked up by the sorted glob
+# below. Graceful skip only when the external linux-vulns snapshot is absent
+# (e.g. CI without it); a missing kernel SPDX / improve script / raw report is
+# a real build defect and aborts (enrich-cve.sh exits non-zero under set -e).
+# ---------------------------------------------------------------------------
+echo "==> enriched CVE report"
+if [[ -d "$VULNS_DIR" ]]; then
+    "${SCRIPT_DIR}/enrich-cve.sh" "$OUT" "$BUILDDIR" "$VULNS_DIR"
+    echo "    + cve-${BOARD}.enriched.json"
+else
+    echo "::warning:: vulns datadir ${VULNS_DIR} absent — enriched CVE report skipped (set VULNS_DIR or fetch linux-vulns)." >&2
+fi
 echo "==> SHA256SUMS"
 # SHA256SUMS does not exist yet, so the glob below cannot include it.
 shopt -s nullglob; files=( * ); shopt -u nullglob
