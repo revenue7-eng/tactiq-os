@@ -42,11 +42,19 @@ python3 "$IMPROVE" \
   --new-cve-report "$OUT"
 
 # Record hash in SHA256SUMS (bare filename, matching mk-release format); idempotent.
-(
-  cd "$REL_DIR"
-  tmp="$(mktemp)"
-  grep -v '  cve-rock5a.enriched.json$' SHA256SUMS > "$tmp" 2>/dev/null || true
-  sha256sum cve-rock5a.enriched.json >> "$tmp"
-  mv -f "$tmp" SHA256SUMS
-)
-echo "==> wrote $OUT and recorded it in SHA256SUMS"
+# Only when a SHA256SUMS already exists (standalone post-mk-release use). When
+# invoked from inside mk-release before its SHA256SUMS pass, skip and let
+# mk-release's own sorted glob hash this file — avoids a premature, partial,
+# self-referential SHA256SUMS.
+if [ -f "$REL_DIR/SHA256SUMS" ]; then
+  (
+    cd "$REL_DIR"
+    tmp="$(mktemp)"
+    grep -v '  cve-rock5a.enriched.json$' SHA256SUMS > "$tmp" 2>/dev/null || true
+    sha256sum cve-rock5a.enriched.json >> "$tmp"
+    mv -f "$tmp" SHA256SUMS
+  )
+  echo "==> wrote $OUT and recorded it in SHA256SUMS"
+else
+  echo "==> wrote $OUT (no SHA256SUMS yet; caller will hash it)"
+fi
