@@ -57,3 +57,6 @@ IMAGE_INSTALL:remove = "strace tcpdump nano less"
 # policycoreutils-setfiles) — the only RDEPENDS of selinux-autorelabel, kept
 # explicitly in the dev recipe. Drop the meta package + the python binding.
 IMAGE_INSTALL:remove = "policycoreutils libselinux-python"
+
+# rc5: drop runtime-unneeded leaf pkgs (no in-image hard-RDEPENDS) — jq, shared-mime-info(+libxml2)
+PACKAGE_EXCLUDE += "jq shared-mime-info libxml2"
