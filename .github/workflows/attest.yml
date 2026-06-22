@@ -34,7 +34,7 @@ jobs:
               --mtime="@$(git log -1 --format=%ct)" \
               --exclude-vcs \
               -czf dist/tactiq-os-${COMMIT}.tar.gz \
-              conf recipes-core recipes-kernel scripts wic
+              conf recipes-core recipes-kernel scripts
           sha256sum dist/tactiq-os-${COMMIT}.tar.gz | tee dist/tactiq-os-${COMMIT}.sha256
           echo "path=dist/tactiq-os-${COMMIT}.tar.gz" >> "$GITHUB_OUTPUT"
 
