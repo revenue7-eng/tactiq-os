@@ -1,0 +1,21 @@
+INFO: STARTING!
+INFO: Log parameter values verbosely: [0]
+INFO: Min num runs: [50]
+INFO: Num threads: [1]
+INFO: Min warmup runs: [5]
+INFO: Graph: [mobilenet_v1_1.0_224_quant.tflite]
+INFO: Signature to run: []
+INFO: #threads used for CPU inference: [1]
+INFO: Use xnnpack: [0]
+INFO: Loaded model mobilenet_v1_1.0_224_quant.tflite
+INFO: The input model file size (MB): 4.27635
+INFO: Initialized session in 2.272ms.
+INFO: Running benchmark for at least 5 iterations and at least 0.5 seconds but terminate if exceeding 150 seconds.
+INFO: count=9 first=86438 curr=54118 min=54084 max=86438 avg=57744.7 std=10144 p5=54084 median=54164 p95=86438
+
+INFO: Running benchmark for at least 50 iterations and at least 1 seconds but terminate if exceeding 150 seconds.
+INFO: count=50 first=54244 curr=54268 min=54064 max=54329 avg=54173 std=63 p5=54093 median=54169 p95=54301
+
+INFO: Inference timings in us: Init: 2272, First inference: 86438, Warmup (avg): 57744.7, Inference (avg): 54173
+INFO: Note: as the benchmark tool itself affects memory footprint, the following is only APPROXIMATE to the actual memory footprint of the model at runtime. Take the information at your discretion.
+INFO: Memory footprint delta from the start of the tool (MB): init=3.33203 overall=8.64453

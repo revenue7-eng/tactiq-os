@@ -1,0 +1,3 @@
+INFO: Inference timings in us: Init: 50928, First inference: 17336, Warmup (avg): 13982.9, Inference (avg): 13810.3
+INFO: Inference timings in us: Init: 45143, First inference: 19650, Warmup (avg): 14006.4, Inference (avg): 13838.3
+INFO: Inference timings in us: Init: 45657, First inference: 22809, Warmup (avg): 14175.5, Inference (avg): 13929.3
