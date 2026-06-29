@@ -1,0 +1,100 @@
+# coverage-rock5a.TEMPLATE.yaml — TactiQ OS threat-coverage TEMPLATE (UNPINNED)
+# ---------------------------------------------------------------------------
+# Hand-authored template: technique -> mechanism -> sentinel signal -> NIST.
+# STRUCTURE ONLY. Contains NO release-pinned values.
+#
+# A per-release instance (coverage-rock5a.<tag>.yaml) = this skeleton
+#   + a manifest block (build_id, hashes, rekor_index, SBOM, CVE posture)
+#   + per-technique: coverage status, evidence, note, provenance.
+#
+# Honesty rule: in an instance, `covered` only with confirmed evidence.
+# This template carries NO status — it asserts no coverage, only the map.
+# ---------------------------------------------------------------------------
+
+schema_version: "0.2"
+
+reference_frameworks:
+  - "SPARTA v3.2 (Aerospace Corp)"
+  - "ESA SPACE-SHIELD"
+  - "NIST 800-53 r5 (mapping indicative — verify via SPARTA Control Mapper)"
+
+# ---------------------------------------------------------------------------
+# template: technique -> mechanism (intended) -> nist -> sentinel.
+# coverage/evidence/note/provenance are filled in per-release instance.
+# ---------------------------------------------------------------------------
+techniques:
+
+  - id: "IA-0001"
+    xref: ["T1195"]
+    name: "Supply Chain Compromise (Software + Hardware)"
+    tactic: "Initial Access"
+    mechanism: ["SBOM (SPDX 3.0.1)", "cosign keyless over SHA256SUMS", "Rekor", "SLSA provenance"]
+    nist: ["SR-3", "SR-4", "SP 800-161", "SSDF"]
+    sentinel: { signal: "sbom_runtime_drift", meaning: "runtime component != SBOM" }
+
+  - id: "EX-0009"
+    name: "Exploit Code Flaws (OS / Known Vuln COTS-FOSS)"
+    tactic: "Execution"
+    mechanism: ["SBOM", "sbom-cve-check", "kernel-CVE enrichment", "VEX (pending)"]
+    nist: ["SR-3", "RA-5"]
+    sentinel: { signal: "known_vuln_component_present", meaning: "SBOM component with open CVE is active" }
+
+  - id: "EX-0010"
+    name: "Malicious Code (Wiper / Rootkit / Bootkit)"
+    tactic: "Execution"
+    mechanism: ["SELinux enforcing", "LSM: lockdown,capability,selinux,integrity", "IMA @ PCR 10"]
+    nist: ["SI-7", "SI-3"]
+    sentinel: { signal: "unexpected_ima_entry", meaning: "execution outside expected IMA set" }
+
+  - id: "EX-0004"
+    xref: ["T1542", "T2041"]
+    name: "Compromise Boot Memory / Pre-OS Boot"
+    tactic: "Execution / Defense Evasion"
+    mechanism: ["TPM present (CONFIG_TCG_*)", "IMA @ PCR 10"]
+    nist: ["SI-7", "SP 800-193"]
+    sentinel: { signal: "boot_measurement_mismatch", meaning: "boot-chain != expected" }
+
+  - id: "DE-0007/DE-0008"
+    name: "Evasion via Rootkit / Bootkit"
+    tactic: "Defense Evasion"
+    mechanism: ["IMA @ PCR 10"]
+    nist: ["SI-7", "CM-6"]
+    sentinel: { signal: "attestation_quote_divergence", meaning: "quote != PCR profile" }
+
+  - id: "EX-0005"
+    name: "Exploit Hardware/Firmware Corruption"
+    tactic: "Execution"
+    mechanism: ["dm-verity (rootfs integrity)", "IPE (Integrity Policy Enforcement)"]
+    nist: ["SI-7"]
+    sentinel: { signal: "rootfs_hash_mismatch", meaning: "rootfs hash != expected" }
+
+  - id: "PER-0004/PER-0002"
+    xref: ["T2014"]
+    name: "Replace Cryptographic Keys / Backdoor Installation"
+    tactic: "Persistence"
+    mechanism: ["production image signing", "secure boot key custody"]
+    nist: ["IA-5", "SC-12"]
+    sentinel: { signal: "key_or_signer_change", meaning: "signer/key != pinned" }
+
+  - id: "DE-0010"
+    xref: ["T1070"]
+    name: "Overflow Audit Log / Indicator Removal"
+    tactic: "Defense Evasion"
+    mechanism: ["append-only audit log (hash-chained, Archivist primitives)"]
+    nist: ["AU-9"]
+    sentinel: { signal: "audit_chain_break", meaning: "break in the append-only chain" }
+
+  - id: "T1611/T2017"
+    name: "Escape to Host / Partition-Hypervisor Compromise"
+    tactic: "Privilege Escalation / Lateral Movement"
+    mechanism: ["workload isolation (Kata / CoCo confidential containers)"]
+    nist: ["SC-39", "SC-7"]
+    sentinel: { signal: "cross_partition_access", meaning: "access across isolation boundary, off-policy" }
+
+  - id: "EX-0012.13"
+    xref: ["DE-0003.12"]
+    name: "Poison AI/ML Training Data"
+    tactic: "Execution / Defense Evasion"
+    mechanism: ["air-gap deployment topology", "CAID training-data provenance"]
+    nist: ["SI-7", "SR-3"]
+    sentinel: { signal: "training_data_provenance_gap", meaning: "training set without verifiable provenance" }
