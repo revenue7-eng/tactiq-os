@@ -9,7 +9,6 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=3154c08acdebeb3272f2707a68139d01"
 PV = "1.1.0"
 SRCREV = "d204f9ce1ac785d4b23145cce64c4a34a5c540c9"
 SRC_URI = "git://github.com/agentgateway/agentgateway.git;protocol=https;branch=main"
-S = "${WORKDIR}/git"
 
 # Build target ships Rust 1.94.x; edition 2024 (needs >= 1.85) is satisfied.
 # Upstream rust-toolchain.toml pins 1.96 but is not honoured under bitbake.
