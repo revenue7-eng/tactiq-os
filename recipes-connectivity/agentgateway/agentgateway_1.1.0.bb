@@ -70,6 +70,7 @@ do_install:append() {
     install -m 0755 ${B}/target/${CARGO_TARGET_SUBDIR}/agentgateway ${D}/opt/tactiq/bin/agentgateway
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/agentgateway.service ${D}${systemd_system_unitdir}/
+    rm -rf ${D}${bindir}
 }
 
 FILES:${PN} = "/opt/tactiq/bin/agentgateway ${systemd_system_unitdir}/agentgateway.service"
