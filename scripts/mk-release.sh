@@ -178,6 +178,17 @@ if [[ -d "$VULNS_DIR" ]]; then
 else
     echo "::warning:: vulns datadir ${VULNS_DIR} absent — enriched CVE report skipped (set VULNS_DIR or fetch linux-vulns)." >&2
 fi
+# ---------------------------------------------------------------------------
+# Threat-coverage manifest — hand-authored map, version-pinned to this tag.
+# Copied from the repo tree (NOT the Yocto deploy) so its hash lands in the
+# globbed SHA256SUMS below and rides the keyless release signature. Hard-fail
+# if absent: a transparency release without its coverage map is a defect.
+# ---------------------------------------------------------------------------
+echo "==> coverage manifest"
+COV_SRC="${SCRIPT_DIR}/../security/coverage-${BOARD}.${TAG}.yaml"
+[[ -e "$COV_SRC" ]] || { echo "::error:: coverage manifest not found: $COV_SRC" >&2; exit 1; }
+cp -L "$COV_SRC" "coverage-${BOARD}.${TAG}.yaml"
+echo "    + coverage-${BOARD}.${TAG}.yaml"
 echo "==> SHA256SUMS"
 # SHA256SUMS does not exist yet, so the glob below cannot include it.
 shopt -s nullglob; files=( * ); shopt -u nullglob

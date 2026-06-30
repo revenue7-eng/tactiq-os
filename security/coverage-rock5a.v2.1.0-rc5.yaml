@@ -1,0 +1,181 @@
+# coverage-rock5a.v2.1.0-rc5.yaml — TactiQ OS threat-coverage manifest (PINNED)
+# ---------------------------------------------------------------------------
+# Generated instance for v2.1.0-rc5. Values verified against release docs.
+# Coverage statuses reflect the REAL state of rc5, not intent.
+#
+# Integration: place this file into the release artifact set BEFORE generating
+# SHA256SUMS. Its sha256 lands in SHA256SUMS -> covered by the existing cosign
+# workflow signature and Rekor entry. No separate signature required.
+#
+# Honesty rule: `covered` only with confirmed evidence. Where docs say PARTIAL
+# / do not confirm -> partial/planned, tagged INFERENCE/ASSUMPTION.
+# ---------------------------------------------------------------------------
+
+schema_version: "0.2"
+
+manifest:
+  os_release: "v2.1.0-rc5"
+  build_id: "20260622045650"          # wrynose
+  platform: "Radxa Rock 5A (RK3588S)"
+  toolchain: "Yocto wrynose (6.0), kernel 6.18.24+git"
+  sbom:
+    format: "SPDX-3.0.1"               # migrated from 2.2 in rc5
+    artifact: "sbom-rock5a.spdx.json"
+  cve:
+    tool: "sbom-cve-check"             # cve-check removed in wrynose
+    artifact: "cve-rock5a.enriched.json"
+    posture: "35 image-scoped (CVSSv3 >=7.0, Unpatched); honest disclosure"
+    triage: "SUPPLY_CHAIN.md"
+  attestation:
+    artifact_integrity: "SHA256SUMS"
+    signature: "SHA256SUMS.workflow.{pem,sig} (cosign keyless, workflow OIDC)"
+    rekor_index: "1911768787"
+    slsa_provenance: "attest.yml — SLSA build-provenance over source archive"
+  reproducibility:
+    status: "pending re-measurement (wrynose)"   # NOT 99.94% — that was rc4
+  deferred_in_rc5: ["RAUC/.raucb (OTA path)", "buildinfo-rock5a.json"]
+  generated_utc: "<iso8601>"
+
+reference_frameworks:
+  - "SPARTA v3.2 (Aerospace Corp)"
+  - "ESA SPACE-SHIELD"
+  - "NIST 800-53 r5 (mapping indicative — verify via SPARTA Control Mapper)"
+
+# ---------------------------------------------------------------------------
+# coverage: covered | partial | planned
+# ---------------------------------------------------------------------------
+techniques:
+
+  - id: "IA-0001"
+    xref: ["T1195"]
+    name: "Supply Chain Compromise (Software + Hardware)"
+    tactic: "Initial Access"
+    coverage: covered                # strongest row in rc5
+    mechanism: ["SBOM (SPDX 3.0.1)", "cosign keyless over SHA256SUMS", "Rekor", "SLSA provenance"]
+    evidence:
+      - { type: "sbom", ref: "sbom-rock5a.spdx.json" }
+      - { type: "rekor_entry", ref: "1911768787" }
+      - { type: "signature", ref: "SHA256SUMS.workflow.sig" }
+      - { type: "slsa_provenance", ref: "attest.yml" }
+    note: "do NOT claim reproducible builds for rc5 — re-measurement pending"
+    nist: ["SR-3", "SR-4", "SP 800-161", "SSDF"]
+    sentinel: { signal: "sbom_runtime_drift", meaning: "runtime component != SBOM" }
+    provenance: FACT
+
+  - id: "EX-0009"
+    name: "Exploit Code Flaws (OS / Known Vuln COTS-FOSS)"
+    tactic: "Execution"
+    coverage: partial                # honest disclosure, not zero
+    mechanism: ["SBOM", "sbom-cve-check", "kernel-CVE enrichment", "VEX (pending)"]
+    evidence:
+      - { type: "cve_scan", ref: "cve-rock5a.enriched.json" }
+      - { type: "triage", ref: "SUPPLY_CHAIN.md" }
+    note: "35 image-scoped; 11 confirmed version-in-range; CVE->0 is a GA gate, not rc5"
+    nist: ["SR-3", "RA-5"]
+    sentinel: { signal: "known_vuln_component_present", meaning: "SBOM component with open CVE is active" }
+    provenance: FACT
+
+  - id: "EX-0010"
+    name: "Malicious Code (Wiper / Rootkit / Bootkit)"
+    tactic: "Execution"
+    coverage: partial
+    mechanism: ["SELinux enforcing", "LSM: lockdown,capability,selinux,integrity", "IMA @ PCR 10"]
+    evidence:
+      - { type: "selinux_mode", ref: "enforcing" }
+      - { type: "ima_log", ref: "PCR10 (configured)" }
+    note: "runtime policy (SELinux/IMA) confirmed; bootkit side depends on measured boot — see EX-0004 (PARTIAL)"
+    nist: ["SI-7", "SI-3"]
+    sentinel: { signal: "unexpected_ima_entry", meaning: "execution outside expected IMA set" }
+    provenance: INFERENCE
+
+  - id: "EX-0004"
+    xref: ["T1542", "T2041"]
+    name: "Compromise Boot Memory / Pre-OS Boot"
+    tactic: "Execution / Defense Evasion"
+    coverage: partial                # BOOT_CHAIN.md states: PARTIAL
+    mechanism: ["TPM present (CONFIG_TCG_*)", "IMA @ PCR 10"]
+    evidence:
+      - { type: "doc", ref: "BOOT_CHAIN.md" }
+    note: "early stages PCR 0-9 NOT measured — bootloader not measured-boot-aware (current state). verified/secure boot not established."
+    nist: ["SI-7", "SP 800-193"]
+    sentinel: { signal: "boot_measurement_mismatch", meaning: "boot-chain != expected" }
+    provenance: INFERENCE
+
+  - id: "DE-0007/DE-0008"
+    name: "Evasion via Rootkit / Bootkit"
+    tactic: "Defense Evasion"
+    coverage: partial
+    mechanism: ["IMA @ PCR 10"]
+    evidence:
+      - { type: "doc", ref: "ATTESTATION.md" }
+    note: "full measured-boot attestation unattainable while EX-0004 is PARTIAL"
+    nist: ["SI-7", "CM-6"]
+    sentinel: { signal: "attestation_quote_divergence", meaning: "quote != PCR profile" }
+    provenance: INFERENCE
+
+  - id: "EX-0005"
+    name: "Exploit Hardware/Firmware Corruption"
+    tactic: "Execution"
+    coverage: planned
+    mechanism: ["(dm-verity / IPE — not confirmed in rc5 docs)"]
+    evidence: []
+    note: "verity+IPE claimed from stack memory, but not found in rc5 docs. Confirm in KERNEL_HARDENING.md/manifest OR drop."
+    nist: ["SI-7"]
+    sentinel: { signal: "rootfs_hash_mismatch", meaning: "rootfs hash != expected" }
+    provenance: ASSUMPTION
+
+  - id: "PER-0004/PER-0002"
+    xref: ["T2014"]
+    name: "Replace Cryptographic Keys / Backdoor Installation"
+    tactic: "Persistence"
+    coverage: planned
+    mechanism: ["(production signing — not established)"]
+    evidence: []
+    note: "RAUC signing in CI is a DEVELOPMENT-ONLY cert; .raucb absent in rc5; secure boot not established"
+    nist: ["IA-5", "SC-12"]
+    sentinel: { signal: "key_or_signer_change", meaning: "signer/key != pinned" }
+    provenance: ASSUMPTION
+
+  - id: "DE-0010"
+    xref: ["T1070"]
+    name: "Overflow Audit Log / Indicator Removal"
+    tactic: "Defense Evasion"
+    coverage: planned
+    mechanism: ["(append-only audit log — not confirmed in rc5 docs)"]
+    evidence: []
+    note: "mechanism claimed from memory, not confirmed in rc5 docs. Implement OR drop the claim."
+    nist: ["AU-9"]
+    sentinel: { signal: "audit_chain_break", meaning: "break in the append-only chain" }
+    provenance: ASSUMPTION
+
+  - id: "T1611/T2017"
+    name: "Escape to Host / Partition-Hypervisor Compromise"
+    tactic: "Privilege Escalation / Lateral Movement"
+    coverage: planned
+    mechanism: ["(isolation layer — outside rc5; Kata/CoCo domain, Kaiser thread)"]
+    evidence: []
+    nist: ["SC-39", "SC-7"]
+    sentinel: { signal: "cross_partition_access", meaning: "access across isolation boundary, off-policy" }
+    provenance: ASSUMPTION
+
+  - id: "EX-0012.13"
+    xref: ["DE-0003.12"]
+    name: "Poison AI/ML Training Data"
+    tactic: "Execution / Defense Evasion"
+    coverage: planned
+    mechanism: ["(air-gap topology + CAID provenance — ahead)"]
+    evidence: []
+    note: "bridge to the PROMPTSPY thesis; implementation ahead"
+    nist: ["SI-7", "SR-3"]
+    sentinel: { signal: "training_data_provenance_gap", meaning: "training set without verifiable provenance" }
+    provenance: ASSUMPTION
+
+# ---------------------------------------------------------------------------
+# rc5 summary (honest):
+#   covered : IA-0001 (supply chain: SBOM+cosign+Rekor+SLSA)
+#   partial : EX-0009 (honest CVE), EX-0010 (SELinux/IMA), EX-0004 & DE-0007/8 (measured boot PARTIAL)
+#   planned : EX-0005, PER-0004, DE-0010, T1611/T2017, EX-0012.13
+#
+# Conclusion: rc5's strongest verifiable-today claims are supply-chain/transparency
+# (SBOM, cosign, Rekor, SLSA, honest CVE disclosure), NOT boot/firmware integrity.
+# ---------------------------------------------------------------------------
