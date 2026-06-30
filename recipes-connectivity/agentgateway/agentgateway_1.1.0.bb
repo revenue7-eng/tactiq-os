@@ -22,7 +22,7 @@ CARGO_DISABLE_BITBAKE_VENDORING = "1"
 
 # Unprivileged system user for the service (no home, no shell).
 USERADD_PACKAGES = "${PN}"
-USERADD_PARAM:${PN} = "--system --no-create-home --shell /sbin/nologin --user-group agentgateway"
+USERADD_PARAM:${PN} = "--system --no-create-home --shell /sbin/nologin --gid agentgateway agentgateway"
 GROUPADD_PARAM:${PN} = "--system agentgateway"
 
 do_configure:prepend() {
