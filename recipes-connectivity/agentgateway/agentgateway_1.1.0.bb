@@ -32,6 +32,18 @@ do_configure:prepend() {
 replace-with = "vendored-sources"
 [source.vendored-sources]
 directory = "${TACTIQ_VENDOR_DIR}"
+[source."git+https://gitlab.com/howardjohn/http-serde?rev=163f20f551c2cf6032254b6dbbe246b91ce727ad"]
+git = "https://gitlab.com/howardjohn/http-serde"
+rev = "163f20f551c2cf6032254b6dbbe246b91ce727ad"
+replace-with = "vendored-sources"
+[source."git+https://github.com/howardjohn/schemars?rev=4364354fa41897a0c2001d891c0a9a38eafedb82"]
+git = "https://github.com/howardjohn/schemars"
+rev = "4364354fa41897a0c2001d891c0a9a38eafedb82"
+replace-with = "vendored-sources"
+[source."git+https://github.com/howardjohn/wiremock-rs?rev=e55f5b96083125fdabc3e62f92790ee15ae3a10d"]
+git = "https://github.com/howardjohn/wiremock-rs"
+rev = "e55f5b96083125fdabc3e62f92790ee15ae3a10d"
+replace-with = "vendored-sources"
 CARGOEOF
 }
 
