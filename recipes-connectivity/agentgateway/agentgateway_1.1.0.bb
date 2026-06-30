@@ -35,11 +35,12 @@ directory = "${TACTIQ_VENDOR_DIR}"
 CARGOEOF
 }
 
-# aws-lc-sys (tls-aws-lc) needs cmake. openssl is gated behind tls-openssl and
-# is not built in this feature set, so it is intentionally absent from DEPENDS.
+# TLS provider (aws-lc-rs) is wired via rustls deps, not a cargo feature — the
+# project has no tls-* features in v1.1.0. cmake-native builds aws-lc-sys,
+# pulled in transitively via aws-lc-rs.
 DEPENDS += "cmake-native"
 
-CARGO_BUILD_FLAGS += " --bin agentgateway --no-default-features --features tls-aws-lc"
+CARGO_BUILD_FLAGS += " --bin agentgateway"
 
 RUSTFLAGS += "--remap-path-prefix=${WORKDIR}=/usr/src/debug/${PN}/${PV}"
 export SOURCE_DATE_EPOCH
