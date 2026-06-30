@@ -55,7 +55,10 @@ DEPENDS += "cmake-native"
 
 CARGO_BUILD_FLAGS += " --bin agentgateway"
 
-RUSTFLAGS += "--remap-path-prefix=${WORKDIR}=/usr/src/debug/${PN}/${PV}"
+# tokio is pulled with the taskdump feature, which hard-requires
+# --cfg tokio_unstable. Upstream sets this in the project .cargo/config.toml,
+# but bitbake reads CARGO_HOME, so set it via RUSTFLAGS here.
+RUSTFLAGS += "--remap-path-prefix=${WORKDIR}=/usr/src/debug/${PN}/${PV} --cfg tokio_unstable"
 export SOURCE_DATE_EPOCH
 
 SYSTEMD_SERVICE:${PN} = "agentgateway.service"
