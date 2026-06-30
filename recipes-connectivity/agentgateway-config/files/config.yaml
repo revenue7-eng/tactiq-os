@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+# ============================================================================
+# TactiQ OS — agentgateway production config (v1, empty perimeter)
+# ----------------------------------------------------------------------------
+# In-perimeter MCP/A2A traffic mediation. Local mediation ONLY.
+#
+# NETWORK POSTURE (zero-egress):
+#   - Listener: agentgateway binds 0.0.0.0:<port> by design. The file config
+#     exposes only `port`; the bind address is hardcoded to UNSPECIFIED in the
+#     binary (confirmed: crates/agentgateway/src/types/local.rs builds
+#     SocketAddr::new(Ipv4Addr::UNSPECIFIED, port)). Loopback confinement is
+#     therefore enforced OUTSIDE the binary, in three layers:
+#       1. systemd  — IPAddressDeny=any + IPAddressAllow=localhost  (agentgateway.service)
+#       2. firewall — iptables rule on port 49190 (defense-in-depth, image-level)
+#       3. SELinux  — agentgateway_t: corenet_tcp_bind on 49190 only,
+#                     no name_connect outward, no DNS resolve.
+#     A 0.0.0.0 bind is NOT a defect: kernel-level filtering is a stronger
+#     guarantee than an app-level loopback bind (which would live inside the
+#     untrusted third-party binary).
+#
+#   - Port 49190: chosen from the IANA dynamic/private range (49152-65535) to
+#     avoid collision with any registered service. Fixed and documented because
+#     three layers depend on it (SELinux bind rule, iptables rule, client).
+#
+#   - Backends: this v1 ships an EMPTY perimeter — no MCP targets. The mediator
+#     starts and listens; no traffic is proxied until targets are declared.
+#     When real MCP servers are added they MUST be local stdio processes
+#     addressed by ABSOLUTE PATH (no `npx`, no `docker`, no `host:` HTTP target
+#     — each of those would be runtime network egress and break offline-first).
+#     Every new stdio target also requires a matching SELinux
+#     domain_auto_transition in agentgateway_t.
+#
+# NOTE: empty-perimeter runtime behaviour (does the listener stay up with no
+# backend?) is to be confirmed by artifact during runtime acceptance, not
+# assumed. If the binary refuses an empty backend, that is a deliberate design
+# input — decide then (real stub vs require non-empty perimeter), on evidence.
+# ============================================================================
+
+binds:
+- port: 49190
+  listeners:
+  - routes:
+    - backends: []
