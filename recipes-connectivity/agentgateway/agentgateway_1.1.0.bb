@@ -15,35 +15,36 @@ SRC_URI = "git://github.com/agentgateway/agentgateway.git;protocol=https;branch=
 
 inherit cargo systemd useradd
 
-# Pre-vendored sources mounted from the premirror; no per-crate fetch at build.
-# Override TACTIQ_VENDOR_DIR in local.conf if the mirror lives elsewhere.
-TACTIQ_VENDOR_DIR ?= "${DL_DIR}/agentgateway-vendor-${PV}"
-CARGO_DISABLE_BITBAKE_VENDORING = "1"
+# Pre-vendored sources from the premirror; no per-crate fetch at build.
+# Point the class vendoring mechanism at our cargo-vendor tree. The class
+# writes [source.bitbake] -> CARGO_VENDORING_DIRECTORY into the real cargo
+# config (${CARGO_HOME}/config.toml). Override in local.conf if the mirror
+# lives elsewhere.
+CARGO_VENDORING_DIRECTORY ?= "${DL_DIR}/agentgateway-vendor-${PV}"
 
 # Unprivileged system user for the service (no home, no shell).
 USERADD_PACKAGES = "${PN}"
 USERADD_PARAM:${PN} = "--system --no-create-home --shell /sbin/nologin --gid agentgateway agentgateway"
 GROUPADD_PARAM:${PN} = "--system agentgateway"
 
-do_configure:prepend() {
-    mkdir -p ${S}/.cargo
-    cat >> ${S}/.cargo/config.toml << CARGOEOF
-[source.crates-io]
-replace-with = "vendored-sources"
-[source.vendored-sources]
-directory = "${TACTIQ_VENDOR_DIR}"
+# The cargo_common class writes the base config (incl. [source.bitbake] ->
+# CARGO_VENDORING_DIRECTORY) into ${CARGO_HOME}/config.toml during
+# do_configure, including [source.crates-io] -> bitbake. We only need to add
+# the three git-fork redirects to that same file, pointing at 'bitbake' too.
+do_configure:append() {
+    cat >> ${CARGO_HOME}/config.toml << CARGOEOF
 [source."git+https://gitlab.com/howardjohn/http-serde?rev=163f20f551c2cf6032254b6dbbe246b91ce727ad"]
 git = "https://gitlab.com/howardjohn/http-serde"
 rev = "163f20f551c2cf6032254b6dbbe246b91ce727ad"
-replace-with = "vendored-sources"
+replace-with = "bitbake"
 [source."git+https://github.com/howardjohn/schemars?rev=4364354fa41897a0c2001d891c0a9a38eafedb82"]
 git = "https://github.com/howardjohn/schemars"
 rev = "4364354fa41897a0c2001d891c0a9a38eafedb82"
-replace-with = "vendored-sources"
+replace-with = "bitbake"
 [source."git+https://github.com/howardjohn/wiremock-rs?rev=e55f5b96083125fdabc3e62f92790ee15ae3a10d"]
 git = "https://github.com/howardjohn/wiremock-rs"
 rev = "e55f5b96083125fdabc3e62f92790ee15ae3a10d"
-replace-with = "vendored-sources"
+replace-with = "bitbake"
 CARGOEOF
 }
 
