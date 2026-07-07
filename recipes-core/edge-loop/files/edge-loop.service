@@ -1,0 +1,13 @@
+[Unit]
+Description=TactiQ Edge residency probe (Phase 2.0: N-iteration resident loop)
+After=data-tactiq-dirs.service
+Requires=data-tactiq-dirs.service
+RequiresMountsFor=/data
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/bin/tactiq-edge-loop /usr/share/edge-loop/planthealth_cls_int8.tflite /usr/share/edge-loop/frame0.bin 1000 none /usr/share/edge-loop/class_names.txt > /data/tactiq/edge-loop.txt 2>&1; echo "exit=$?" >> /data/tactiq/edge-loop.txt'
+
+[Install]
+WantedBy=multi-user.target

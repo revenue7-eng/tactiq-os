@@ -1,0 +1,13 @@
+[Unit]
+Description=TactiQ Edge smoke test (one-shot: run cli on a fixed frame)
+After=data-tactiq-dirs.service
+Requires=data-tactiq-dirs.service
+RequiresMountsFor=/data
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/bin/tactiq-edge-cli /usr/share/edge-smoketest/planthealth_cls_int8.tflite /usr/share/edge-smoketest/frame0.bin none /usr/share/edge-smoketest/class_names.txt > /data/tactiq/edge-smoketest.txt 2>&1; echo "exit=$?" >> /data/tactiq/edge-smoketest.txt'
+
+[Install]
+WantedBy=multi-user.target

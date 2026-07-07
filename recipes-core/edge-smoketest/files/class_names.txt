@@ -1,0 +1,10 @@
+0	bacterial_spot
+1	early_blight
+2	healthy
+3	late_blight
+4	leaf_mold
+5	mosaic_virus
+6	septoria_leaf_spot
+7	spider_mites
+8	target_spot
+9	yellow_leaf_curl

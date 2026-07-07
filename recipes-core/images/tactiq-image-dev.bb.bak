@@ -82,10 +82,6 @@ IMAGE_INSTALL:append = " \
     tactiq-config \
     tactiq-release \
     agentgateway \
-    tactiq-edge \
-    edge-smoketest \
-    edge-loop \
-    edge-probe \
     agentgateway-config \
 "
 
@@ -181,6 +177,3 @@ EXTRA_IMAGE_FEATURES:append = " ${TACTIQ_DEBUG_FEATURES}"
 # SBOM generation
 # ---------------------------------------------------------------------------
 INHERIT += "create-spdx"
-
-# DEV: persistent audit for SELinux domain bring-up (edge daemon)
-# DISABLED (глушил kmsg AVC, status=6 краш-цикл): IMAGE_INSTALL:append = " auditd"

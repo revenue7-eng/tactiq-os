@@ -1,0 +1,13 @@
+[Unit]
+Description=TactiQ Edge Phase 2 daemon+probe measurement (throwaway)
+After=data-tactiq-dirs.service
+Requires=data-tactiq-dirs.service
+RequiresMountsFor=/data
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/edge-probe-run.sh
+
+[Install]
+WantedBy=multi-user.target
