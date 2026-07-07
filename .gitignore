@@ -13,6 +13,7 @@ downloads/
 *.tar.gz
 *.tar.xz
 *.bin
+!recipes-*/**/files/*.bin
 
 # tar.zst allowed only for SBOM (it's canonical compressed form)
 *.tar.zst
