@@ -2,7 +2,7 @@
 
 This document specifies the canonical verification procedure for TactiQ OS
 release artifacts. It is intended for security engineers, integrators, and
-anyone establishing a chain of trust from a published TactiQ OS release on GitHub
+anyone establishing a chain of trust from a published TactiQ OS release on GitHub.
 
 All commands assume a POSIX shell with `cosign` v2.x, `curl`, `openssl`,
 `zstd`, `jq`, and standard GNU coreutils.
@@ -13,10 +13,9 @@ historical identities under which the release artifacts were originally
 signed**: the workflow ran on GitHub Actions, Sigstore Fulcio recorded
 that path in the certificate's Subject Alternative Name, and the
 corresponding Rekor entries are append-only. The strings are reproduced
-verbatim because `cosign verify-blob` will fail if they are altered. They
-are reproduced verbatim because Sigstore Fulcio recorded them at signing time.
-releases produced after `v2.1.0-rc3` is documented in the release notes
-of each such release.
+verbatim because `cosign verify-blob` will fail if they are altered.
+The Rekor index for releases produced after `v2.1.0-rc3` is documented
+in the release notes of each such release.
 
 ---
 
@@ -79,11 +78,11 @@ chmod +x /usr/local/bin/cosign
 
 ## 2. Download
 
-Pick a release tag (`v2.1.0-rc3` in the examples below) and pull the
+Pick a release tag (`v2.1.0-rc5`, the current release, in the examples below) and pull the
 full asset set into a clean working directory.
 
 ```sh
-TAG=v2.1.0-rc3
+TAG=v2.1.0-rc5
 BASE=https://github.com/revenue7-eng/tactiq-os/releases/download/${TAG}
 
 mkdir -p "tactiq-os-${TAG}" && cd "tactiq-os-${TAG}"
@@ -93,7 +92,7 @@ for f in SHA256SUMS \
          SHA256SUMS.workflow.pem SHA256SUMS.workflow.sig \
          SHA256SUMS.pem SHA256SUMS.sig; do
     curl -fsSL --retry 3 -O "${BASE}/${f}" || \
-        echo "note: ${f} not present for ${TAG} (rc1/rc2 lack workflow.* ; rc3 lacks personal *.pem/*.sig only if absent on the release page)"
+        echo "note: ${f} not present for ${TAG} (rc1/rc2 lack workflow.* ; rc3 and later lack personal *.pem/*.sig)"
 done
 
 # Step 2: derive the artifact list from SHA256SUMS itself, then fetch
@@ -141,7 +140,7 @@ preamble for the historical context of these identity strings.
 ### 4.1 Workflow identity (canonical, `v2.1.0-rc3` and later)
 
 ```sh
-TAG=v2.1.0-rc3
+TAG=v2.1.0-rc5
 EXPECTED_IDENTITY="https://github.com/revenue7-eng/tactiq-os/.github/workflows/release-sign.yml@refs/tags/${TAG}"
 
 cosign verify-blob \
@@ -190,7 +189,7 @@ Error: invalid signature when validating ASN.1 encoded signature
 
 Do not proceed past this point if cosign reports an error of any kind.
 
-## 5. SLSA build-provenance attestation — status for `v2.1.0-rc3`
+## 5. SLSA build-provenance attestation — status (first issued for `v2.1.0-rc3`)
 
 A SLSA v1.0 build-provenance attestation was generated for `v2.1.0-rc3`
 at the time of tagging. The attestation was produced by GitHub Actions
@@ -268,6 +267,10 @@ Known Rekor indices:
 | v2.1.0-rc2  | `1361157130`         | personal  |
 | v2.1.0-rc3  | `1361817475`         | workflow  |
 
+Releases after `v2.1.0-rc3` document their Rekor index in their own
+release notes. Current release `v2.1.0-rc5`: index `1911768787`
+(<https://search.sigstore.dev/?logIndex=1911768787>).
+
 ---
 
 ## Appendix A — expected identity strings, in full
@@ -284,7 +287,7 @@ preserved as immutable historical artifacts.
 --certificate-identity    revenue7@gmail.com
 --certificate-oidc-issuer https://github.com/login/oauth
 
-# Workflow identity (rc3), parameterised by tag
+# Workflow identity (rc3 and later), parameterised by tag
 --certificate-identity    https://github.com/revenue7-eng/tactiq-os/.github/workflows/release-sign.yml@refs/tags/<TAG>
 --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -316,7 +319,7 @@ The short path once all assets are in a clean directory:
 
 ```sh
 set -e
-TAG=v2.1.0-rc3
+TAG=v2.1.0-rc5
 ID="https://github.com/revenue7-eng/tactiq-os/.github/workflows/release-sign.yml@refs/tags/${TAG}"
 
 sha256sum -c SHA256SUMS
