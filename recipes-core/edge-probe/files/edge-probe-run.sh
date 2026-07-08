@@ -4,12 +4,14 @@
 set -u
 SOCK=/run/tactiq/edge.sock
 SHARE=/usr/share/edge-probe
-OUT=/data/tactiq
+OUT=/data/tactiq/measurement
 # DEV: capture full journal (incl. all AVC) to persistent storage on any exit
 trap 'dmesg > "$OUT/dmesg-dev.txt" 2>&1; journalctl -b > "$OUT/journal-dev.txt" 2>&1' EXIT
 mkdir -p /run/tactiq
 # DEV: auditd refuses to start unless log dir is root-owned
-chown root:root /data/tactiq/audit
+mkdir -p "$OUT/audit"
+restorecon -Rv "$OUT"
+chown root:root "$OUT/audit"
 # DEV: lift kernel audit rate limit so kmsg keeps all AVC (auditd not required)
 auditctl -r 0 2>/dev/null || true
 systemctl status auditd.service > "$OUT/auditd-unit.txt" 2>&1 || true

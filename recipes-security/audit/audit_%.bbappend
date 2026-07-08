@@ -7,6 +7,6 @@ SYSTEMD_AUTO_ENABLE:auditd = "disable"
 
 do_install:append() {
     # Redirect audit log to persistent /data partition (rootfs /var/log is volatile)
-    sed -i -e 's|^log_file =.*|log_file = /data/tactiq/audit/audit.log|' \
+    sed -i -e 's|^log_file =.*|log_file = /data/tactiq/measurement/audit/audit.log|' \
         ${D}${sysconfdir}/audit/auditd.conf
 }
