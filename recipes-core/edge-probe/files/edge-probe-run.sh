@@ -8,6 +8,7 @@ OUT=/data/tactiq/measurement
 # DEV: capture full journal (incl. all AVC) to persistent storage on any exit
 trap 'dmesg > "$OUT/dmesg-dev.txt" 2>&1; journalctl -b > "$OUT/journal-dev.txt" 2>&1' EXIT
 mkdir -p /run/tactiq
+restorecon -F /run/tactiq
 # DEV: auditd refuses to start unless log dir is root-owned
 mkdir -p "$OUT/audit"
 restorecon -Rv "$OUT"
