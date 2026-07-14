@@ -3,6 +3,7 @@ ConditionPathExists=!/etc/tactiq/skip-tpm
 Description=TactiQ Attestation Agent
 Documentation=file:///usr/share/doc/tactiq-os/ATTESTATION.md
 After=network-online.target data-tactiq-dirs.service
+Requires=data-tactiq-dirs.service
 Wants=network-online.target
 RequiresMountsFor=/data
 
