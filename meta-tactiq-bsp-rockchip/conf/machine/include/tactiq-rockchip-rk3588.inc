@@ -59,3 +59,8 @@ WKS_FILE = "tactiq-ab-rockchip.wks.in"
 # RK3588 boards expose UART on ttyS2 @ 1500000 baud — override here so all
 # boards in the RK3588 family get the same serial console in the kernel cmdline.
 UBOOT_EXTLINUX_CONSOLE = "console=tty1 console=ttyS2,1500000n8"
+
+# ---- RAUC: identify booted slot to userspace ----
+# Static per-slot: boot_a carries rauc.slot=A. When RAUC installs into
+# slot B it writes its own extlinux.conf with rauc.slot=B.
+UBOOT_EXTLINUX_KERNEL_ARGS:append = " rauc.slot=A"
