@@ -12,7 +12,7 @@ S = "${UNPACKDIR}"
 
 RAUC_BUNDLE_COMPATIBLE = "TactiQ OS Rock5A"
 RAUC_BUNDLE_FORMAT = "verity"
-RAUC_BUNDLE_VERSION ?= "${DATETIME}"
+RAUC_BUNDLE_VERSION ?= "1.0.0"
 
 # --- Slot: rootfs (ext4 image of tactiq-image-dev) ---
 RAUC_BUNDLE_SLOTS = "rootfs"
