@@ -20,13 +20,14 @@ SRC_URI += "file://0001-pylibfdt-swig-4.3-compat.patch"
 SRC_URI += "file://0002-binman-drop-pkg-resources.patch"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
+SRC_URI += "file://tactiq-boot.env"
 
 TACTIQ_MIRROR ?= "file:///mnt/c/Users/UserHome/Downloads"
 
 S = "${UNPACKDIR}/u-boot-rockchip-8cdf606e616baa36751f3b4adcfaefc781126c8c"
 B = "${WORKDIR}/build"
 
-DEPENDS = "rkbin-native bc-native dtc-native flex-native bison-native \
+DEPENDS = "vim-native rkbin-native bc-native dtc-native flex-native bison-native \
            openssl-native python3-pyelftools-native swig-native"
 
 inherit kernel-arch deploy python3native
@@ -52,6 +53,7 @@ python () {
 do_configure() {
     oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
     ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg
+    cp ${UNPACKDIR}/tactiq-boot.env ${S}/tactiq-boot.env
     oe_runmake -C ${S} O=${B} olddefconfig
 }
 
