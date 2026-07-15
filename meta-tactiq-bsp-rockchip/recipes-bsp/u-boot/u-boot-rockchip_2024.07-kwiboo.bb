@@ -18,6 +18,7 @@ SRC_URI[sha256sum] = "b6fc46e29457003d86041c299d15bde9dfc6597643d6cd303d4b692577
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += "file://0001-pylibfdt-swig-4.3-compat.patch"
 SRC_URI += "file://0002-binman-drop-pkg-resources.patch"
+SRC_URI += "file://env-mmc.cfg"
 
 TACTIQ_MIRROR ?= "file:///mnt/c/Users/UserHome/Downloads"
 
@@ -49,17 +50,21 @@ python () {
 
 do_configure() {
     oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg
+    oe_runmake -C ${S} O=${B} olddefconfig
 }
 
 do_compile() {
     unset LDFLAGS
     oe_runmake -C ${S} O=${B}
+    oe_runmake -C ${S} O=${B} u-boot-initial-env
 }
 
 do_deploy() {
     install -d ${DEPLOYDIR}
     install -m 0644 ${B}/idbloader.img ${DEPLOYDIR}/idbloader.img
     install -m 0644 ${B}/u-boot.itb    ${DEPLOYDIR}/u-boot.itb
+    install -m 0644 ${B}/u-boot-initial-env ${DEPLOYDIR}/u-boot-initial-env
 }
 
 addtask deploy after do_compile before do_build
