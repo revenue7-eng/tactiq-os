@@ -19,6 +19,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += "file://0001-pylibfdt-swig-4.3-compat.patch"
 SRC_URI += "file://0002-binman-drop-pkg-resources.patch"
 SRC_URI += "file://env-mmc.cfg"
+SRC_URI += "file://boot-ab.cfg"
 
 TACTIQ_MIRROR ?= "file:///mnt/c/Users/UserHome/Downloads"
 
@@ -50,7 +51,7 @@ python () {
 
 do_configure() {
     oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
-    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg
     oe_runmake -C ${S} O=${B} olddefconfig
 }
 
