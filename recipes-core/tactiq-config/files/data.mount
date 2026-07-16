@@ -1,0 +1,12 @@
+[Unit]
+Description=TactiQ data partition (vault, p5)
+Before=tactiq-agent.service data-tactiq-dirs.service
+
+[Mount]
+What=/dev/disk/by-partlabel/data
+Where=/data
+Type=ext4
+Options=noatime,nosuid,nodev,noexec,context=system_u:object_r:tactiq_vault_data_t:s0
+
+[Install]
+WantedBy=multi-user.target
