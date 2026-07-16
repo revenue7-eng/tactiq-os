@@ -60,7 +60,7 @@ UBOOT_EXTLINUX_FDT = "${@'/' + os.path.basename((d.getVar('KERNEL_DEVICETREE') o
 
 # ---- Kernel command line (rc4: slot A only, rc5+ adds RAUC bootcount) ----
 UBOOT_EXTLINUX_ROOT ?= "root=PARTLABEL=rootfs_a"
-UBOOT_EXTLINUX_KERNEL_ARGS ?= "rootwait rw rootfstype=ext4 earlycon"
+UBOOT_EXTLINUX_KERNEL_ARGS ?= "rootwait rw rootfstype=ext4 earlycon kernel.panic=5"
 
 # Default console: framebuffer only. BSP layers override with serial.
 # rk3588.inc:   UBOOT_EXTLINUX_CONSOLE = "console=tty1 console=ttyS2,1500000n8"
