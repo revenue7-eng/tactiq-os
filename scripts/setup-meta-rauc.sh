@@ -31,4 +31,4 @@ fi
 echo "meta-rauc OK"
 echo "  pin:  $PIN"
 echo "  tree: $TREE"
-echo "  rauc: $(ls recipes-core/rauc/rauc_*.bb | grep -oP '\d+\.\d+\.\d+')"
+echo "  rauc: $(basename recipes-core/rauc/rauc_*.bb | grep -oP '\d+\.\d+\.\d+')"
