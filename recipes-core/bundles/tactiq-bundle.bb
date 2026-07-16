@@ -15,11 +15,11 @@ RAUC_BUNDLE_FORMAT = "verity"
 RAUC_BUNDLE_VERSION ?= "1.0.0"
 
 # --- Slot: rootfs (ext4 image of tactiq-image-dev) ---
-RAUC_BUNDLE_SLOTS = "rootfs"
+RAUC_BUNDLE_SLOTS = "rootfs boot"
 RAUC_SLOT_rootfs = "tactiq-image-dev"
 RAUC_SLOT_rootfs[fstype] = "ext4"
 
-# Boot slot (kernel + dtb + extlinux) is NOT in V1 bundle.
-# Rationale: boot partition changes only on kernel/dtb upgrade,
-# rootfs changes on every software update. Adding boot slot
-# requires a dedicated boot-image recipe — deferred to V2.
+# --- Slot: boot (ext4 image of kernel + dtb + extlinux.conf) ---
+RAUC_SLOT_boot = "tactiq-boot-image"
+RAUC_SLOT_boot[type] = "boot"
+RAUC_SLOT_boot[file] = "tactiq-boot-image-${MACHINE}.ext4"
