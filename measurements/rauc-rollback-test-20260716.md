@@ -125,8 +125,14 @@ BOOT_B_LEFT=0
 
 ## Boot script reference
 
-Source: `meta-rockchip/dynamic-layers/rk-rauc-demo/recipes-bsp/u-boot/files/boot.cmd.in`
+Source: U-Boot environment variable `boot_ab`, invoked by `bootcmd=run boot_ab`.
+Verified via `fw_printenv` on hardware (2026-07-16).
 
 Key logic: iterate BOOT_ORDER, first slot with LEFT > 0 is selected,
-LEFT decremented, env saved before kernel load. If no slot qualifies,
-both LEFT reset to 3 and board resets.
+LEFT decremented, env saved, then `sysboot` loads kernel via per-slot
+`extlinux.conf` (boot_a = mmc 1:1, boot_b = mmc 1:3). If no slot
+qualifies, drops to U-Boot prompt.
+
+Note: `meta-rockchip/dynamic-layers/rk-rauc-demo/recipes-bsp/u-boot/files/boot.cmd.in`
+is not used in the current build — no `boot.scr` is present on the
+boot partition.
