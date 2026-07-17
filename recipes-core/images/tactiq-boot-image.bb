@@ -69,7 +69,7 @@ do_install() {
 }
 
 do_deploy() {
-    install -m 0644 "${B}/${PN}-${MACHINE}.ext4" "${DEPLOYDIR}/"
+    install -m 0644 "${B}/${PN}-${MACHINE}.ext4" "${DEPLOYDIR}/tactiq-boot-image.ext4"
 }
 
 addtask deploy after do_install

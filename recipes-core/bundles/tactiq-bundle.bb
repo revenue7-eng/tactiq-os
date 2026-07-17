@@ -22,4 +22,4 @@ RAUC_SLOT_rootfs[fstype] = "ext4"
 # --- Slot: boot (ext4 image of kernel + dtb + extlinux.conf) ---
 RAUC_SLOT_boot = "tactiq-boot-image"
 RAUC_SLOT_boot[type] = "boot"
-RAUC_SLOT_boot[file] = "tactiq-boot-image-${MACHINE}.ext4"
+RAUC_SLOT_boot[file] = "tactiq-boot-image.ext4"
