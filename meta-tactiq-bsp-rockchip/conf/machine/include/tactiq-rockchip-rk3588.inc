@@ -61,6 +61,6 @@ WKS_FILE = "tactiq-ab-rockchip.wks.in"
 UBOOT_EXTLINUX_CONSOLE = "console=tty1 console=ttyS2,1500000n8"
 
 # ---- RAUC: identify booted slot to userspace ----
-# Static per-slot: boot_a carries rauc.slot=A. When RAUC installs into
-# slot B it writes its own extlinux.conf with rauc.slot=B.
-UBOOT_EXTLINUX_KERNEL_ARGS:append = " rauc.slot=A"
+# U-Boot boot_ab sets rauc_slot/rauc_part env vars per slot before sysboot.
+# extlinux.conf uses ${rauc_slot} placeholder, resolved at boot time.
+UBOOT_EXTLINUX_KERNEL_ARGS:append = " rauc.slot=__RAUC_SLOT__"

@@ -1,0 +1,10 @@
+# SELinux file contexts for TactiQ boot partition.
+# Used by setfiles in tactiq-boot-image.bb to label the staging
+# directory before mkfs.ext4 -d carries xattrs into the image.
+
+/                               -d      system_u:object_r:root_t:s0
+/boot                           -d      system_u:object_r:tactiq_boot_content_t:s0
+/boot/extlinux                  -d      system_u:object_r:tactiq_boot_content_t:s0
+/boot/extlinux/.*               --      system_u:object_r:tactiq_boot_content_t:s0
+/Image                          --      system_u:object_r:tactiq_boot_content_t:s0
+/[^/]*\.dtb                     --      system_u:object_r:tactiq_boot_content_t:s0

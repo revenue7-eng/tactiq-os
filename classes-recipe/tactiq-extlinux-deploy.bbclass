@@ -71,3 +71,33 @@ do_deploy:append() {
 # extlinux.conf belongs to the same package as /boot/Image and the
 # devicetree blobs (kernel-base), so distroboot finds them together.
 FILES:${KERNEL_PACKAGE_NAME}-base += "/boot/extlinux/extlinux.conf"
+
+# ---------------------------------------------------------------------------
+# U-Boot variable substitution for A/B slot binding.
+#
+# BitBake expands ${var} in shell tasks, so we use a Python task where
+# string literals are not subject to BitBake variable expansion.
+# Placeholders __RAUC_PART__ and __RAUC_SLOT__ in the generated
+# extlinux.conf are replaced with U-Boot env refs ${rauc_part} and
+# ${rauc_slot}, which sysboot resolves at boot time from vars set by
+# boot_ab in tactiq-boot.env.
+# Verified on hardware: Rock 5A, 2026-07-16.
+# ---------------------------------------------------------------------------
+python do_fixup_extlinux() {
+    import os
+    subs = {
+        '__RAUC_PART__': '${rauc_part}',
+        '__RAUC_SLOT__': '${rauc_slot}',
+    }
+    path = os.path.join(d.getVar('B'), 'extlinux.conf')
+    if not os.path.exists(path):
+        bb.fatal('extlinux.conf not found at %s' % path)
+    with open(path, 'r') as f:
+        text = f.read()
+    for placeholder, uboot_var in subs.items():
+        text = text.replace(placeholder, uboot_var)
+    with open(path, 'w') as f:
+        f.write(text)
+    bb.note('extlinux.conf: replaced placeholders with U-Boot vars')
+}
+addtask fixup_extlinux after do_create_extlinux_config before do_install do_deploy

@@ -59,7 +59,7 @@ UBOOT_EXTLINUX_KERNEL_IMAGE = "/${KERNEL_IMAGETYPE}"
 UBOOT_EXTLINUX_FDT = "${@'/' + os.path.basename((d.getVar('KERNEL_DEVICETREE') or '').strip().split()[0]) if (d.getVar('KERNEL_DEVICETREE') or '').strip() else ''}"
 
 # ---- Kernel command line (rc4: slot A only, rc5+ adds RAUC bootcount) ----
-UBOOT_EXTLINUX_ROOT ?= "root=PARTLABEL=rootfs_a"
+UBOOT_EXTLINUX_ROOT ?= "root=PARTLABEL=__RAUC_PART__"
 UBOOT_EXTLINUX_KERNEL_ARGS ?= "rootwait rw rootfstype=ext4 earlycon kernel.panic=5"
 
 # Default console: framebuffer only. BSP layers override with serial.
