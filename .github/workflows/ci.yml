@@ -144,19 +144,12 @@ jobs:
               || { echo "::error::$ba does not pull in tactiq-security.cfg"; exit 1; }
           done
           echo "kernel security fragment wiring: OK"
-
-      - name: Assert RAUC keyring is overridable from CI
+      - name: Assert RAUC keyring posture
         run: |
           set -e
-          ba=recipes-core/rauc/rauc_%.bbappend
-          # The development cert must be assigned with weak '?=' so a
-          # CI-provided RAUC_KEYRING_FILE override takes effect. Strong
-          # '=' assignment would silently win over the CI override and
-          # ship the public dev cert in a production image.
-          grep -qE 'RAUC_KEYRING_FILE *\?= *"\$\{THISDIR\}/files/development-1\.cert\.pem"' "$ba" \
-            || { echo "::error::RAUC_KEYRING_FILE is not weak-assigned (?=) in $ba"; exit 1; }
-          # Development cert must carry a header that flags it as such.
-          grep -q 'DEVELOPMENT-ONLY RAUC SIGNING CERTIFICATE' \
-                  recipes-core/rauc/files/development-1.cert.pem \
-            || { echo "::error::development cert is missing the DEVELOPMENT-ONLY header"; exit 1; }
+          # ca.cert.pem in the repo must be the development cert.
+          # CI replaces it via FILESEXTRAPATHS for production builds.
+          grep -q "DEVELOPMENT-ONLY" \
+                  recipes-core/rauc/files/ca.cert.pem \
+            || { echo "::error::ca.cert.pem missing DEVELOPMENT-ONLY header — production cert committed?"; exit 1; }
           echo "rauc keyring posture: OK"
