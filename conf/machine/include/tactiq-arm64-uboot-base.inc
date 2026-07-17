@@ -40,13 +40,16 @@ IMAGE_FSTYPES ?= "wic wic.bmap wic.gz ext4 tar.gz"
 
 # ---- IMAGE_BOOT_FILES: vendor-agnostic skeleton ----
 #
-# boot_a partition contents: kernel Image + DTB(s) + extlinux.conf.
-# U-Boot bootstd (2024.x) scans only GPT-bootable partitions as filesystems;
-# only boot_a carries the bootable flag (GPT attrs 0x4). rootfs_a and other
-# partitions are not scanned. extlinux-bootmeth searches /boot/extlinux/extlinux.conf
-# in the scanned partition — verified by bootflow scan -lae on hardware (Rock 5A).
-# Paths inside extlinux.conf are relative to the boot_a root (/Image, /*.dtb).
-# This mechanism is vendor-agnostic: any SoC with U-Boot bootstd behaves the same.
+# NOTE: boot_a partition is NO LONGER populated by WIC via bootimg-partition.
+# Boot partition content (kernel Image, DTBs, extlinux.conf) is built by
+# tactiq-boot-image.bb with SELinux labels (setfiles + mkfs.ext4 -d) and
+# written to boot_a via rawcopy in the wks template. Both WIC initial flash
+# and RAUC A/B updates use the same labeled ext4 image — single source of truth.
+#
+# IMAGE_BOOT_FILES is retained for kernel deploy staging (virtual/kernel
+# do_deploy places files listed here into DEPLOY_DIR_IMAGE, where
+# tactiq-boot-image.bb picks them up). It does NOT control boot_a content
+# directly.
 #
 # Vendor BSP loader blobs (idbloader.img, u-boot.itb on Rockchip; bl2/fip on
 # MediaTek; cboot on Tegra) are NOT in boot_a — they are written to
@@ -72,7 +75,7 @@ IMAGE_ROOTFS_EXTRA_SPACE ?= "524288"
 # stale artefacts happen to be in deploy from a previous build —
 # bitbake reports SUCCESS while the resulting wic is unbootable.
 # This append is vendor-agnostic: every BSP sets PREFERRED_PROVIDER_virtual/bootloader.
-WKS_FILE_DEPENDS:append = " virtual/bootloader"
+WKS_FILE_DEPENDS:append = " virtual/bootloader tactiq-boot-image"
 
 # wrynose: oe-core image_types_wic.bbclass now defaults
 # WKS_FILE_DEPENDS_BOOTLOADERS:aarch64 = "grub-efi systemd-boot".
