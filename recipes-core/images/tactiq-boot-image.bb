@@ -13,7 +13,11 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 inherit deploy
 
-DEPENDS = "e2fsprogs-native virtual/kernel"
+DEPENDS = "e2fsprogs-native virtual/kernel policycoreutils-native"
+
+SRC_URI = "file://boot-file_contexts"
+
+S = "${UNPACKDIR}"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
@@ -23,6 +27,10 @@ do_compile[depends] += "virtual/kernel:do_deploy"
 # RAUC dd's the ext4 image onto the partition — filesystem size must
 # equal partition size. Verity bundle format compresses empty blocks.
 TACTIQ_BOOT_IMAGE_SIZE_KB ?= "262144"
+
+# Pseudo intercepts chown/xattr only for listed paths;
+# boot-root staging dir lives under ${B}, not ${D}.
+PSEUDO_INCLUDE_PATHS:append = ",${B}"
 
 do_compile() {
     boot_root="${B}/boot-root"
@@ -41,6 +49,19 @@ do_compile() {
     install -m 0644 "${DEPLOY_DIR_IMAGE}/boot/extlinux/extlinux.conf" \
         "$boot_root/boot/extlinux/"
 
+    # Staging only — mkfs runs in do_install (fakeroot) for SELinux xattrs.
+}
+
+do_install() {
+    boot_root="${B}/boot-root"
+
+    # Fix ownership (build host uid leak) and set SELinux labels.
+    # do_install runs under fakeroot (pseudo): chown and setfiles
+    # xattr writes are intercepted and stored in pseudo DB.
+    # mkfs.ext4 -d reads them back via lgetxattr → pseudo → ext4 image.
+    chown -R 0:0 "$boot_root"
+    setfiles -m -r "$boot_root" "${UNPACKDIR}/boot-file_contexts" "$boot_root"
+
     # Build ext4 image populated from boot_root directory
     img="${B}/${PN}-${MACHINE}.ext4"
     dd if=/dev/zero of="$img" bs=1024 count=${TACTIQ_BOOT_IMAGE_SIZE_KB}
@@ -51,4 +72,4 @@ do_deploy() {
     install -m 0644 "${B}/${PN}-${MACHINE}.ext4" "${DEPLOYDIR}/"
 }
 
-addtask deploy after do_compile
+addtask deploy after do_install
