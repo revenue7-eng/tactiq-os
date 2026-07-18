@@ -37,7 +37,7 @@ empirical measurement (scarthgap / `linux-yocto` 6.6, through rc4) was
 remaining 0.057% localized to ext4 inode metadata and filesystem
 headers. That figure does **not** carry to rc5: the wrynose / kernel
 6.18 toolchain migration retired `rootfs.ext4`, and reproducibility
-re-measurement on wrynose is pending (see `docs/release-notes/v2.1.0-rc5.md`). Source archiver retains upstream tarballs. A cosign keyless
+re-measurement on wrynose is pending (see `docs/release-notes/v2.1.0-rc6.md`). Source archiver retains upstream tarballs. A cosign keyless
 signature over `SHA256SUMS` transitively covers every release artifact;
 `v2.1.0-rc3` was signed under the workflow identity of
 `.github/workflows/release-sign.yml` running on GitHub Actions at the
@@ -66,9 +66,10 @@ not to software-held secrets.
 `CONFIG_TCG_TIS_I2C`, `CONFIG_TCG_CRB`, `CONFIG_HW_RANDOM_TPM` in
 `recipes-kernel/linux/linux-yocto/tactiq-security.cfg`). The attestation
 agent at `/opt/tactiq/bin/tactiq-agent` uses Ed25519 for signing
-(`recipes-core/tactiq-agent/`). RAUC A/B updates are signed; the current
-tree ships a development keyring (`development-1.cert.pem`) for
-reproducibility of the development path.
+(`recipes-core/tactiq-agent/`). RAUC A/B updates carry a CMS signature, but the current tree ships a
+development keyring (`ca.cert.pem`, subject `TactiQ RAUC Dev CA`) whose
+private key is in the repository. The chain closes, so bundles install;
+it establishes availability of the update path, not authenticity.
 
 **Tracked.** Production RAUC keyring rotation from the in-tree
 development certificate to a keyring provisioned from CI secrets at

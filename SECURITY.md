@@ -13,8 +13,10 @@ and are not maintained.
 
 | Version        | Supported          |
 |----------------|--------------------|
-| v2.1.0-rc4     | :white_check_mark: (canonical) |
-| v2.1.0-rc3     | :warning: superseded by rc4 |
+| v2.1.0-rc6     | :white_check_mark: (canonical) |
+| v2.1.0-rc5     | :warning: superseded by rc6 |
+| v2.1.0-rc4     | :warning: superseded by rc6 |
+| v2.1.0-rc3     | :warning: superseded by rc6 |
 | v2.1.0-rc2     | :warning: deprecated — use rc4 (binary payload identical to rc3; see [`docs/release-notes/v2.1.0-rc2-deprecated.md`](docs/release-notes/v2.1.0-rc2-deprecated.md)) |
 | v2.1.0-rc1     | :x:                |
 | v2.0.1         | :white_check_mark: (critical fixes only) |
@@ -87,7 +89,7 @@ three things in this order:
 projects, each of which has its own vulnerability response process.
 The relevant upstreams and the channels we monitor are:
 
-- **Linux kernel** (linux-yocto 6.6 LTS series) — kernel security
+- **Linux kernel** (linux-yocto 6.18 series for board targets; 6.6 LTS for QEMU/generic reference targets) — kernel security
   mailing list and the LTS branch announcements. CVE patches
   applied to the LTS branch flow into TactiQ OS through the
   pinned linux-yocto version when we update the pin, or through
@@ -135,18 +137,26 @@ below is in [`THREAT_MODEL.md`](THREAT_MODEL.md).
 ## Supply-chain posture
 
 TactiQ OS publishes its supply-chain self-assessment in
-[`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md). For `v2.1.0-rc3` a SLSA v1.0
-build-provenance attestation was generated at the time of tagging
+[`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md). A SLSA v1.0 build-provenance
+attestation was first generated for `v2.1.0-rc3` at the time of tagging
 using
 [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
-via Sigstore OIDC; the attestation event is recorded on the public
+via Sigstore OIDC; that attestation event is recorded on the public
 Sigstore Rekor transparency log at index `1361817475` and remains
 inspectable through <https://search.sigstore.dev>.
 
-The integrity binding consumers should rely on for `v2.1.0-rc3` is
-the workflow-identity Sigstore signature over `SHA256SUMS`. The
-full consumer-side verification procedure is documented in
+The integrity binding consumers should rely on is the workflow-identity
+Sigstore signature over `SHA256SUMS`. For the canonical release
+`v2.1.0-rc6` the corresponding Rekor index is `2194858421`. The full
+consumer-side verification procedure is documented in
 [`VERIFY.md`](VERIFY.md).
+
+Note the limit of that binding: the attestation covers the deterministic
+source archive, not the binary artifacts. The image is built locally
+rather than in a hosted builder, and filesystem-image reproducibility is
+not currently measured, so nothing binds the published binaries to the
+tagged source. This is recorded as `IA-0001` (partial) in the release
+coverage manifest.
 
 ## Security hardening summary
 
@@ -164,7 +174,10 @@ The runtime posture of a TactiQ OS image includes, at minimum:
   `relro`, `bind-now`, PIE.
 - TPM 2.0 distro feature for measured boot and hardware-rooted key
   material.
-- Ed25519 attestation agent at `/opt/tactiq/bin/tactiq-agent`.
+- Attestation agent path provisioned at `/opt/tactiq/bin/tactiq-agent`.
+  This is a stub in the current release: it produces no quote and signs
+  nothing. See [`ATTESTATION.md`](ATTESTATION.md) for what exists and what
+  does not.
 
 Items explicitly not yet wired — and therefore not in scope for a hardened
 posture today — are listed in `SUPPLY_CHAIN.md`.
