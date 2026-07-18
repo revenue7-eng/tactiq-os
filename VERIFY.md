@@ -78,11 +78,11 @@ chmod +x /usr/local/bin/cosign
 
 ## 2. Download
 
-Pick a release tag (`v2.1.0-rc5`, the current release, in the examples below) and pull the
+Pick a release tag (`v2.1.0-rc6`, the current release, in the examples below) and pull the
 full asset set into a clean working directory.
 
 ```sh
-TAG=v2.1.0-rc5
+TAG=v2.1.0-rc6
 BASE=https://github.com/revenue7-eng/tactiq-os/releases/download/${TAG}
 
 mkdir -p "tactiq-os-${TAG}" && cd "tactiq-os-${TAG}"
@@ -140,7 +140,7 @@ preamble for the historical context of these identity strings.
 ### 4.1 Workflow identity (canonical, `v2.1.0-rc3` and later)
 
 ```sh
-TAG=v2.1.0-rc5
+TAG=v2.1.0-rc6
 EXPECTED_IDENTITY="https://github.com/revenue7-eng/tactiq-os/.github/workflows/release-sign.yml@refs/tags/${TAG}"
 
 cosign verify-blob \
@@ -268,7 +268,8 @@ Known Rekor indices:
 | v2.1.0-rc3  | `1361817475`         | workflow  |
 
 Releases after `v2.1.0-rc3` document their Rekor index in their own
-release notes. Current release `v2.1.0-rc5`: index `1911768787`
+release notes. Current release `v2.1.0-rc6`: index `2194858421`;
+`v2.1.0-rc5`: index `1911768787`
 (<https://search.sigstore.dev/?logIndex=1911768787>).
 
 ---
@@ -319,7 +320,7 @@ The short path once all assets are in a clean directory:
 
 ```sh
 set -e
-TAG=v2.1.0-rc5
+TAG=v2.1.0-rc6
 ID="https://github.com/revenue7-eng/tactiq-os/.github/workflows/release-sign.yml@refs/tags/${TAG}"
 
 sha256sum -c SHA256SUMS

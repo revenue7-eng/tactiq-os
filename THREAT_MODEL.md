@@ -90,7 +90,7 @@ cannot cause unauthorized code to run.
 **Known gaps at this stage.** The attestation agent currently shipped
 is a stub (`recipes-core/tactiq-agent/files/tactiq-agent-stub.sh`); the
 mTLS path described in `DESIGN_PRINCIPLES.md` is the design target, not
-a running implementation in v2.1.0-rc3. Anti-rollback on RAUC bundles
+a running implementation in v2.1.0-rc6. Anti-rollback on RAUC bundles
 (generation counter) is not yet wired. Update bundle delivery channel
 authenticity beyond signature verification (e.g. authenticated transport
 to a known update endpoint) is per-deployment configuration, not
@@ -240,7 +240,7 @@ requires a hosted hermetic builder; the current image build is local
 required CI gate. Filesystem-image bit-identity (vs per-file content
 identity) requires elimination of remaining non-deterministic sources
 in `do_image_ext4`. Production RAUC keyring rotation from in-tree
-development cert (`development-1.cert.pem`) to CI-secret-provisioned
+development cert (`ca.cert.pem`) to CI-secret-provisioned
 keyring is tracked. FIT image signing is not implemented. Full
 roadmap in `SUPPLY_CHAIN.md`.
 

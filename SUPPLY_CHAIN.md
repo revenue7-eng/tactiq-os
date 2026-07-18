@@ -42,19 +42,31 @@ Last reviewed: 2026-06-22.
     OE-core's `improve_kernel_cve_report.py`: CVEs in kernel code not compiled
     into our config are ignored, and version-not-in-range entries resolved.
 
-### CVE posture (v2.1.0-rc5)
-Image-scoped, high-severity (CVSS v3 base ≥ 7.0), status `Unpatched`: **35**
-(21 kernel, 14 userspace). Honest disclosure, not a patched count — rc5 is a
+### CVE posture (v2.1.0-rc6)
+Image-scoped, high-severity (CVSS v3 base ≥ 7.0), status `Unpatched`: **134**
+(108 kernel, 26 userspace). Honest disclosure, not a patched count — rc6 is a
 candidate; drive-to-zero is a GA gate.
 
+This is up from **35** (21 kernel, 14 userspace) in rc5, and the rise is real
+rather than a change of scope: the kernel pin did not move between the two
+releases (`6.18.24+git` in both), and 85 of the 108 kernel entries are
+`CVE-2026-*` published in the month between them. Moving the pin is tracked
+in issue #55 and was excluded from rc6 so that the enforcing-boot and OTA
+verification in that release are measured against an unchanged base.
+
+The counting rule is reproducible and is documented step by step in
+`docs/release-notes/v2.1.0-rc6.md`: installed packages from the manifest are
+mapped to recipes with `oe-pkgdata-util lookup-recipe`, and the enriched
+report is filtered to that set. Package and recipe names differ
+(`libc6` → `glibc`), so a naive string comparison drops most of the image.
+Without the scope filter the same report yields 141.
+
 Triage notes:
-- 11 are version-confirmed applicable (glibc ×5 incl. the 9.8 `CVE-2026-5450`,
-  curl ×2, expat ×2, systemd ×1, kernel ×1).
-- 20 are kernel CVEs whose CNA records carry no machine-readable version
-  ranges; per-CVE "fixed in 6.18" confirmation is deferred to GA.
-- 4 (`CVE-2016-7545`, SELinux family) are not-applicable: the vulnerable
-  `seunshare` sandbox tool is not packaged (only `policycoreutils-setfiles`
-  is installed). VEX pending.
+- Breakdown by detail: 110 `version-in-range`, 24 `no-version-ranges`.
+- Userspace is led by openssl ×9 and glibc ×5.
+- 3 SELinux-family entries continue to match the rc5 not-applicable finding:
+  the vulnerable `seunshare` sandbox tool is not packaged (only
+  `policycoreutils-setfiles` is installed). VEX pending.
 
 ## Reproducible builds
 
@@ -172,7 +184,7 @@ A/B partition layout: two ext4 root slots (`rootfs_a` and
 `rootfs_b`), bootloader-driven slot switching through U-Boot
 environment, compatible string `tactiq-edge` for bundle
 compatibility checks, and the on-device verification keyring at
-`/etc/rauc/keyring.pem`.
+`/etc/rauc/ca.cert.pem`.
 
 **Bundle integrity.** Each RAUC bundle is signed by the keyring
 configured at build time. The device verifies the signature against
@@ -188,11 +200,15 @@ as pending. On reboot, the bootloader counts boot attempts; if the
 boot completes successfully within the configured limit, the slot
 is marked good and becomes active. If boot fails repeatedly, the
 bootloader rolls back to the previously known-good slot. This part
-of the update channel is functional in v2.1.0-rc3 — slot lifecycle
-and recovery semantics work as described.
+of the update channel is functional and has been exercised on hardware:
+rollback from a corrupted slot is recorded in
+`measurements/rauc-rollback-test-20260716.md`, and bundle installation under
+SELinux enforcing in `measurements/selinux-enforcing-boot-prod-20260717.log`.
+Through rc5 the bundle recipe packaged the *development* rootfs; from rc6 it
+carries the production image.
 
 **Keyring management — current state.** The build currently uses
-the in-tree development certificate `development-1.cert.pem`
+the in-tree development certificate `ca.cert.pem`
 (`recipes-core/rauc/files/`) as the RAUC keyring. This is shipped
 in the repository for reproducibility of the development path.
 Production builds require a separate keyring loaded from CI

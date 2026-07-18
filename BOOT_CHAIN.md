@@ -3,7 +3,7 @@
 This document describes the chain of trust from the silicon root to
 the running attestation agent — what each stage in the boot path
 verifies and measures, where the chain is anchored, and the state of
-each stage in v2.1.0-rc3. It sits alongside `DESIGN_PRINCIPLES.md`
+each stage in v2.1.0-rc6. It sits alongside `DESIGN_PRINCIPLES.md`
 (per-domain rationale), `THREAT_MODEL.md` (consolidated adversary
 model), `ATTESTATION.md` (attestation framework),
 `KERNEL_HARDENING.md` (kernel hardening posture), `SUPPLY_CHAIN.md`
@@ -93,7 +93,7 @@ describes the present state of each link.
 | Kernel runtime → file accesses | n/a | ON | IMA measures file accesses and extends PCR 10. This part of the measured-boot chain is functional in the present configuration. |
 | Kernel runtime → file access enforcement | OFF | n/a | IMA appraisal is configured at the kernel level (`CONFIG_IMA_APPRAISE=y`) but the on-disk policy that tells the kernel which files require valid signatures is not deployed. Without policy, IMA measures but does not block. |
 | Kernel → userspace MAC | ON | n/a | SELinux is enforcing from boot, with the targeted reference policy plus the TactiQ-specific modules from `meta-tactiq-selinux`. This is the strongest enforced boundary in the current chain. |
-| Userspace → attestation payload | STUB | n/a | The agent at `/opt/tactiq/bin/tactiq-agent` in v2.1.0-rc3 is a stub. Full architectural specification in `ATTESTATION.md`, including the path from stub to TPM-quote-integrated implementation. |
+| Userspace → attestation payload | STUB | n/a | The agent at `/opt/tactiq/bin/tactiq-agent` in v2.1.0-rc6 is a stub. Full architectural specification in `ATTESTATION.md`, including the path from stub to TPM-quote-integrated implementation. |
 
 The single ON row in the Verified column at the kernel-to-userspace
 boundary, and the single ON row in the Measured column for IMA
@@ -161,7 +161,7 @@ candidate whose generation is lower than what the platform has
 already accepted. RAUC's bundle metadata supports this; U-Boot can
 enforce it through environment-stored counters.
 
-In v2.1.0-rc3 the machinery exists at the RAUC layer but the
+In v2.1.0-rc6 the machinery exists at the RAUC layer but the
 generation counter check at the bootloader is not enforced. This
 is tracked alongside FIT image signing.
 
@@ -215,7 +215,7 @@ within a configured number of attempts, the bootloader rolls back
 to the previously known-good slot.
 
 This is one of the parts of the chain that is functional in
-v2.1.0-rc3: the RAUC system configuration in
+v2.1.0-rc6: the RAUC system configuration in
 `recipes-core/rauc/files/system.conf` defines the A/B slots, and
 the bootloader environment carries the slot-state machine. The
 recovery semantics work at the slot-switching level today, even
@@ -235,7 +235,7 @@ The transitions that move the chain from current state to fully
 verified, in dependency order:
 
 1. **Production keyring through CI secrets.** Replace the in-tree
-   `development-1.cert.pem` with a keyring loaded from CI-managed
+   `ca.cert.pem` with a keyring loaded from CI-managed
    secrets at build time. Tracked in the supply-chain area; this is
    a prerequisite for everything downstream because OTP burn binds
    to whatever keyring is canonical at burn time.
@@ -308,7 +308,7 @@ the order shown.
   steps.
 - `recipes-core/rauc/files/system.conf` — RAUC A/B slot definitions
   and bootloader integration.
-- `recipes-core/rauc/files/development-1.cert.pem` — current
+- `recipes-core/rauc/files/ca.cert.pem` — current
   development RAUC keyring; production keyring transition tracked
   separately.
 - `docs/machines/` — per-platform bring-up status, including TPM

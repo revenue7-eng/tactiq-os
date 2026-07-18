@@ -213,10 +213,10 @@ chain alone. If the release root is compromised on OTP-burned
 platforms, recovery requires a physical recovery path. This is the
 catastrophic scenario in §8.
 
-### 2.6 Initial transition from `development-1.cert.pem`
+### 2.6 Initial transition from `ca.cert.pem`
 
 The current in-tree development RAUC keyring is
-`recipes-core/rauc/files/development-1.cert.pem`. The transition path:
+`recipes-core/rauc/files/ca.cert.pem`. The transition path:
 
 1. **Generate the release root** on an air-gapped signing host.
    Hardware: a workstation or laptop dedicated to this purpose, with
@@ -236,12 +236,12 @@ The current in-tree development RAUC keyring is
    private half.
 5. **Update `recipes-core/rauc/`** to consume `RAUC_KEYRING_FILE`
    from CI secrets when building production images; retain
-   `development-1.cert.pem` as default for development builds.
+   `ca.cert.pem` as default for development builds.
 6. **Tag the first release** built with the production keyring;
    publish release notes documenting the keyring transition.
 
 Until step 6 is complete, no release should claim production-keyring
-status. Releases v2.1.0-rc1 through rc4 inclusive use the development
+status. Releases v2.1.0-rc1 through rc6 inclusive use the development
 keyring; this is documented in their release notes.
 
 ### 2.7 What this section does not cover
