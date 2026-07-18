@@ -2,9 +2,20 @@
 
 ## Summary
 
-Automatic rollback from corrupted slot B to healthy slot A verified on
-Rock 5A hardware. U-Boot boot-count mechanism exhausts three attempts,
-then falls back to the working slot without operator intervention.
+Rollback from corrupted slot B to healthy slot A verified on Rock 5A
+hardware. The U-Boot boot-count mechanism exhausts three attempts, then
+selects the working slot. Slot selection itself needs no operator action:
+the boot-count logic runs in U-Boot, before the kernel.
+
+The full cycle was not unattended in this test. `kernel.panic=N` was not
+set on the image under test, so the board halted on each panic and was
+power-cycled by hand three times (observation 4). Unattended operation
+requires panic-reboot or a hardware watchdog.
+
+Closed since this test: the production image now sets `kernel.panic=5` in
+bootargs — see lines 124 and 166 of
+`selinux-enforcing-boot-prod-20260717.log` in this directory. The watchdog
+(Synopsys DesignWare watchdog0) is present but not yet enabled.
 
 **Result: PASS**
 
