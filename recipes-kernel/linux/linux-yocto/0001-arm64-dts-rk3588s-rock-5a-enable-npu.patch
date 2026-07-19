@@ -1,0 +1,81 @@
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Mon, 23 Jun 2026 00:00:00 +0000
+Subject: [PATCH] arm64: dts: rk3588s-rock-5a: enable NPU (rocket stack)
+
+Enable the three rknn NPU cores and their IOMMUs (left status="disabled"
+in rk3588-base.dtsi) for the Rock 5A, via a build-time-merged overlay
+producing a single self-contained rk3588s-rock-5a-npu.dtb. Targets the
+mainline accel "rocket" driver + Mesa Teflon userspace.
+
+Upstream-Status: Inappropriate [TactiQ BSP integration — board-specific
+ measurement DTB; not intended for mainline submission]
+
+Signed-off-by: TactiQ OS BSP <bsp@tactiqedge.com>
+---
+diff --git a/arch/arm64/boot/dts/rockchip/Makefile b/arch/arm64/boot/dts/rockchip/Makefile
+index ad684e3831bc..8f1a767e5f52 100644
+--- a/arch/arm64/boot/dts/rockchip/Makefile
++++ b/arch/arm64/boot/dts/rockchip/Makefile
+@@ -204,6 +204,8 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-orangepi-5.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-orangepi-5b.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-roc-pc.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-rock-5a.dtb
++dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-rock-5a-npu.dtb
++rk3588s-rock-5a-npu-dtbs := rk3588s-rock-5a.dtb rk3588s-rock-5a-npu.dtbo
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-rock-5c.dtb
+ 
+ # Overlay application tests
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a-npu.dtso b/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a-npu.dtso
+new file mode 100644
+index 000000000000..9891c1471dd9
+--- /dev/null
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a-npu.dtso
+@@ -0,0 +1,48 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * TactiQ OS — RK3588S Rock 5A NPU enablement overlay.
++ *
++ * Enables the three rknn NPU cores and their IOMMUs, which are left
++ * status="disabled" in rk3588-base.dtsi. Applied at build time and
++ * merged into rk3588s-rock-5a-npu.dtb via the Makefile *-dtbs rule,
++ * yielding a single self-contained DTB (no runtime overlay).
++ *
++ * Userspace: mainline "rocket" accel driver + Mesa Teflon (TFLite).
++ * Supplies follow the RK3588S board pattern (Rock 5B / OrangePi-5):
++ * both npu-supply and sram-supply on vdd_npu_s0.
++ *
++ * NPU-build ONLY. Not part of the hardened release image.
++ */
++
++/dts-v1/;
++/plugin/;
++
++&rknn_core_0 {
++	npu-supply = <&vdd_npu_s0>;
++	sram-supply = <&vdd_npu_s0>;
++	status = "okay";
++};
++
++&rknn_core_1 {
++	npu-supply = <&vdd_npu_s0>;
++	sram-supply = <&vdd_npu_s0>;
++	status = "okay";
++};
++
++&rknn_core_2 {
++	npu-supply = <&vdd_npu_s0>;
++	sram-supply = <&vdd_npu_s0>;
++	status = "okay";
++};
++
++&rknn_mmu_0 {
++	status = "okay";
++};
++
++&rknn_mmu_1 {
++	status = "okay";
++};
++
++&rknn_mmu_2 {
++	status = "okay";
++};
