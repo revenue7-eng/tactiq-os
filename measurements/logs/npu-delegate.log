@@ -1,0 +1,22 @@
+INFO: STARTING!
+INFO: Log parameter values verbosely: [0]
+INFO: Min num runs: [50]
+INFO: Min warmup runs: [5]
+INFO: Graph: [mobilenet_v1_1.0_224_quant.tflite]
+INFO: Signature to run: []
+INFO: External delegate path: [/usr/lib/libteflon.so]
+INFO: Loaded model mobilenet_v1_1.0_224_quant.tflite
+INFO: EXTERNAL delegate created.
+INFO: Explicitly applied EXTERNAL delegate, and the model graph will be partially executed by the delegate w/ 2 delegate kernels.
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+INFO: The input model file size (MB): 4.27635
+INFO: Initialized session in 85.269ms.
+INFO: Running benchmark for at least 5 iterations and at least 0.5 seconds but terminate if exceeding 150 seconds.
+INFO: count=37 first=15813 curr=13790 min=13580 max=15813 avg=13850.1 std=344 p5=13611 median=13779 p95=14115
+
+INFO: Running benchmark for at least 50 iterations and at least 1 seconds but terminate if exceeding 150 seconds.
+INFO: count=73 first=13856 curr=13842 min=13602 max=13950 avg=13783.3 std=84 p5=13648 median=13774 p95=13932
+
+INFO: Inference timings in us: Init: 85269, First inference: 15813, Warmup (avg): 13850.1, Inference (avg): 13783.3
+INFO: Note: as the benchmark tool itself affects memory footprint, the following is only APPROXIMATE to the actual memory footprint of the model at runtime. Take the information at your discretion.
+INFO: Memory footprint delta from the start of the tool (MB): init=10.2812 overall=10.4062

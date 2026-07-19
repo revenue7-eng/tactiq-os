@@ -65,3 +65,18 @@ UBOOT_EXTLINUX_KERNEL_ARGS ?= "rootwait rw rootfstype=ext4 earlycon kernel.panic
 # Default console: framebuffer only. BSP layers override with serial.
 # rk3588.inc:   UBOOT_EXTLINUX_CONSOLE = "console=tty1 console=ttyS2,1500000n8"
 UBOOT_EXTLINUX_CONSOLE ?= "console=tty1"
+
+# ===========================================================================
+# 4. NPU enablement (NPU-build ONLY — scoped to the "npu" override token)
+# ===========================================================================
+# These appends fire only for MACHINE=tactiq-rock5a-npu, which injects the
+# "npu" override. The hardened release machine (tactiq-rock5a) does not
+# carry the token, so neither the rocket kernel fragment nor the NPU device
+# tree overlay can enter a release image. Build the NPU machine in a
+# SEPARATE build dir; never in the qualified release tmp.
+#
+# Delivery follows the proven security-fragment path (SRC_URI file://):
+#   - tactiq-npu.cfg : DRM_ACCEL + DRM_ACCEL_ROCKET=m + ROCKCHIP_IOMMU=y
+#   - 0001-...npu.patch : adds rk3588s-rock-5a-npu.dtso + Makefile *-dtbs rule
+SRC_URI:append:npu = " file://tactiq-npu.cfg"
+SRC_URI:append:npu = " file://0001-arm64-dts-rk3588s-rock-5a-enable-npu.patch"
