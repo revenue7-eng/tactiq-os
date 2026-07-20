@@ -1,0 +1,990 @@
+▒▒▒DDR 9fa84341ce typ 24/09/06-09:51:11,fwver: v1.18
+ch0 ttot10
+ch1 ttot10
+ch2 ttot10
+ch3 ttot10
+ch0 ttot16
+LPDDR4X, 2112MHz
+channel[0] BW=16 Col=10 Bk=8 CS0 Row=16 CS=1 Die BW=16 Size=1024MB
+ch1 ttot16
+channel[1] BW=16 Col=10 Bk=8 CS0 Row=16 CS=1 Die BW=16 Size=1024MB
+ch2 ttot16
+channel[2] BW=16 Col=10 Bk=8 CS0 Row=16 CS=1 Die BW=16 Size=1024MB
+ch3 ttot16
+channel[3] BW=16 Col=10 Bk=8 CS0 Row=16 CS=1 Die BW=16 Size=1024MB
+Manufacturer ID:0xff
+DQS rds:h2,l0
+CH0 RX Vref:29.3%, TX Vref:21.8%,0.0%
+DQ rds:h2 h3 h1 h3 h1 h1 h1 h2, l0 h3 h3 h3 h1 h6 h2 h1
+
+DQS rds:l0,l0
+CH1 RX Vref:31.0%, TX Vref:18.8%,0.0%
+DQ rds:h3 h2 h2 h1 h2 l1 h2 h1, h2 h6 h1 h5 h3 h1 h1 h3
+
+DQS rds:h1,h1
+CH2 RX Vref:30.5%, TX Vref:20.8%,0.0%
+DQ rds:h4 h2 h2 h4 h2 h1 h3 h7, h1 h4 l0 h7 h3 h2 h1 h2
+
+DQS rds:l0,h1
+CH3 RX Vref:29.7%, TX Vref:19.8%,0.0%
+DQ rds:h1 h4 h3 h1 h7 h5 h2 h3, h2 h2 h2 h1 h3 h2 h3 h1
+
+stride=0x2, ddr_config=0x0
+hash ch_mask0-1 0x20 0x40, bank_mask0-3 0xa00 0x1400 0x2800 0x0, rank_mask0 0x0
+change to F1: 528MHz
+ch0 ttot10
+ch1 ttot10
+ch2 ttot10
+ch3 ttot10
+change to F2: 1068MHz
+ch0 ttot12
+ch1 ttot12
+ch2 ttot12
+ch3 ttot12
+change to F3: 1560MHz
+ch0 ttot14
+ch1 ttot14
+ch2 ttot14
+ch3 ttot14
+change to F0: 2112MHz
+ch0 ttot16
+ch1 ttot16
+ch2 ttot16
+ch3 ttot16
+out
+
+U-Boot SPL 2024.07-rc3 (May 30 2024 - 22:50:13 +0000)
+Trying to boot from MMC2
+## Checking hash(es) for config config-1 ... OK
+## Checking hash(es) for Image atf-1 ... sha256+ OK
+## Checking hash(es) for Image u-boot ... sha256+ OK
+## Checking hash(es) for Image fdt-1 ... sha256+ OK
+## Checking hash(es) for Image atf-2 ... sha256+ OK
+## Checking hash(es) for Image atf-3 ... sha256+ OK
+INFO:    Preloader serial: 2
+NOTICE:  BL31: v2.3():v2.3-831-g92b1674a5:derrick.huang, fwver: v1.47
+NOTICE:  BL31: Built : 16:18:39, Sep  4 2024
+INFO:    spec: 0x13
+INFO:    code: 0x88
+INFO:    ext 32k is not valid
+INFO:    ddr: stride-en 4CH
+INFO:    GICv3 without legacy support detected.
+INFO:    ARM GICv3 driver initialized in EL3
+INFO:    valid_cpu_msk=0xff bcore0_rst = 0x0, bcore1_rst = 0x0
+INFO:    l3 cache partition cfg-0
+INFO:    system boots from cpu-hwid-0
+INFO:    disable memory repair
+INFO:    idle_st=0x21fff, pd_st=0x11fff9, repair_st=0xfff70001
+INFO:    dfs DDR fsp_params[0].freq_mhz= 2112MHz
+INFO:    dfs DDR fsp_params[1].freq_mhz= 528MHz
+INFO:    dfs DDR fsp_params[2].freq_mhz= 1068MHz
+INFO:    dfs DDR fsp_params[3].freq_mhz= 1560MHz
+INFO:    BL31: Initialising Exception Handling Framework
+INFO:    BL31: Initializing runtime services
+WARNING: No OPTEE provided by BL2 boot loader, Booting device without OPTEE initialization. SMC`s destined for OPTEE will return SMC_UNK
+ERROR:   Error initializing runtime service opteed_fast
+INFO:    BL31: Preparing for EL3 exit to normal world
+INFO:    Entry point address = 0xa00000
+INFO:    SPSR = 0x3c9
+
+
+U-Boot 2024.07-rc3 (May 30 2024 - 22:50:13 +0000)
+
+Model: Radxa ROCK 5 Model A
+DRAM:  4 GiB
+Core:  343 devices, 31 uclasses, devicetree: separate
+MMC:   mmc@fe2c0000: 1, mmc@fe2e0000: 0
+Loading Environment from MMC... Reading from MMC(1)... OK
+In:    serial@feb50000
+Out:   serial@feb50000
+Err:   serial@feb50000
+Model: Radxa ROCK 5 Model A
+Net:   eth0: ethernet@fe1c0000
+Hit any key to stop autoboot:  0
+Saving Environment to MMC... Writing to MMC(1)... OK
+TactiQ: booting slot B (BOOT_B_LEFT now 1)
+Retrieving file: /boot/extlinux/extlinux.conf
+** File not found /boot/extlinux/extlinux.conf **
+Error reading config file
+Saving Environment to MMC... Writing to MMC(1)... OK
+TactiQ: booting slot A (BOOT_A_LEFT now 2)
+Retrieving file: /boot/extlinux/extlinux.conf
+1:      TactiQ OS
+Retrieving file: /Image
+append: root=PARTLABEL=rootfs_a rootwait rw rootfstype=ext4 earlycon kernel.panic=5 rauc.slot=A console=tty1 console=ttyS2,1500000n8
+Retrieving file: /rk3588s-rock-5a.dtb
+## Flattened Device Tree blob at 12000000
+   Booting using the fdt blob at 0x12000000
+Working FDT set to 12000000
+   Loading Device Tree to 00000000ecece000, end 00000000ecee5d9c ... OK
+Working FDT set to ecece000
+
+Starting kernel ...
+
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x412fd050]
+[    0.000000] Linux version 6.18.24-yocto-standard-00129-gb1ba5428513b (oe-user@oe-host) (aarch64-oe-linux-gcc (GCC) 15.2.0, GNU ld (GNU Binutils) 2.46) #1 SMP PREEMPT Thu Apr 23 15:17:42 UTC 2026
+[    0.000000] KASLR disabled due to lack of seed
+[    0.000000] Machine model: Radxa ROCK 5A
+[    0.000000] efi: UEFI not found.
+[    0.000000] earlycon: uart0 at MMIO32 0x00000000feb50000 (options '1500000n8')
+[    0.000000] printk: legacy bootconsole [uart0] enabled
+[    0.000000] OF: reserved mem: 0x000000000010f000..0x000000000010f0ff (0 KiB) nomap non-reusable shmem@10f000
+[    0.000000] NUMA: Faking a node at [mem 0x0000000000200000-0x00000001ffffffff]
+[    0.000000] NODE_DATA(0) allocated [mem 0x1ff780ec0-0x1ff78353f]
+[    0.000000] Zone ranges:
+[    0.000000]   DMA      [mem 0x0000000000200000-0x00000000ffffffff]
+[    0.000000]   DMA32    empty
+[    0.000000]   Normal   [mem 0x0000000100000000-0x00000001ffffffff]
+[    0.000000] Movable zone start for each node
+[    0.000000] Early memory node ranges
+[    0.000000]   node   0: [mem 0x0000000000200000-0x00000000efffffff]
+[    0.000000]   node   0: [mem 0x00000001f0000000-0x00000001ffffffff]
+[    0.000000] Initmem setup node 0 [mem 0x0000000000200000-0x00000001ffffffff]
+[    0.000000] On node 0, zone DMA: 512 pages in unavailable ranges
+[    0.000000] cma: Reserved 32 MiB at 0x00000000ee000000
+[    0.000000] psci: probing for conduit method from DT.
+[    0.000000] psci: PSCIv1.1 detected in firmware.
+[    0.000000] psci: Using standard PSCI v0.2 function IDs
+[    0.000000] psci: MIGRATE_INFO_TYPE not supported.
+[    0.000000] psci: SMC Calling Convention v1.2
+[    0.000000] percpu: Embedded 25 pages/cpu s62552 r8192 d31656 u102400
+[    0.000000] Detected VIPT I-cache on CPU0
+[    0.000000] CPU features: detected: GICv3 CPU interface
+[    0.000000] CPU features: detected: Virtualization Host Extensions
+[    0.000000] CPU features: detected: ARM errata 1165522, 1319367, or 1530923
+[    0.000000] alternatives: applying boot alternatives
+[    0.000000] Kernel command line: root=PARTLABEL=rootfs_a rootwait rw rootfstype=ext4 earlycon kernel.panic=5 rauc.slot=A console=tty1 console=ttyS2,1500000n8
+[    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes
+[    0.000000] Dentry cache hash table entries: 524288 (order: 10, 4194304 bytes, linear)
+[    0.000000] Inode-cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+[    0.000000] software IO TLB: area num 8.
+[    0.000000] software IO TLB: mapped [mem 0x00000000e8ece000-0x00000000ecece000] (64MB)
+[    0.000000] Fallback order for Node 0: 0
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 1048064
+[    0.000000] Policy zone: Normal
+[    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=8, Nodes=1
+[    0.000000] rcu: Preemptible hierarchical RCU implementation.
+[    0.000000] rcu:     RCU event tracing is enabled.
+[    0.000000] rcu:     RCU restricting CPUs from NR_CPUS=512 to nr_cpu_ids=8.
+[    0.000000]  Trampoline variant of Tasks RCU enabled.
+[    0.000000]  Tracing variant of Tasks RCU enabled.
+[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 25 jiffies.
+[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=8
+[    0.000000] RCU Tasks: Setting shift to 3 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=8.
+[    0.000000] RCU Tasks Trace: Setting shift to 3 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=8.
+[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+[    0.000000] GIC: enabling workaround for GICv3: non-coherent attribute
+[    0.000000] GICv3: GIC: Using split EOI/Deactivate mode
+[    0.000000] GICv3: 480 SPIs implemented
+[    0.000000] GICv3: 0 Extended SPIs implemented
+[    0.000000] GICv3: MBI range [424:479]
+[    0.000000] GICv3: Using MBI frame 0x00000000fe610000
+[    0.000000] Root IRQ handler: gic_handle_irq
+[    0.000000] GICv3: GICv3 features: 16 PPIs
+[    0.000000] GICv3: GICD_CTLR.DS=0, SCR_EL3.FIQ=1
+[    0.000000] GICv3: CPU0: found redistributor 0 region 0:0x00000000fe680000
+[    0.000000] ITS [mem 0xfe640000-0xfe65ffff]
+[    0.000000] GIC: enabling workaround for ITS: Rockchip erratum RK3588001
+[    0.000000] GIC: enabling workaround for ITS: non-coherent attribute
+[    0.000000] ITS@0x00000000fe640000: allocated 8192 Devices @1f0080000 (indirect, esz 8, psz 64K, shr 0)
+[    0.000000] ITS@0x00000000fe640000: allocated 32768 Interrupt Collections @1f0090000 (flat, esz 2, psz 64K, shr 0)
+[    0.000000] ITS: using cache flushing for cmd queue
+[    0.000000] ITS [mem 0xfe660000-0xfe67ffff]
+[    0.000000] GIC: enabling workaround for ITS: Rockchip erratum RK3588001
+[    0.000000] GIC: enabling workaround for ITS: non-coherent attribute
+[    0.000000] ITS@0x00000000fe660000: allocated 8192 Devices @1f00b0000 (indirect, esz 8, psz 64K, shr 0)
+[    0.000000] ITS@0x00000000fe660000: allocated 32768 Interrupt Collections @1f00c0000 (flat, esz 2, psz 64K, shr 0)
+[    0.000000] ITS: using cache flushing for cmd queue
+[    0.000000] GICv3: using LPI property table @0x00000001f00d0000
+[    0.000000] GIC: using cache flushing for LPI property table
+[    0.000000] GICv3: CPU0: using allocated LPI pending table @0x00000001f00e0000
+[    0.000000] GICv3: GIC: PPI partition interrupt-partition-0[0] { /cpus/cpu@0[0] /cpus/cpu@100[1] /cpus/cpu@200[2] /cpus/cpu@300[3] }
+[    0.000000] GICv3: GIC: PPI partition interrupt-partition-1[1] { /cpus/cpu@400[4] /cpus/cpu@500[5] /cpus/cpu@600[6] /cpus/cpu@700[7] }
+[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.
+[    0.000000] arch_timer: cp15 timer running at 24.00MHz (phys).
+[    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+[    0.000001] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+[    0.004993] Console: colour dummy device 80x25
+[    0.005418] printk: legacy console [tty1] enabled
+[    0.007655] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+[    0.008629] pid_max: default: 32768 minimum: 301
+[    0.012476] LSM: initializing lsm=lockdown,capability,selinux,ima
+[    0.016171] SELinux:  Initializing.
+[    0.023289] Mount-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+[    0.024008] Mountpoint-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+[    0.036144] rcu: Hierarchical SRCU implementation.
+[    0.036607] rcu:     Max phase no-delay instances is 1000.
+[    0.037457] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+[    0.038508] fsl-mc MSI: msi-controller@fe640000 domain created
+[    0.039085] fsl-mc MSI: msi-controller@fe660000 domain created
+[    0.045541] EFI services will not be available.
+[    0.046567] smp: Bringing up secondary CPUs ...
+[    0.047744] Detected VIPT I-cache on CPU1
+[    0.048038] GICv3: CPU1: found redistributor 100 region 0:0x00000000fe6a0000
+[    0.048055] GICv3: CPU1: using allocated LPI pending table @0x00000001f00f0000
+[    0.048105] CPU1: Booted secondary processor 0x0000000100 [0x412fd050]
+[    0.048986] Detected VIPT I-cache on CPU2
+[    0.049280] GICv3: CPU2: found redistributor 200 region 0:0x00000000fe6c0000
+[    0.049296] GICv3: CPU2: using allocated LPI pending table @0x00000001f0100000
+[    0.049345] CPU2: Booted secondary processor 0x0000000200 [0x412fd050]
+[    0.050217] Detected VIPT I-cache on CPU3
+[    0.050509] GICv3: CPU3: found redistributor 300 region 0:0x00000000fe6e0000
+[    0.050525] GICv3: CPU3: using allocated LPI pending table @0x00000001f0110000
+[    0.050570] CPU3: Booted secondary processor 0x0000000300 [0x412fd050]
+[    0.051539] CPU features: detected: Spectre-v4
+[    0.051546] CPU features: detected: Spectre-BHB
+[    0.051552] CPU features: detected: SSBS not fully self-synchronizing
+[    0.051555] Detected PIPT I-cache on CPU4
+[    0.051688] GICv3: CPU4: found redistributor 400 region 0:0x00000000fe700000
+[    0.051698] GICv3: CPU4: using allocated LPI pending table @0x00000001f0120000
+[    0.051726] CPU4: Booted secondary processor 0x0000000400 [0x414fd0b0]
+[    0.052457] Detected PIPT I-cache on CPU5
+[    0.052601] GICv3: CPU5: found redistributor 500 region 0:0x00000000fe720000
+[    0.052611] GICv3: CPU5: using allocated LPI pending table @0x00000001f0130000
+[    0.052641] CPU5: Booted secondary processor 0x0000000500 [0x414fd0b0]
+[    0.053346] Detected PIPT I-cache on CPU6
+[    0.053486] GICv3: CPU6: found redistributor 600 region 0:0x00000000fe740000
+[    0.053495] GICv3: CPU6: using allocated LPI pending table @0x00000001f0140000
+[    0.053524] CPU6: Booted secondary processor 0x0000000600 [0x414fd0b0]
+[    0.054343] Detected PIPT I-cache on CPU7
+[    0.054483] GICv3: CPU7: found redistributor 700 region 0:0x00000000fe760000
+[    0.054493] GICv3: CPU7: using allocated LPI pending table @0x00000001f0150000
+[    0.054522] CPU7: Booted secondary processor 0x0000000700 [0x414fd0b0]
+[    0.054639] smp: Brought up 1 node, 8 CPUs
+[    0.072661] SMP: Total of 8 processors activated.
+[    0.073111] CPU: All CPU(s) started at EL2
+[    0.073502] CPU features: detected: 32-bit EL0 Support
+[    0.073987] CPU features: detected: Data cache clean to the PoU not required for I/D coherence
+[    0.074794] CPU features: detected: Common not Private translations
+[    0.075397] CPU features: detected: CRC32 instructions
+[    0.075889] CPU features: detected: RCpc load-acquire (LDAPR)
+[    0.076429] CPU features: detected: LSE atomic instructions
+[    0.076953] CPU features: detected: Privileged Access Never
+[    0.077477] CPU features: detected: PMUv3
+[    0.077858] CPU features: detected: RAS Extension Support
+[    0.078371] CPU features: detected: Speculative Store Bypassing Safe (SSBS)
+[    0.079097] alternatives: applying system-wide alternatives
+[    0.083675] CPU features: detected: Hardware dirty bit management on CPU4-7
+[    0.085003] Memory: 3964084K/4192256K available (19200K kernel code, 5458K rwdata, 13516K rodata, 3264K init, 744K bss, 190088K reserved, 32768K cma-reserved)
+[    0.088387] devtmpfs: initialized
+[    0.097839] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+[    0.098767] posixtimers hash table entries: 4096 (order: 4, 65536 bytes, linear)
+[    0.099509] futex hash table entries: 2048 (131072 bytes on 1 NUMA nodes, total 128 KiB, linear).
+[    0.100524] 22160 pages in range for non-PLT usage
+[    0.100528] 513680 pages in range for PLT usage
+[    0.101643] pinctrl core: initialized pinctrl subsystem
+[    0.104449] DMI not present or invalid.
+[    0.107045] NET: Registered PF_NETLINK/PF_ROUTE protocol family
+[    0.108285] DMA: preallocated 512 KiB GFP_KERNEL pool for atomic allocations
+[    0.109027] DMA: preallocated 512 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations
+[    0.109852] DMA: preallocated 512 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations
+[    0.110622] audit: initializing netlink subsys (disabled)
+[    0.111274] audit: type=2000 audit(0.104:1): state=initialized audit_enabled=0 res=1
+[    0.112874] thermal_sys: Registered thermal governor 'step_wise'
+[    0.112879] thermal_sys: Registered thermal governor 'power_allocator'
+[    0.113508] cpuidle: using governor menu
+[    0.114673] hw-breakpoint: found 6 breakpoint and 4 watchpoint registers.
+[    0.115436] ASID allocator initialised with 65536 entries
+[    0.117773] Serial: AMBA PL011 UART driver
+[    0.135494] /vop@fdd90000: Fixed dependency cycle(s) with /hdmi@fde80000
+[    0.136161] /hdmi@fde80000: Fixed dependency cycle(s) with /vop@fdd90000
+[    0.145329] /pcie@fe190000: Fixed dependency cycle(s) with /pcie@fe190000/legacy-interrupt-controller
+[    0.151260] /i2c@fec90000/audio-codec@11: Fixed dependency cycle(s) with /i2s@fe470000
+[    0.156191] gpio gpiochip0: Static allocation of GPIO base is deprecated, use dynamic allocation.
+[    0.157553] rockchip-gpio fd8a0000.gpio: probed /pinctrl/gpio@fd8a0000
+[    0.158504] gpio gpiochip1: Static allocation of GPIO base is deprecated, use dynamic allocation.
+[    0.159490] rockchip-gpio fec20000.gpio: probed /pinctrl/gpio@fec20000
+[    0.160342] gpio gpiochip2: Static allocation of GPIO base is deprecated, use dynamic allocation.
+[    0.161301] rockchip-gpio fec30000.gpio: probed /pinctrl/gpio@fec30000
+[    0.162182] gpio gpiochip3: Static allocation of GPIO base is deprecated, use dynamic allocation.
+[    0.163143] rockchip-gpio fec40000.gpio: probed /pinctrl/gpio@fec40000
+[    0.163986] gpio gpiochip4: Static allocation of GPIO base is deprecated, use dynamic allocation.
+[    0.164952] rockchip-gpio fec50000.gpio: probed /pinctrl/gpio@fec50000
+[    0.166421] /hdmi@fde80000: Fixed dependency cycle(s) with /hdmi0-con
+[    0.167077] /hdmi0-con: Fixed dependency cycle(s) with /hdmi@fde80000
+[    0.175851] HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages
+[    0.176494] HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page
+[    0.177095] HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages
+[    0.177734] HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page
+[    0.178323] HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages
+[    0.178960] HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page
+[    0.179549] HugeTLB: registered 64.0 KiB page size, pre-allocated 0 pages
+[    0.180187] HugeTLB: 0 KiB vmemmap can be freed for a 64.0 KiB page
+[    0.187996] ACPI: Interpreter disabled.
+[    0.191700] iommu: Default domain type: Translated
+[    0.192154] iommu: DMA domain TLB invalidation policy: strict mode
+[    0.193291] SCSI subsystem initialized
+[    0.194029] usbcore: registered new interface driver usbfs
+[    0.194566] usbcore: registered new interface driver hub
+[    0.195089] usbcore: registered new device driver usb
+[    0.196683] mc: Linux media interface: v0.10
+[    0.197106] videodev: Linux video capture interface: v2.00
+[    0.197637] pps_core: LinuxPPS API ver. 1 registered
+[    0.198105] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+[    0.198968] PTP clock support registered
+[    0.199435] EDAC MC: Ver: 3.0.0
+[    0.200153] scmi_core: SCMI protocol bus registered
+[    0.201605] FPGA manager framework
+[    0.202680] vgaarb: loaded
+[    0.203328] clocksource: Switched to clocksource arch_sys_counter
+[    0.205444] VFS: Disk quotas dquot_6.6.0
+[    0.205966] VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+[    0.207158] pnp: PnP ACPI: disabled
+[    0.214647] NET: Registered PF_INET protocol family
+[    0.215234] IP idents hash table entries: 65536 (order: 7, 524288 bytes, linear)
+[    0.219027] tcp_listen_portaddr_hash hash table entries: 2048 (order: 3, 32768 bytes, linear)
+[    0.219891] Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+[    0.220628] TCP established hash table entries: 32768 (order: 6, 262144 bytes, linear)
+[    0.221619] TCP bind hash table entries: 32768 (order: 8, 1048576 bytes, linear)
+[    0.223256] TCP: Hash tables configured (established 32768 bind 32768)
+[    0.223939] UDP hash table entries: 2048 (order: 5, 131072 bytes, linear)
+[    0.224728] UDP-Lite hash table entries: 2048 (order: 5, 131072 bytes, linear)
+[    0.225837] NET: Registered PF_UNIX/PF_LOCAL protocol family
+[    0.226851] RPC: Registered named UNIX socket transport module.
+[    0.227422] RPC: Registered udp transport module.
+[    0.227866] RPC: Registered tcp transport module.
+[    0.228309] RPC: Registered tcp-with-tls transport module.
+[    0.228825] RPC: Registered tcp NFSv4.1 backchannel transport module.
+[    0.229436] PCI: CLS 0 bytes, default 64
+[    0.232794] kvm [1]: nv: 568 coarse grained trap handlers
+[    0.233566] kvm [1]: IPA Size Limit: 40 bits
+[    0.233990] kvm [1]: GICv3: no GICV resource entry
+[    0.234444] kvm [1]: disabling GICv2 emulation
+[    0.234882] kvm [1]: GIC system register CPU interface enabled
+[    0.235458] kvm [1]: vgic interrupt IRQ18
+[    0.235861] kvm [1]: VHE mode initialized successfully
+[    0.237501] Initialise system trusted keyrings
+[    0.238102] workingset: timestamp_bits=42 max_order=20 bucket_order=0
+[    0.243522] squashfs: version 4.0 (2009/01/31) Phillip Lougher
+[    0.245370] NFS: Registering the id_resolver key type
+[    0.245874] Key type id_resolver registered
+[    0.246269] Key type id_legacy registered
+[    0.246718] nfs4filelayout_init: NFSv4 File Layout Driver Registering...
+[    0.247362] nfs4flexfilelayout_init: NFSv4 Flexfile Layout Driver Registering...
+[    0.248208] 9p: Installing v9fs 9p2000 file system support
+[    0.288047] Key type asymmetric registered
+[    0.288438] Asymmetric key parser 'x509' registered
+[    0.289073] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 243)
+[    0.289769] io scheduler mq-deadline registered
+[    0.290197] io scheduler kyber registered
+[    0.290707] io scheduler bfq registered
+[    0.308288] ledtrig-cpu: registered to indicate activity on CPUs
+[    0.332237] dma-pl330 fea10000.dma-controller: Loaded driver for PL330 DMAC-241330
+[    0.332957] dma-pl330 fea10000.dma-controller:       DBUFF-128x8bytes Num_Chans-8 Num_Peri-32 Num_Events-16
+[    0.334707] dma-pl330 fea30000.dma-controller: Loaded driver for PL330 DMAC-241330
+[    0.335444] dma-pl330 fea30000.dma-controller:       DBUFF-128x8bytes Num_Chans-8 Num_Peri-32 Num_Events-16
+[    0.337202] dma-pl330 fed10000.dma-controller: Loaded driver for PL330 DMAC-241330
+[    0.337918] dma-pl330 fed10000.dma-controller:       DBUFF-128x8bytes Num_Chans-8 Num_Peri-32 Num_Events-16
+[    0.351864] Serial: 8250/16550 driver, 4 ports, IRQ sharing enabled
+[    0.354218] printk: legacy console [ttyS2] disabled
+[    0.354840] feb50000.serial: ttyS2 at MMIO 0xfeb50000 (irq = 40, base_baud = 1500000) is a 16550A
+[    0.355741] printk: legacy console [ttyS2] enabled
+[    0.355741] printk: legacy console [ttyS2] enabled
+[    0.356611] printk: legacy bootconsole [uart0] disabled
+[    0.356611] printk: legacy bootconsole [uart0] disabled
+[    0.361218] msm_serial: driver initialized
+[    0.362007] SuperH (H)SCI(F) driver initialized
+[    0.362680] STM32 USART driver initialized
+[    0.366102] arm-smmu-v3 fc900000.iommu: ias 48-bit, oas 48-bit (features 0x001c1eaf)
+[    0.367230] arm-smmu-v3 fc900000.iommu: allocated 65536 entries for cmdq
+[    0.368176] arm-smmu-v3 fc900000.iommu: allocated 32768 entries for evtq
+[    0.369080] arm-smmu-v3 fc900000.iommu: msi_domain absent - falling back to wired irqs
+[    0.371273] platform fdb50000.video-codec: Adding to iommu group 0
+[    0.372692] platform fdba0000.video-codec: Adding to iommu group 1
+[    0.374029] platform fdba4000.video-codec: Adding to iommu group 2
+[    0.375372] platform fdba8000.video-codec: Adding to iommu group 3
+[    0.376699] platform fdbac000.video-codec: Adding to iommu group 4
+[    0.377927] platform fdd90000.vop: Adding to iommu group 5
+[    0.384268] loop: module loaded
+[    0.399694] megasas: 07.734.00.00-rc1
+[    0.405087] /spi@feb20000/pmic@0: Fixed dependency cycle(s) with /spi@feb20000/pmic@0/regulators/dcdc-reg7
+[    0.405975] /spi@feb20000/pmic@0: Fixed dependency cycle(s) with /spi@feb20000/pmic@0/dvs3-null-pins
+[    0.406780] /spi@feb20000/pmic@0: Fixed dependency cycle(s) with /spi@feb20000/pmic@0/dvs2-null-pins
+[    0.407596] /spi@feb20000/pmic@0: Fixed dependency cycle(s) with /spi@feb20000/pmic@0/dvs1-null-pins
+[    0.411110] tun: Universal TUN/TAP device driver, 1.6
+[    0.412689] thunder_xcv, ver 1.0
+[    0.413006] thunder_bgx, ver 1.0
+[    0.413315] nicpf, ver 1.0
+[    0.414908] e1000: Intel(R) PRO/1000 Network Driver
+[    0.415354] e1000: Copyright (c) 1999-2006 Intel Corporation.
+[    0.415886] e1000e: Intel(R) PRO/1000 Network Driver
+[    0.416323] e1000e: Copyright(c) 1999 - 2015 Intel Corporation.
+[    0.416858] igb: Intel(R) Gigabit Ethernet Network Driver
+[    0.417333] igb: Copyright (c) 2007-2014 Intel Corporation.
+[    0.417837] igbvf: Intel(R) Gigabit Virtual Function Network Driver
+[    0.418387] igbvf: Copyright (c) 2009 - 2012 Intel Corporation.
+[    0.419256] sky2: driver version 1.30
+[    0.421254] VFIO - User Level meta-driver version: 0.3
+[    0.426374] usbcore: registered new interface driver usb-storage
+[    0.430239] i2c_dev: i2c /dev entries driver
+[    0.434153] /i2s@fe470000: Fixed dependency cycle(s) with /i2c@fec90000/audio-codec@11
+[    0.434896] /i2c@fec90000/audio-codec@11: Fixed dependency cycle(s) with /i2s@fe470000
+[    0.436727] usbcore: registered new interface driver uvcvideo
+[    0.442430] device-mapper: core: CONFIG_IMA_DISABLE_HTABLE is disabled. Duplicate IMA measurements will not be recorded in the IMA log.
+[    0.443722] device-mapper: ioctl: 4.50.0-ioctl (2025-04-28) initialised: dm-devel@lists.linux.dev
+[    0.446120] sdhci: Secure Digital Host Controller Interface driver
+[    0.446665] sdhci: Copyright(c) Pierre Ossman
+[    0.448028] Synopsys Designware Multimedia Card Interface Driver
+[    0.449758] sdhci-pltfm: SDHCI platform and OF driver helper
+[    0.453928] arm-scmi arm-scmi.0.auto: Using scmi_smc_transport
+[    0.454456] arm-scmi arm-scmi.0.auto: SCMI max-rx-timeout: 30ms / max-msg-size: 104bytes / max-msg: 20
+[    0.455359] scmi_protocol scmi_dev.1: Enabled polling mode TX channel - prot_id:16
+[    0.456144] arm-scmi arm-scmi.0.auto: SCMI Notifications - Core Enabled.
+[    0.456764] arm-scmi arm-scmi.0.auto: SCMI Protocol v2.0 'rockchip:' Firmware version 0x0
+[    0.457510] arm-scmi arm-scmi.0.auto: Enabling SCMI Quirk [quirk_clock_rates_triplet_out_of_spec]
+[    0.459591] SMCCC: SOC_ID: ARCH_SOC_ID not implemented, skipping ....
+[    0.461344] usbcore: registered new interface driver usbhid
+[    0.461836] usbhid: USB HID core driver
+[    0.466586] hw perfevents: enabled with armv8_cortex_a55 PMU driver, 7 (0,8000003f) counters available
+[    0.468317] hw perfevents: enabled with armv8_cortex_a76 PMU driver, 7 (0,8000003f) counters available
+[    0.474641] NET: Registered PF_PACKET protocol family
+[    0.475250] 9pnet: Installing 9P2000 support
+[    0.475697] Key type dns_resolver registered
+[    0.483606] registered taskstats version 1
+[    0.484160] Loading compiled-in X.509 certificates
+[    0.484160] mmc0: SDHCI controller on fe2e0000.mmc [fe2e0000.mmc] using ADMA
+[    0.487333] Loaded X.509 cert 'Build time autogenerated kernel key: 7ca17c8d2650d052ec5ffa9183aa1f235c969a97'
+[    0.491211] mmc0: Failed to initialize a non-removable card
+[    0.495224] Demotion targets for Node 0: null
+[    0.496372] ima: No TPM chip found, activating TPM-bypass!
+[    0.496861] ima: Allocated hash algorithm: sha1
+[    0.497273] ima: No architecture policies found
+[    0.541205] random: crng init done
+[    0.560431] rockchip-pm-domain fd8d8000.power-management:power-controller: Failed to create device link (0x180) with supplier spi2.0 for /power-management@fd8d8000/power-controller/power-domain@12
+[    0.577809] fan53555-regulator 0-0042: FAN53555 Option[10] Rev[1] Detected!
+[    0.577820] fan53555-regulator 2-0042: FAN53555 Option[10] Rev[1] Detected!
+[    0.578412] fan53555-regulator 0-0043: FAN53555 Option[10] Rev[1] Detected!
+[    0.584439] dwmmc_rockchip fe2c0000.mmc: IDMAC supports 32-bit address mode.
+[    0.585135] dwmmc_rockchip fe2c0000.mmc: Using internal DMA controller.
+[    0.585737] dwmmc_rockchip fe2c0000.mmc: Version ID is 270a
+[    0.586290] dwmmc_rockchip fe2c0000.mmc: DW MMC controller at irq 77,32 bit host data width,256 deep fifo
+[    0.588257] dwmmc_rockchip fe2c0000.mmc: Got CD GPIO
+[    0.600130] ehci-platform fc800000.usb: EHCI Host Controller
+[    0.600683] ehci-platform fc800000.usb: new USB bus registered, assigned bus number 1
+[    0.601507] ehci-platform fc800000.usb: irq 78, io mem 0xfc800000
+[    0.601661] ehci-platform fc880000.usb: EHCI Host Controller
+[    0.601760] mmc_host mmc1: Bus speed (slot 0) = 400000Hz (slot req 400000Hz, actual 400000HZ div = 0)
+[    0.601933] ohci-platform fc840000.usb: Generic Platform OHCI controller
+[    0.601945] ohci-platform fc840000.usb: new USB bus registered, assigned bus number 2
+[    0.602008] ohci-platform fc840000.usb: irq 80, io mem 0xfc840000
+[    0.603708] ohci-platform fc8c0000.usb: Generic Platform OHCI controller
+[    0.603950] ehci-platform fc880000.usb: new USB bus registered, assigned bus number 3
+[    0.604629] ohci-platform fc8c0000.usb: new USB bus registered, assigned bus number 4
+[    0.605218] ehci-platform fc880000.usb: irq 79, io mem 0xfc880000
+[    0.605804] ohci-platform fc8c0000.usb: irq 81, io mem 0xfc8c0000
+[    0.606651] cpufreq: cpufreq_policy_online: CPU0: Running at unlisted initial frequency: 816000 kHz, changing to: 1008000 kHz
+[    0.609277] cpu cpu0: EM: created perf domain
+[    0.611393] ehci-platform fc800000.usb: USB 2.0 started, EHCI 1.00
+[    0.612757] hub 1-0:1.0: USB hub found
+[    0.613171] hub 1-0:1.0: 1 port detected
+[    0.613697] cpufreq: cpufreq_policy_online: CPU4: Running at unlisted initial frequency: 816000 kHz, changing to: 1200000 kHz
+[    0.614783] cpu cpu4: EM: created perf domain
+[    0.621361] cpufreq: cpufreq_policy_online: CPU6: Running at unlisted initial frequency: 816000 kHz, changing to: 1200000 kHz
+[    0.622411] cpu cpu6: EM: created perf domain
+[    0.623356] ehci-platform fc880000.usb: USB 2.0 started, EHCI 1.00
+[    0.624145] hub 3-0:1.0: USB hub found
+[    0.624488] hub 3-0:1.0: 1 port detected
+[    0.624748] clk: Disabling unused clocks
+[    0.625646] PM: genpd: Disabling unused power domains
+[    0.626476] dw-apb-uart feb50000.serial: forbid DMA for kernel console
+[    0.659817] hub 2-0:1.0: USB hub found
+[    0.660169] hub 2-0:1.0: 1 port detected
+[    0.663807] hub 4-0:1.0: USB hub found
+[    0.664151] hub 4-0:1.0: 1 port detected
+[    0.664646] Waiting for root device PARTLABEL=rootfs_a...
+[    0.668938] mmc_host mmc1: Bus speed (slot 0) = 148500000Hz (slot req 150000000Hz, actual 148500000HZ div = 0)
+[    0.859459] usb 1-1: new high-speed USB device number 2 using ehci-platform
+[    1.005126] hub 1-1:1.0: USB hub found
+[    1.005641] hub 1-1:1.0: 4 ports detected
+[    1.083137] dwmmc_rockchip fe2c0000.mmc: Successfully tuned phase to 205
+[    1.084695] mmc1: new UHS-I speed SDR104 SDXC card at address 5048
+[    1.085958] mmcblk1: mmc1:5048 SD64G 58.0 GiB
+[    1.093690] GPT:Primary header thinks Alt. header is not at the end of the disk.
+[    1.094351] GPT:19111969 != 121536511
+[    1.094681] GPT:Alternate GPT header not at the end of the disk.
+[    1.095213] GPT:19111969 != 121536511
+[    1.095559] GPT: Use GNU Parted to correct GPT errors.
+[    1.096035]  mmcblk1: p1 p2 p3 p4 p5
+[    1.194860] EXT4-fs (mmcblk1p2): mounted filesystem e2a4630a-2d94-40c2-8c40-4e62ce7ef7e4 r/w with ordered data mode. Quota mode: none.
+[    1.195948] VFS: Mounted root (ext4 filesystem) on device 179:2.
+[    1.196958] devtmpfs: mounted
+[    1.197843] Freeing unused kernel memory: 3264K
+[    1.198273] Run /sbin/init as init process
+[    1.384517] audit: type=1404 audit(1.376:2): enforcing=1 old_enforcing=0 auid=4294967295 ses=4294967295 enabled=1 old-enabled=1 lsm=selinux res=1
+[    1.473160] SELinux:  Permission watch_mountns in class file not defined in policy.
+[    1.473845] SELinux:  Permission watch_mountns in class dir not defined in policy.
+[    1.474508] SELinux:  Permission watch_mountns in class lnk_file not defined in policy.
+[    1.475208] SELinux:  Permission watch_mountns in class chr_file not defined in policy.
+[    1.475920] SELinux:  Permission watch_mountns in class blk_file not defined in policy.
+[    1.476620] SELinux:  Permission watch_mountns in class sock_file not defined in policy.
+[    1.477327] SELinux:  Permission watch_mountns in class fifo_file not defined in policy.
+[    1.478118] SELinux:  Permission watch_mountns in class anon_inode not defined in policy.
+[    1.478832] SELinux:  Permission allowed in class io_uring not defined in policy.
+[    1.479488] SELinux: the above unknown classes and permissions will be allowed
+[    1.484220] SELinux:  policy capability network_peer_controls=1
+[    1.484746] SELinux:  policy capability open_perms=1
+[    1.485179] SELinux:  policy capability extended_socket_class=1
+[    1.485696] SELinux:  policy capability always_check_network=0
+[    1.486206] SELinux:  policy capability cgroup_seclabel=1
+[    1.486677] SELinux:  policy capability nnp_nosuid_transition=1
+[    1.487194] SELinux:  policy capability genfs_seclabel_symlinks=0
+[    1.487748] SELinux:  policy capability ioctl_skip_cloexec=0
+[    1.488242] SELinux:  policy capability userspace_initial_context=0
+[    1.488789] SELinux:  policy capability netlink_xperm=0
+[    1.489245] SELinux:  policy capability netif_wildcard=0
+[    1.489710] SELinux:  policy capability genfs_seclabel_wildcard=0
+[    1.490242] SELinux:  policy capability functionfs_seclabel=0
+[    1.546746] audit: type=1403 audit(1.536:3): auid=4294967295 ses=4294967295 lsm=selinux res=1
+[    1.551646] systemd[1]: Successfully loaded SELinux policy in 168.042ms.
+[    1.663079] systemd[1]: System time advanced to built-in epoch: Fri 2026-03-13 15:35:08 UTC
++q6E616D65[    2.171581] NET: Registered PF_INET6 protocol family
+[    2.173209] Segment Routing with IPv6
+[    2.173549] In-situ OAM (IOAM) with IPv6
+[    2.238136] systemd[1]: Relabeled /dev/, /dev/shm/, /run/ in 7.510ms.
+[    2.587452] systemd[1]: systemd 259.5 running in system mode (+PAM +AUDIT +SELINUX -APPARMOR +IMA +IPE -SMACK +SECCOMP -GCRYPT -GNUTLS -OPENSSL +ACL +BLKID -CURL -ELFUTILS -FIDO2 -IDN2 -IDN +KMOD -LIBCRYPTSETUP -LIBCRYPTSETUP_PLUGINS +LIBFDISK -PCRE2 -PWQUALITY -P11KIT -QRENCODE -TPM2 -BZIP2 -LZ4 -XZ -ZLIB +ZSTD -BPF_FRAMEWORK -BTF -XKBCOMMON +UTMP -SYSVINIT -LIBARCHIVE)
+[    2.590349] systemd[1]: Detected architecture arm64.
+
+Welcome to TactiQ OS 2.1.0 (hardened-edge)!
+
+[    2.613603] systemd[1]: Hostname set to <tactiq-rock5a>.
+[    2.897942] systemd[1]: /usr/lib/systemd/system/tactiq-agent.service:15: Unknown key 'StartLimitIntervalSec' in section [Service], ignoring.
+[    2.939955] systemd[1]: Queued start job for default target Multi-User System.
+[    2.953989] systemd[1]: Created slice Slice /system/getty.
+[  OK  ] Created slice Slice /system/getty.
+[    2.956352] systemd[1]: Created slice Slice /system/modprobe.
+[  OK  ] Created slice Slice /system/modprobe.
+[    2.964229] systemd[1]: Created slice Slice /system/serial-getty.
+[  OK  ] Created slice Slice /system/serial-getty.
+[    2.972081] systemd[1]: Created slice User and Session Slice.
+[  OK  ] Created slice User and Session Slice.
+[    2.973512] systemd[1]: Started Dispatch Password Requests to Console Directory Watch.
+[  OK  ] Started Dispatch Password Requests to Console Directory Watch.
+[    2.979601] systemd[1]: Started Forward Password Requests to Wall Directory Watch.
+[  OK  ] Started Forward Password Requests to Wall Directory Watch.
+[    2.987489] systemd[1]: Expecting device /dev/disk/by-partlabel/data...
+         Expecting device /dev/disk/by-partlabel/data...
+[    2.988837] systemd[1]: Expecting device /dev/ttyS2...
+         Expecting device /dev/ttyS2...
+[    2.995507] systemd[1]: Reached target Path Units.
+[  OK  ] Reached target Path Units.
+[    3.003478] systemd[1]: Reached target Remote File Systems.
+[  OK  ] Reached target Remote File Systems.
+[    3.004747] systemd[1]: Reached target Slice Units.
+[  OK  ] Reached target Slice Units.
+[    3.011483] systemd[1]: Reached target Swaps.
+[  OK  ] Reached target Swaps.
+[    3.019477] systemd[1]: Reached target System Time Set.
+[  OK  ] Reached target System Time Set.
+[    3.024051] systemd[1]: Listening on Syslog Socket.
+[  OK  ] Listening on Syslog Socket.
+[    3.034626] systemd[1]: Listening on Query the User Interactively for a Password.
+[  OK  ] Listening on Query the User Interactively for a Password.
+[    3.046010] systemd[1]: Listening on Credential Encryption/Decryption.
+[  OK  ] Listening on Credential Encryption/Decryption.
+[    3.055216] systemd[1]: Listening on Factory Reset Management.
+[  OK  ] Listening on Factory Reset Management.
+[    3.063036] systemd[1]: Listening on Journal Audit Socket.
+[  OK  ] Listening on Journal Audit Socket.
+[    3.064550] systemd[1]: Listening on Journal Socket (/dev/log).
+[  OK  ] Listening on Journal Socket (/dev/log).
+[    3.071921] systemd[1]: Listening on Journal Sockets.
+[  OK  ] Listening on Journal Sockets.
+[    3.077024] systemd[1]: Listening on Console Output Muting Service Socket.
+[  OK  ] Listening on Console Output Muting Service Socket.
+[    3.084215] systemd[1]: Listening on Network Management Resolve Hook Socket.
+[  OK  ] Listening on Network Management Resolve Hook Socket.
+[    3.092174] systemd[1]: Listening on Network Management Varlink Socket.
+[  OK  ] Listening on Network Management Varlink Socket.
+[    3.099899] systemd[1]: Listening on Network Management Netlink Socket.
+[  OK  ] Listening on Network Management Netlink Socket.
+[    3.108102] systemd[1]: Listening on Resolve Monitor Varlink Socket.
+[  OK  ] Listening on Resolve Monitor Varlink Socket.
+[    3.115718] systemd[1]: Listening on Resolve Service Varlink Socket.
+[  OK  ] Listening on Resolve Service Varlink Socket.
+[    3.125269] systemd[1]: Listening on udev Control Socket.
+[  OK  ] Listening on udev Control Socket.
+[    3.131922] systemd[1]: Listening on udev Kernel Socket.
+[  OK  ] Listening on udev Kernel Socket.
+[    3.133507] systemd[1]: Listening on udev Varlink Socket.
+[  OK  ] Listening on udev Varlink Socket.
+[    3.139966] systemd[1]: Listening on User Database Manager Socket.
+[  OK  ] Listening on User Database Manager Socket.
+[    3.150798] systemd[1]: Mounting Huge Pages File System...
+         Mounting Huge Pages File System...
+[    3.161438] systemd[1]: Mounting POSIX Message Queue File System...
+         Mounting POSIX Message Queue File System...
+[    3.173937] systemd[1]: Mounting Kernel Debug File System...
+         Mounting Kernel Debug File System...
+[    3.179623] systemd[1]: Kernel Trace File System skipped, unmet condition check ConditionPathExists=/sys/kernel/tracing
+[    3.181456] systemd[1]: tmp.mount: x-systemd.graceful-option=usrquota specified, but option is not available, suppressing.
+[    3.184333] systemd[1]: Mounting Temporary Directory /tmp...
+         Mounting Temporary Directory /tmp...
+[    3.191707] systemd[1]: Create List of Static Device Nodes skipped, unmet condition check ConditionFileNotEmpty=/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/modules.devname
+[    3.193235] systemd[1]: Load Kernel Module configfs skipped, unmet condition check ConditionKernelModuleLoaded=!configfs
+[    3.196114] systemd[1]: Mounting Kernel Configuration File System...
+         Mounting Kernel Configuration File System...
+[    3.205312] systemd[1]: Starting Load Kernel Module drm...
+         Starting Load Kernel Module drm...
+[    3.213352] systemd[1]: Starting Load Kernel Module fuse...
+         Starting Load Kernel Module fuse...
+[    3.221313] systemd[1]: Starting SELinux autorelabel service loading...
+         Starting SELinux autorelabel service loading...
+[    3.234190] systemd[1]: Starting Journal Service...
+         Starting Journal Service...
+[    3.242650] systemd[1]: Load Kernel Modules skipped, no trigger condition checks were met.
+[    3.245196] systemd[1]: Starting Generate Network Units from Kernel Command Line...
+         Starting Generate Network Units from Kernel Command Line...
+[    3.253462] systemd[1]: Starting Remount Root and Kernel File Systems...
+         Starting Remount Root and Kernel File Systems...
+[    3.261331] systemd[1]: Starting Apply Kernel Variables...
+         Starting Apply Kernel Variables...
+[    3.269320] systemd[1]: Starting Create Static Device Nodes in /dev gracefully...
+         Starting Create Static Device Nodes in /dev gracefully...
+[    3.276844] systemd[1]: Starting Load udev Rules from Credentials...
+         Starting Load udev Rules from Credentials...
+[    3.281583] systemd[1]: Starting Coldplug All udev Devices...
+         Starting Coldplug All udev Devices...
+[    3.296900] systemd[1]: Mounted Huge Pages File System.
+[  OK  ] Mounted Huge Pages File System.
+[    3.304133] systemd[1]: Mounted POSIX Message Queue File System.
+[  OK  ] Mounted POSIX Message Queue File System.
+[    3.314995] systemd-journald[178]: Collecting audit messages is enabled.
+[    3.315834] systemd[1]: Mounted Kernel Debug File System.
+[  OK  ] Mounted Kernel Debug File System.
+[    3.317416] systemd[1]: Mounted Temporary Directory /tmp.
+[  OK  ] Mounted Temporary Directory /tmp.
+[    3.319913] EXT4-fs (mmcblk1p2): re-mounted e2a4630a-2d94-40c2-8c40-4e62ce7ef7e4 ro.
+[    3.325515] systemd[1]: Mounted Kernel Configuration File System.
+[  OK  ] Mounted Kernel Configuration File System.
+[    3.336074] systemd[1]: modprobe@drm.service: Deactivated successfully.
+[    3.336975] systemd[1]: Finished Load Kernel Module drm.
+[  OK  ] Finished Load Kernel Module drm.
+[    3.347513] audit: type=1130 audit(1773416109.684:4): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=modprobe@drm comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[    3.347684] systemd[1]: Started Journal Service.
+[    3.349363] audit: type=1131 audit(1773416109.684:5): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=modprobe@drm comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[  OK  ] Started Journal Service.
+[  OK  ] Finished Load Kernel Module fuse    3.365130] audit: type=1130 audit(1773416109.700:6): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=systemd-journald comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+m.
+[    3.368388] audit: type=1130 audit(1773416109.704:7): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=modprobe@fuse comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[    3.370259] audit: type=1131 audit(1773416109.704:8): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=modprobe@fuse comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[  OK  ] Finished SELinux autorelabel service loading.
+[    3.380162] audit: type=1130 audit(1773416109.716:9): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=selinux-autorelabel comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[    3.382085] audit: type=1131 audit(1773416109.716:10): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=selinux-autorelabel comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[  OK  ] Finished Generate Network Units from Kernel Command Line.
+[  OK  ] Finished Remount Root and Kernel File Systems.
+[  OK  ] Finished Apply Kernel Variables.
+[  OK  ] Finished Create Static Device Nodes in /dev gracefully.
+[  OK  ] Finished Load udev Rules from Credentials.
+         Starting Flush Journal to Persistent Storage...
+         Starting Network Name Resolution...
+         Starting Create Static Device Nodes in /dev...
+[    3.476398] systemd-journald[178]: Received client request to flush runtime journal.
+[  OK  ] Finished Flush Journal to Persistent Storage.
+         Starting User Database Manager...
+[  OK  ] Finished Create Static Device Nodes in /dev.
+[  OK  ] Reached target Preparation for Local File Systems.
+         Starting Rule-based Manager for Device Events and Files...
+[  OK  ] Started User Database Manager.
+[  OK  ] Started Rule-based Manager for Device Events and Files.
+[  OK  ] Finished Coldplug All udev Devices.
+[  OK  ] Started Network Name Resolution.
+[  OK  ] Reached target Host and Network Name Lookups.
+[  OK  ] Found device /dev/ttyS2.
+[  OK  ] Found device /dev/disk/by-partlabel/data.
+         Starting Virtual Console Setup...
+         Mounting TactiQ data partition (vault, p5)...
+         Mounting /var/volatile...
+[  OK  ] Finished Virtual Console Setup.
+[  OK  ] Mounted /var/volatile.
+         Starting Bind mount volatile /var/cache...
+         Starting Bind mount volatile /var/lib...
+         Starting Bind mount volatile /var/spool...
+         Starting Bind mount volatile /srv...
+[  OK  ] Finished Bind mount volatile /srv.
+[  OK  ] Finished Bind mount volatile /var/spool.
+[    5.664779] EXT4-fs (mmcblk1p5): mounted filesystem a8c0a5cc-0be3-48e5-9b96-b157632c494d r/w with ordered data mode. Quota mode: none.
+[  OK  ] Mounted TactiQ data partition (vault, p5).
+[  OK  ] Finished Bind mount volatile /var/cache.
+[    6.275650] kauditd_printk_skb: 20 callbacks suppressed
+[    6.275657] audit: type=1130 audit(1773416112.612:31): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=var-volatile-cache comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[  OK  ] Finished Bind mount volatile /var/lib.
+[    7.203607] audit: type=1130 audit(1773416113.540:32): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=var-volatile-lib comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[  OK  ] Reached target Local File Systems.
+         Starting Load/Save OS Random Seed...
+         Starting Create System Files and Directories...
+         Starting Load JSON user/group Records from Credentials...
+[  OK  ] Finished Load/Save OS Random Seed.
+[    7.255784] audit: type=1130 audit(1773416113.592:33): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=systemd-random-seed comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[  OK  ] Finished Load JSON user/group Records from Credentials.
+[    7.267550] audit: type=1130 audit(1773416113.604:34): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=systemd-userdb-load-credentials comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[  OK  ] Finished Create System Files and Directories.
+[    7.295891] audit: type=1130 audit(1773416113.632:35): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=systemd-tmpfiles-setup comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+         Starting Record System Boot/Shutdown in UTMP...
+[    7.331365] audit: type=1127 audit(1773416113.664:36): pid=311 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:initrc_t:s0 msg=' comm="systemd-update-utmp" exe="/usr/lib/systemd/systemd-update-utmp" hostname=? addr=? terminal=? res=success'
+[  OK  ] Finished Record System Boot/Shutdown in UTMP.
+[    7.343469] audit: type=1130 audit(1773416113.676:37): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=systemd-update-utmp comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[  OK  ] Reached target System Initialization.
+[  OK  ] Started Daily Cleanup of Temporary Directories.
+[  OK  ] Reached target Boot Completion Check.
+[  OK  ] Reached target Timer Units.
+[  OK  ] Listening on D-Bus System Message Bus Socket.
+[  OK  ] Listening on OpenSSH Server Socket…temd-ssh-generator, AF_UNIX Local).
+         Starting sshd.socket...
+[  OK  ] Listening on Hostname Service Socket.
+[  OK  ] Listening on User Login Management Varlink Socket.
+         Starting RAUC Good-marking Service...
+[  OK  ] Listening on sshd.socket.
+[  OK  ] Reached target Socket Units.
+[  OK  ] Reached target Basic System.
+[  OK  ] Started Kernel Logging Service.
+[    7.491900] audit: type=1130 audit(1773416113.828:38): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=busybox-klogd comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[  OK  ] Started System Logging Service.
+[    7.516961] audit: type=1130 audit(1773416113.852:39): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=busybox-syslog comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[    7.520165] audit: type=1334 audit(1773416113.856:40): prog-id=11 op=LOAD
+         Starting NTP client/server...
+         Starting Prepare TactiQ data partition layout...
+         Starting D-Bus System Message Bus...
+         Starting IPv6 Packet Filtering Framework...
+         Starting IPv4 Packet Filtering Framework...
+         Starting User Login Management...
+         Starting OpenSSH Key Generation...
+[  OK  ] Started NTP client/server.
+[  OK  ] Finished IPv6 Packet Filtering Framework.
+[  OK  ] Finished IPv4 Packet Filtering Framework.
+[  OK  ] Reached target Preparation for Network.
+         Starting Network Management...
+[  OK  ] Started User Login Management.
+[  OK  ] Finished Prepare TactiQ data partition layout.
+[  OK  ] Started D-Bus System Message Bus.
+[  OK  ] Started Network Management.
+[  OK  ] Finished OpenSSH Key Generation.
+[  OK  ] Reached target Network.
+         Starting RAUC Update Service...
+         Starting Enable Persistent Storage in systemd-networkd...
+         Starting Permit User Sessions...
+[  OK  ] Finished Permit User Sessions.
+[  OK  ] Started RAUC Update Service.
+[  OK  ] Finished Enable Persistent Storage in systemd-networkd.
+[  OK  ] Started Getty on tty1.
+[  OK  ] Started Serial Getty on ttyS2.
+[  OK  ] Reached target Login Prompts.
+[  OK  ] Reached target Multi-User System.
+[    8.071351] EXT4-fs (mmcblk1p4): mounted filesystem 053cd549-498f-42b9-996c-728b765b44b1 r/w with ordered data mode. Quota mode: none.
+[    8.072927] EXT4-fs (mmcblk1p4): unmounting filesystem 053cd549-498f-42b9-996c-728b765b44b1.
+[    8.203427] EXT4-fs (mmcblk1p1): mounted filesystem fc8bdbaf-2612-407b-8a75-d3a5d9982adc r/w with ordered data mode. Quota mode: none.
+[    8.211092] EXT4-fs (mmcblk1p1): unmounting filesystem fc8bdbaf-2612-407b-8a75-d3a5d9982adc.
+[    8.353324] EXT4-fs (mmcblk1p3): mounted filesystem eaa3043f-9282-4ddb-9970-243e19bee8b7 r/w with ordered data mode. Quota mode: none.
+[    8.355255] EXT4-fs (mmcblk1p3): unmounting filesystem eaa3043f-9282-4ddb-9970-243e19bee8b7.
+[  OK  ] Finished RAUC Good-marking Service.
+                                                                                                                                                                                            +q6E616D65
+TactiQ OS 2.1.0 tactiq-rock5a ttyS2
+
+Type 'root' to login with superuser privileges (no password will be asked).
+
+tactiq-rock5a login: [   10.726723] platform a41000000.pcie: deferred probe pending: rockchip-dw-pcie: missing PHY
+[   10.727505] platform fc000000.usb: deferred probe pending: dwc3: failed to initialize core
+[   10.728248] platform fcd00000.usb: deferred probe pending: dwc3: failed to initialize core
+[   10.729000] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fc000000.usb
+[   10.729931] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fb000000.gpu
+[   10.730860] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fdb50000.video-codec
+[   10.731888] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fdb80000.rga
+[   10.732819] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fdba0000.video-codec
+[   10.733813] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fdba4000.video-codec
+[   10.734801] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fdba8000.video-codec
+[   10.735822] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fdbac000.video-codec
+[   10.736814] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fdc70000.video-codec
+[   10.737803] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fdd90000.vop
+[   10.738733] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fde80000.hdmi
+[   10.739696] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to a41000000.pcie
+[   10.740640] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fe1c0000.ethernet
+[   10.741608] rockchip-pm-domain fd8d8000.power-management:power-controller: sync_state() pending due to fe470000.i2s
+▒▒▒▒P▒▒▒z▒▒▒TP▒P]▒P▒▒▒▒U▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒XU▒▒▒}▒▒▒▒U▒▒▒U▒▒▒▒▒▒UU▒▒▒▒▒▒▒▒▒▒▒▒▒▒W▒▒?W▒▒▒W~▒▒▒▒▒
+root
+[   26.504005] kauditd_printk_skb: 84 callbacks suppressed
+[   26.504011] audit: type=1131 audit(1773416132.840:81): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=serial-getty@ttyS2 comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+                                                                                                                                                                                            [   26.856722] audit: type=1130 audit(1773416133.192:82): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=serial-getty@ttyS2 comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
++q6E616D65
+TactiQ OS 2.1.0 tactiq-rock5a ttyS2
+
+Type 'root' to login with superuser privileges (no password will be asked).
+
+tactiq-rock5a login: root[   31.715563] vdd_gpu_s0: disabling
+
+[   32.332843] audit: type=1130 audit(1773416138.668:83): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=user-runtime-dir@0 comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[   32.384286] audit: type=1006 audit(1773416138.720:84): pid=426 uid=0 subj=system_u:system_r:init_t:s0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=1 res=1
+[   32.385624] audit: type=1300 audit(1773416138.720:84): arch=c00000b7 syscall=64 success=yes exit=1 a0=8 a1=ffffe735d210 a2=1 a3=0 items=0 ppid=1 pid=426 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=1 comm="(systemd)" exe="/usr/lib/systemd/systemd-executor" subj=system_u:system_r:init_t:s0 key=(null)
+[   32.389294] audit: type=1327 audit(1773416138.720:84): proctitle="(systemd)"
+[   32.456628] audit: type=1334 audit(1773416138.792:85): prog-id=16 op=LOAD
+[   32.457234] audit: type=1300 audit(1773416138.792:85): arch=c00000b7 syscall=280 success=yes exit=8 a0=5 a1=ffffe0003770 a2=a8 a3=aaab15602fd0 items=0 ppid=1 pid=426 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=1 comm="systemd" exe="/usr/lib/systemd/systemd" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key=(null)
+[   32.460940] audit: type=1327 audit(1773416138.792:85): proctitle="(systemd)"
+[   32.462351] audit: type=1334 audit(1773416138.792:86): prog-id=16 op=UNLOAD
+[   32.463061] audit: type=1300 audit(1773416138.792:86): arch=c00000b7 syscall=57 success=yes exit=0 a0=8 a1=0 a2=0 a3=0 items=0 ppid=1 pid=426 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=1 comm="systemd" exe="/usr/lib/systemd/systemd" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key=(null)
+[   32.465786] audit: type=1327 audit(1773416138.792:86): proctitle="(systemd)"
+root@tactiq-rock5a:~# ls -Z /var/cache/rauc/; restorecon -Rv /var/cache/rauc/; ls -Z /var/cache/rauc/
+system_u:object_r:var_t:s0       tactiq-bundle-tactiq-rock5a.raucb
+Relabeled /var/cache/rauc from system_u:object_r:var_t:s0 to system_u:object_r:rauc_bundle_t:s0
+Relabeled /var/cache/rauc/tactiq-bundle-tactiq-rock5a.raucb from system_u:object_r:var_t:s0 to system_u:object_r:rauc_bundle_t:s0
+system_u:object_r:rauc_bundle_t:s0 tactiq-bundle-tactiq-rock5a.raucb
+root@tactiq-rock5a:~# ^C
+root@tactiq-rock5a:~# dmesg -C; rauc install /var/cache/rauc/tactiq-bundle-tactiq-rock5a.raucb; echo "=== EXIT: $? ==="; dmesg | grep -iE "avc|squashfs|falling back"; ls -Z /run/lock/ /var/lock/ 2>&1
+installing
+  0% Installing
+  0% Determining slot states
+ 10% Determining slot states done.
+ 10% Checking bundle
+ 10% Verifying signature
+ 20% Verifying signature failed.
+ 20% Checking bundle failed.
+100% Installing failed.
+LastError: signature verification failed: Verify error: certificate is not yet valid
+Installing `/var/cache/rauc/tactiq-bundle-tactiq-rock5a.raucb` failed
+=== EXIT: 1 ===
+/run/lock/:
+system_u:object_r:rauc_lock_t:s0 fw_printenv.lock
+
+/var/lock/:
+system_u:object_r:rauc_lock_t:s0 fw_printenv.lock
+root@tactiq-rock5a:~# date -s "2026-07-21 10:00:00"; date; dmesg -C; rauc install /var/cache/rauc/tactiq-bundle-tactiq-rock5a.raucb; echo "=== EXIT: $? ==="; dmesg | grep -iE "avc|falling back|squashfs"
+Tue Jul 21 10:00:00 UTC 2026
+Tue Jul 21 10:00:00 UTC 2026
+installing
+  0% Installing
+  0% Determining slot states
+ 10% Determining slot states done.
+ 10% Checking bundle
+ 10% Verifying signature
+ 20% Verifying signature done.
+[  201.752827] loop0: detected capacity change from 0 to 154045
+ 20% Checking bundle done.
+[  201.815486] loop0: detected capacity change from 154045 to 154040
+ 20% Checking manifest contents
+ 30% Checking manifest contents done.
+[  201.861415] device-mapper: verity: sha256 using "sha256-lib"
+[  201.863987] SELinux: (dev dm-0, type squashfs) has no xattr support
+[  201.864569] SELinux: (dev dm-0, type squashfs) falling back to genfs
+ 30% Determining target install group
+[  201.867141] kauditd_printk_skb: 2 callbacks suppressed
+[  201.867145] audit: type=1400 audit(1784628000.156:89): avc:  denied  { getattr } for  pid=496 comm="(udev-worker)" path="/var/cache/rauc/tactiq-bundle-tactiq-rock5a.raucb" dev="tmpfs" ino=14 scontext=system_u:system_r:udev_t:s0 tcontext=system_u:object_r:rauc_bundle_t:s0 tclass=file permissive=0
+ 40% Determining target install group done.
+[  201.870165] audit: type=1300 audit(1784628000.156:89): arch=c00000b7 syscall=29 success=no exit=-13 a0=16 a1=4c05 a2=fffff8a33e70 a3=0 items=0 ppid=213 pid=496 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="(udev-worker)" exe="/usr/bin/udevadm" subj=system_u:system_r:udev_t:s0 key=(null)
+[  201.873102] audit: type=1327 audit(1784628000.156:89): proctitle="(udev-worker)"
+[  201.875021] audit: type=1400 audit(1784628000.164:90): avc:  denied  { getattr } for  pid=496 comm="(udev-worker)" path="/var/cache/rauc/tactiq-bundle-tactiq-rock5a.raucb" dev="tmpfs" ino=14 scontext=system_u:system_r:udev_t:s0 tcontext=system_u:object_r:rauc_bundle_t:s0 tclass=file permissive=0
+[  201.877394] audit: type=1300 audit(1784628000.164:90): arch=c00000b7 syscall=29 success=no exit=-13 a0=16 a1=4c05 a2=fffff8a33d40 a3=0 items=0 ppid=213 pid=496 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="(udev-worker)" exe="/usr/bin/udevadm" subj=system_u:system_r:udev_t:s0 key=(null)
+[  201.880255] audit: type=1327 audit(1784628000.164:90): proctitle="(udev-worker)"
+ 40% Updating slots
+ 40% Checking slot rootfs.1 (B)
+ 43% Checking slot rootfs.1 (B) done.
+ 43% Copying image to rootfs.1
+ 44% Copying image to rootfs.1
+ 45% Copying image to rootfs.1
+ 46% Copying image to rootfs.1
+ 47% Copying image to rootfs.1
+ 48% Copying image to rootfs.1
+ 49% Copying image to rootfs.1
+ 50% Copying image to rootfs.1
+ 51% Copying image to rootfs.1
+ 52% Copying image to rootfs.1
+ 53% Copying image to rootfs.1
+ 54% Copying image to rootfs.1
+ 55% Copying image to rootfs.1
+ 56% Copying image to rootfs.1
+ 57% Copying image to rootfs.1
+ 58% Copying image to rootfs.1
+ 59% Copying image to rootfs.1
+ 60% Copying image to rootfs.1
+ 61% Copying image to rootfs.1
+ 62% Copying image to rootfs.1
+ 63% Copying image to rootfs.1
+ 64% Copying image to rootfs.1
+ 65% Copying image to rootfs.1
+ 66% Copying image to rootfs.1
+ 67% Copying image to rootfs.1
+ 68% Copying image to rootfs.1
+ 69% Copying image to rootfs.1
+ 70% Copying image to rootfs.1 done.
+[  212.096803] EXT4-fs (mmcblk1p4): mounted filesystem 820485cd-64d9-4425-84d7-6d68fab0fe42 r/w with ordered data mode. Quota mode: none.
+[  212.116140] EXT4-fs (mmcblk1p4): unmounting filesystem 820485cd-64d9-4425-84d7-6d68fab0fe42.
+ 70% Checking slot boot.1
+ 73% Checking slot boot.1 done.
+ 73% Copying image to boot.1
+ 74% Copying image to boot.1
+ 75% Copying image to boot.1
+ 76% Copying image to boot.1
+ 77% Copying image to boot.1
+ 78% Copying image to boot.1
+ 79% Copying image to boot.1
+ 80% Copying image to boot.1
+ 81% Copying image to boot.1
+ 82% Copying image to boot.1
+ 83% Copying image to boot.1
+ 84% Copying image to boot.1
+ 85% Copying image to boot.1
+ 86% Copying image to boot.1
+ 87% Copying image to boot.1
+ 88% Copying image to boot.1
+ 89% Copying image to boot.1
+ 90% Copying image to boot.1
+ 91% Copying image to boot.1
+ 92% Copying image to boot.1
+ 93% Copying image to boot.1
+ 94% Copying image to boot.1
+ 95% Copying image to boot.1
+ 96% Copying image to boot.1
+ 97% Copying image to boot.1
+ 98% Copying image to boot.1
+ 99% Copying image to boot.1
+ 99% Copying image to boot.1 done.
+[  217.571052] EXT4-fs (mmcblk1p3): mounted filesystem 5a32ca30-2796-4205-b8f7-421415907c10 r/w with ordered data mode. Quota mode: none.
+[  217.589349] EXT4-fs (mmcblk1p3): unmounting filesystem 5a32ca30-2796-4205-b8f7-421415907c10.
+ 99% Updating slots done.
+[  217.755395] EXT4-fs (mmcblk1p4): mounted filesystem 820485cd-64d9-4425-84d7-6d68fab0fe42 r/w with ordered data mode. Quota mode: none.
+[  217.775889] EXT4-fs (mmcblk1p4): unmounting filesystem 820485cd-64d9-4425-84d7-6d68fab0fe42.
+100% Installing done.
+Installing `/var/cache/rauc/tactiq-bundle-tactiq-rock5a.raucb` succeeded
+=== EXIT: 0 ===
+[  201.863987] SELinux: (dev dm-0, type squashfs) has no xattr support
+[  201.864569] SELinux: (dev dm-0, type squashfs) falling back to genfs
+[  201.867145] audit: type=1400 audit(1784628000.156:89): avc:  denied  { getattr } for  pid=496 comm="(udev-worker)" path="/var/cache/rauc/tactiq-bundle-tactiq-rock5a.raucb" dev="tmpfs" ino=14 scontext=system_u:system_r:udev_t:s0 tcontext=system_u:object_r:rauc_bundle_t:s0 tclass=file permissive=0
+[  201.875021] audit: type=1400 audit(1784628000.164:90): avc:  denied  { getattr } for  pid=496 comm="(udev-worker)" path="/var/cache/rauc/tactiq-bundle-tactiq-rock5a.raucb" dev="tmpfs" ino=14 scontext=system_u:system_r:udev_t:s0 tcontext=system_u:object_r:rauc_bundle_t:s0 tclass=file permissive=0
+root@tactiq-rock5a:~# mkdir -p /mnt/slot && mount -o ro /dev/mmcblk1p4 /mnt/slot && ls -laZ /mnt/slot/ | head -15; ls -Z /mnt/slot/slot.raucs 2>&1; umount /mnt/slot; ls -laZ /var/lib/rauc/ /run/rauc/ 2>&1; rauc status; dmesg | grep -c "avc.*denied.*rauc_t"
+mkdir: can't create directory '/mnt/slot': Read-only file system
+ls: /mnt/slot/slot.raucs: No such file or directory
+umount: /mnt/slot: no mount point specified.
+ls: /var/lib/rauc/: No such file or directory
+/run/rauc/:
+drwxr-xr-x    5 root     root     system_u:object_r:rauc_runtime_t:s0       100 Mar 13 15:35 .
+drwxr-xr-x   16 root     root     system_u:object_r:var_run_t:s0         400 Mar 13 15:35 ..
+drwxr-xr-x    2 root     root     system_u:object_r:rauc_runtime_t:s0        40 Mar 13 15:35 artifacts
+drwxr-xr-x    2 root     root     system_u:object_r:rauc_runtime_t:s0        40 Jul 21 10:00 mnt
+drwxr-xr-x    3 root     root     system_u:object_r:rauc_runtime_t:s0        60 Mar 13 15:35 slots
+=== System Info ===
+Compatible:  TactiQ OS Rock5A
+Variant:
+Booted from: rootfs.0 (A)
+
+=== Bootloader ===
+Activated: rootfs.1 (B)
+
+=== Slot States ===
+x [rootfs.1] (/dev/disk/by-partlabel/rootfs_b, ext4, inactive)
+      bootname: B
+      boot status: good
+    [boot.1] (/dev/disk/by-partlabel/boot_b, ext4, inactive)
+
+o [rootfs.0] (/dev/disk/by-partlabel/rootfs_a, ext4, booted)
+      bootname: A
+      boot status: good
+    [boot.0] (/dev/disk/by-partlabel/boot_a, ext4, active)
+0
+root@tactiq-rock5a:~# mkdir -p /tmp/slot && mount -o ro /dev/mmcblk1p4 /tmp/slot && ls -laZ /tmp/slot/ | head -10; ls -Z /tmp/slot/slot.raucs 2>&1; umount /tmp/slot
+[  317.642477] EXT4-fs (mmcblk1p4): orphan cleanup on readonly fs
+[  317.643160] EXT4-fs (mmcblk1p4): mounted filesystem 820485cd-64d9-4425-84d7-6d68fab0fe42 ro with ordered data mode. Quota mode: none.
+/bin/head: invalid option -- '1'
+BusyBox v1.37.0 () multi-call binary.
+
+Usage: head [OPTIONS] [FILE]...
+system_u:object_r:rauc_status_t:s0 /tmp/slot/slot.raucs
+[  317.666472] EXT4-fs (mmcblk1p4): unmounting filesystem 820485cd-64d9-4425-84d7-6d68fab0fe42.
+root@tactiq-rock5a:~# ^C
+root@tactiq-rock5a:~#
