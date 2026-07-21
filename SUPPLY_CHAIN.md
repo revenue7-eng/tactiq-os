@@ -77,7 +77,7 @@ Triage notes:
 - Local recipes use `file://` URIs with content shipped in the repo, so
   they are already hash-stable.
 
-### Empirical reproducibility test (v2.1.0-rc2)
+### Empirical reproducibility test (v2.1.0-rc2, scarthgap)
 
 Two consecutive builds against the same tagged source state, with `sstate`
 cache reused on the second build. Full methodology, raw `cmp(1)` output,
@@ -100,6 +100,36 @@ rootfs assembly time (machine-id, random-seed).
 **Per-file content reproducibility verified** via the published SBOM —
 the SPDX aggregate records SHA-256 for 7,178 files, and these hashes are
 identical between the two builds.
+
+### Empirical reproducibility test (wrynose, 2026-07-21)
+
+Re-measured after migration from scarthgap to wrynose (Yocto 6.0).
+Two consecutive builds of `tactiq-image` (builds 20260721003000 and
+20260721023917, second with warm sstate). Full methodology and raw data
+are in [`docs/reproducibility/wrynose-20260721.md`](docs/reproducibility/wrynose-20260721.md).
+
+| Metric                     | Value                                |
+|----------------------------|--------------------------------------|
+| SBOM format                | SPDX 3.0.1 (single image SBOM)      |
+| Files with SHA-256 in SBOM | 38,951                               |
+| Files identical            | 38,947 (99.99%)                      |
+| Files differing            | 4 (image artifacts only)             |
+| `.wic` image size          | 9,785,328,640 bytes (identical)      |
+| Bytes identical            | 9,785,255,562 (99.9993%)             |
+| Bytes differing            | 73,078                               |
+| Distinct diff ranges       | 15,805                               |
+| Mean range size            | ~4.6 bytes                           |
+| Manifest packages          | 273 (identical)                      |
+| rootfs tarball              | bit-identical (SHA-256 match)        |
+
+The 4 differing files are image-level artifacts (`.ext4`, `.wic`,
+`.wic.bmap`, `.wic.gz`) whose differences are filesystem metadata
+(ext4 UUID, inode timestamps, partition table). The rootfs tarball
+(`.tar.gz`) is bit-identical, confirming that every file in the
+root filesystem — kernel, libc, every runtime package — produces
+byte-identical output from the same source on wrynose.
+
+**Per-file content reproducibility verified on wrynose.**
 
 **Filesystem-image bit-identity not yet achieved.** Pending elimination
 of remaining non-deterministic sources: `mkfs.ext4 --uuid` pinning,

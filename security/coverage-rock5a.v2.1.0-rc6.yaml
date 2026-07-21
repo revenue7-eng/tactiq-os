@@ -70,7 +70,13 @@ manifest:
       pinned in the release notes after signing, per the rc5 procedure.
     slsa_provenance: "attest.yml — SLSA build-provenance over source archive"
   reproducibility:
-    status: "pending re-measurement (wrynose)"   # unchanged from rc5
+    status: "per-file verified (wrynose, 2026-07-21)"
+    detail: >-
+      38947/38951 SBOM file hashes identical between two consecutive builds.
+      4 differing entries are image-level artifacts (.ext4, .wic, .wic.bmap,
+      .wic.gz); rootfs tarball bit-identical. Image bit-identity 99.9993%
+      (73078 bytes differ in 9785328640). Full data in
+      docs/reproducibility/wrynose-20260721.md.
   resolved_since_rc5:
     - "RAUC OTA path — .raucb bundle produced and installed under enforcing"
     - "bundle now carries the production rootfs (was tactiq-image-dev until rc6)"
@@ -81,7 +87,7 @@ manifest:
   deferred_in_rc6:
     - "production signing PKI (RAUC keyring is a development self-signed CA)"
     - "measured boot: PCR 0-9 unmeasured, RK3588 OTP not fused"
-    - "filesystem-image reproducibility re-measurement"
+    - "filesystem-image bit-identity (per-file content verified; image metadata pending)"
     - "kernel pin bump — scheduled for rc7"
     - "TACTIQ_IMAGE_NAME in /etc/tactiq-release is empty; TACTIQ_BUILD_DATE is the fixed SOURCE_DATE_EPOCH"
   generated_utc: "<iso8601>"
@@ -120,10 +126,10 @@ techniques:
       SLSA provenance covers only the source archive (VERIFY.md 5 states
       this explicitly), and filesystem-image reproducibility under wrynose is
       not measured. A compromise of the build host would yield artifacts that
-      pass every consumer-side check. Reproducible builds plus a hosted
-      builder are what would close this, which is why the pending
-      re-measurement belongs in this row and not in housekeeping.
-      Do NOT claim reproducible builds for rc6.
+      pass every consumer-side check. Per-file content reproducibility is
+      now verified on wrynose (38947/38951 identical); filesystem-image
+      bit-identity remains pending. A hosted builder would close the
+      remaining gap.
     nist: ["SR-3", "SR-4", "SP 800-161", "SSDF"]
     sentinel: { signal: "sbom_runtime_drift", meaning: "runtime component != SBOM" }
     provenance: FACT
