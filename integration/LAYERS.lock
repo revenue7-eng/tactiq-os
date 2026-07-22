@@ -1,0 +1,36 @@
+# TactiQ OS layer lock — build input state of release v2.1.0-rc6
+#
+# Records the exact upstream revision of every Yocto layer that produced
+# the v2.1.0-rc6 release artifacts. Together with scripts/setup-layers.sh
+# this makes the build input fully specified from public sources: an
+# independent party can reconstruct the complete layer set without access
+# to the original build host.
+#
+# Provenance note. The dependency-layer revisions below were recovered
+# forensically from the original build host after the release: per-file
+# blob hashes of each layer directory were matched against upstream
+# history (content match, file modes excluded — the layers had passed
+# through an NTFS filesystem, which does not preserve POSIX modes).
+# Eight of nine layers matched their pinned commit exactly, file for
+# file; openembedded-core matched exactly once oe-core's own
+# `.gitignore` pattern `buildtools/` was accounted for (it hides five
+# tracked files from a fresh index). The tactiq-os-selinux revision is
+# established from the build host reflog (HEAD at build time); a clean
+# working tree at build time is asserted, not proven. From v2.1.0-rc7
+# onward this file is maintained at build time, not reconstructed.
+#
+# Format: <layer> <remote> <commit> <upstream-branch>
+# meta-rauc is not listed: it is reconstructed deterministically by
+# scripts/setup-meta-rauc.sh (pinned commit + local patch, verified by
+# tree hash ce25181e3275664e5ed66d980ef2e74424861801).
+
+bitbake              https://github.com/openembedded/bitbake              22021758e66737bcf68dfd2b74adc6a0cb1d42d9  2.18
+openembedded-core    https://github.com/openembedded/openembedded-core    06dd66e6220e5ce4ed4b9af4d8231ae5f0a8ce80  wrynose
+meta-yocto           https://git.yoctoproject.org/meta-yocto              8251bdad5fda780a000fb41e6eda82eadf0fa39e  wrynose
+meta-openembedded    https://github.com/openembedded/meta-openembedded    9af4488d46cb4fd4c0d2d64820c86225ebd6ac71  wrynose
+meta-selinux         https://git.yoctoproject.org/meta-selinux            1ba26da4b9bec3f102bd831efe0db00c7d61f7f2  wrynose
+meta-arm             https://git.yoctoproject.org/meta-arm                31dd0e8a891800a6dc6823a84389e7bc115d149a  wrynose
+meta-rockchip        https://git.yoctoproject.org/meta-rockchip           9d02575bfd9ca5e87c394f593f2bbdbdee914d4e  wrynose
+meta-tensorflow-lite https://github.com/NobuoTsukamoto/meta-tensorflow-lite f87ee8eab434497e3a1f8329013a4af5415cbd1e main
+tactiq-os            https://github.com/revenue7-eng/tactiq-os            9c51838f0d2e9af655def0a4597ed888931e655f  v2.1.0-rc6
+tactiq-os-selinux    https://github.com/revenue7-eng/tactiq-os-selinux    9774c30a116c8ac92b37bedfc287dd7a3c874725  main
