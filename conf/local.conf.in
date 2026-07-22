@@ -1,0 +1,48 @@
+# local.conf — TactiQ OS build input for v2.1.0-rc6, rock5a target.
+#
+# Kept minimal: everything set here is what would NOT already be
+# established by conf/distro/tactiq.conf (activated via DISTRO below).
+# Anything you see in the published buildinfo-rock5a.json but not here
+# — DISTRO_FEATURES, BUILD_REPRODUCIBLE_BINARIES, PACKAGE_CLASSES,
+# INHERIT += "archiver", sbom-cve-check, security CFLAGS, kernel SPDX
+# — is inherited from the distro config and does not belong in a
+# per-build file.
+
+MACHINE = "tactiq-rock5a"
+DISTRO  = "tactiq"
+
+# Release image format set: uncompressed wic + bmap + gz + ext4 rootfs
+# + tarball. Matches IMAGE_FSTYPES recorded in the published buildinfo.
+IMAGE_FSTYPES = "wic wic.bmap wic.gz ext4 tar.gz"
+
+# Skip conflicting/superseded recipes present in included layers.
+# meta-rockchip/dynamic-layers/rk-rauc-demo/ is a demo layer masked
+# in favour of the tactiq-os RAUC integration. meta-rauc/bundles/ is
+# masked because bundles are produced separately (mk-release.sh).
+# The vendored tensorflow-lite recipe is masked in favour of the
+# meta-tensorflow-lite upstream version.
+BBMASK += "meta-rockchip/dynamic-layers/rk-rauc-demo/"
+BBMASK += "meta-rauc/recipes-core/bundles/"
+BBMASK += "meta-tactiq-bsp-rockchip/recipes-utils/tensorflow-lite"
+
+# Enable buildstats (buildinfo records it, harmless in independent builds).
+USER_CLASSES ?= "buildstats"
+
+# Standard defaults from oe-init-build-env; keep verbatim.
+PATCHRESOLVE = "noop"
+CONF_VERSION = "2"
+BB_DISKMON_DIRS ??= "\
+    STOPTASKS,${TMPDIR},1G,100K \
+    STOPTASKS,${DL_DIR},1G,100K \
+    STOPTASKS,${SSTATE_DIR},1G,100K \
+    STOPTASKS,/tmp,100M,100K \
+    HALT,${TMPDIR},100M,1K \
+    HALT,${DL_DIR},100M,1K \
+    HALT,${SSTATE_DIR},100M,1K \
+    HALT,/tmp,10M,1K"
+
+# DL_DIR and SSTATE_DIR: intentionally left as bitbake defaults
+# (${TOPDIR}/downloads and ${TOPDIR}/sstate-cache). This keeps the
+# build directory self-contained. An independent verifier can point
+# these elsewhere with -e or a wrapper if desired; the resulting
+# artifacts are unaffected.
