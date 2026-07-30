@@ -57,6 +57,26 @@ IMAGE_LEVEL_SUFFIXES = (
     ".iso",
 )
 
+# Deploy image-container artifacts sometimes appear in an image SBOM as
+# root-level entries, e.g. /<image>.rootfs-<timestamp>.wic (and the .ext4 /
+# .tar.gz siblings). They are built FROM the rootfs, not files IN it; their
+# per-build timestamped names make each build's set disjoint, which otherwise
+# surfaces as spurious only-A / only-B "differences". They belong to
+# image-level comparison (cmp), never to the per-file rootfs comparison, and
+# are split out of it entirely below.
+#
+# Matched narrowly: an image-container suffix AND located at the filesystem
+# root. Real rootfs content is never a bare image at "/", so a legitimate
+# *.tar.gz data file deeper in the tree (e.g. /usr/share/...) is unaffected —
+# this deliberately does NOT blanket-exclude a suffix, which could hide a
+# genuine content difference.
+IMAGE_CONTAINER_SUFFIXES = IMAGE_LEVEL_SUFFIXES + (".tar.gz", ".tar.bz2", ".tar.xz")
+
+
+def is_image_container(name):
+    """True for a root-level deploy image container (see note above)."""
+    return name.count("/") == 1 and name.endswith(IMAGE_CONTAINER_SUFFIXES)
+
 # Files known to be generated per-build inside the rootfs. These ARE content
 # differences and are reported, but flagged with their known cause so the
 # reader is not left guessing. Keep this list short and justified.
@@ -218,6 +238,18 @@ def main():
     only_b = sorted(keys_b - keys_a)
     common = sorted(keys_a & keys_b)
 
+    # Remove root-level image containers from the per-file comparison entirely:
+    # they are image-level artifacts, compared by cmp, not rootfs content, and
+    # their timestamped names would otherwise be reported as only-A / only-B
+    # differences. They are still surfaced (counted + listed) so nothing is
+    # silently dropped.
+    img_containers = sorted(
+        k for k in (set(only_a) | set(only_b) | set(common)) if is_image_container(k)
+    )
+    only_a = [k for k in only_a if not is_image_container(k)]
+    only_b = [k for k in only_b if not is_image_container(k)]
+    common = [k for k in common if not is_image_container(k)]
+
     identical = [k for k in common if a[k] == b[k]]
     differing = [k for k in common if a[k] != b[k]]
 
@@ -254,6 +286,8 @@ def main():
             fh.write(f"only-A   {k} {a[k]} -\n")
         for k in only_b:
             fh.write(f"only-B   {k} - {b[k]}\n")
+        for k in img_containers:
+            fh.write(f"img-cont {k} (excluded: image-level artifact, not rootfs content)\n")
         if not differing and not only_a and not only_b:
             fh.write("# no differences\n")
 
@@ -298,6 +332,7 @@ def main():
     w(f"| Differing — known volatile | {len(buckets['volatile'])} |")
     w(f"| Present only in A | {len(only_a)} |")
     w(f"| Present only in B | {len(only_b)} |")
+    w(f"| Image containers (excluded from per-file) | {len(img_containers)} |")
     w("")
 
     if achieved:
