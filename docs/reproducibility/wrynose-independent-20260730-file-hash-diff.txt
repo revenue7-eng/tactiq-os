@@ -1,0 +1,41 @@
+# per-file hash differences: v2.1.0-rc6 (wrynose-independent)
+# build A: 20260718162433
+# build B: 20260730092521
+# generated: 2026-07-30 by scripts/mk-repro-report.py
+#
+# columns: <class> <path> <sha256-A> <sha256-B> [reason]
+
+content  /boot/Image-6.18.24-yocto-standard-00129-gb1ba5428513b fcb9b4c7802cde92e401c1a224ba5de6b708787a1330faaefc0fd3a9f6d06681 6763fda487ef6274d1abf28dba2eda8ec12ccbdfa10759b480ed4de663574923
+content  /etc/tactiq-release 02c32727158cce674923abe7749bc7ac5ed99e65472e7b20e9295a8fe6dfa7da d2f2db4c5502cc8135859fdda7e9372d094a76cd4d09874e73e968c2f5430f80
+content  /linux-yocto-6.18.24+git/.kernel-meta/cfg/merge_config_build.log 74f7560fb6792fe31b4ee40d41ac7eb98a99b60ecd9ae71cbe21eed2e93e3c5a 005c5fa351a05052f657851dd2c1b954180073acadd88df2499d57c844721299
+content  /linux-yocto-6.18.24+git/.kernel-meta/hardware_frags.txt b669e1f78dae3cf49faac12ed8490a259e3988fc2fe92fec4605662ef2882041 476f1bf6478a0d462a067757388dbc3dab6a9ef7348acfc02f332c92812757c2
+content  /linux-yocto-6.18.24+git/.kernel-meta/meta-series 922b022997b1e779e91fa60d114b50ef3dbdf5911fac00626a4fa37cf18071c7 304f38d3ce7cb35510f60f73a969472c232e8b4d6bced492df640c5c73d1a527
+content  /linux-yocto-6.18.24+git/.kernel-meta/non-hardware_frags.txt 1c39370ad8b0e32165e037ff288607930084ac816d899881aa2c41a6b7b74981 090daa7f33810d378d1fb8ed8b8b739dec26e49e64eee3c3445daace0c8161c9
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/crypto/af_alg.ko 96c295fd5bbb67ec4b18e656085403039367ad567e76acfe3c2a4bbf5c7fc9d5 37116f3274455d23e569161cfec1e84516171c5c2fc1b242c62d8fd857916aa9
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/crypto/algif_rng.ko 5af9c7156a1a1d3cc562caef108347dab3b2b9757b236636b89b66f98c3a2728 a23f3024f1552fc935c25609176e798873cb8273430ad06130636a23398a2e0a
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv4/netfilter/ip_tables.ko 520aa6eb016406abde19e49c1b7f9056c1aba2de0dc9cd41a452e348cbaa6149 dadb589ea97186f9cd4432d0d77abe1e2d0cfe27f5b2035957dc46525092ab86
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv4/netfilter/iptable_filter.ko a7851c11b41e1029f11573903c8509a6cfcbb030041b6077a6b652e27beea334 4231b03f87c8c51d1db44db909b2194e774ae88c17fd32eb5d2ac1786a4af800
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv4/netfilter/iptable_mangle.ko 9bf04c4466bedddd7f05d968fe3efb458885a94ad69a4032205268b0647f5dab fda7921930839c99c6b838f8c9acc1137154f26eb9b64b0e062dd727d32477ab
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv4/netfilter/iptable_nat.ko 7e429a6334b3d2858214cf5f8136d854008a6982b73e1f0b1df6b99db8eb4a3e a4e6f1256f9dce0b1a1bb09b4e12ff74772de3681136a5250915978bcef8a96b
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv4/netfilter/nf_defrag_ipv4.ko 1c28efb75e5c5a50c52cc321707e0a1899a779ff3eb178356501ba2af907c260 b78e62bddb87486370b14ada118ce07f1d8b6daa3a81ede235d4fd88b08f04fe
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv4/netfilter/nf_reject_ipv4.ko d7d7689e74fcdd23ff8c032f58812eb305dcdbcee11b543696c237463120c485 576ed235bf3c2a7fb28957a45867dacd6fbaffd47e96fd4733c310d992186703
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv6/ipv6.ko 9a028cf67d3bc052a95c6d07ce1b39cf84f14a8d57069995e3c183a68fed218a ac5929876211f00eed00996cfee2586563b5cfd6d8c1a2bf8c2718d523d22394
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv6/netfilter/ip6_tables.ko cbed470460ad7aaececc51cb7a385e264fa61b52c0d185e8571dcee2e4b5a84b b31d09187fa09956b56ed145a8bc577402b14b4690b359e89c9f37ef37edd2c0
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv6/netfilter/ip6table_filter.ko 0f0e1cc4bb1366d8bf1940d9c459deabe72dc985da86b4a7100add822e25d8ff 7bf17323ad02197b6c06376b883b6cd71e614e6c1940966f5d9d2ecbe16d308d
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/ipv6/netfilter/nf_defrag_ipv6.ko aff44a5e49840f2278ecf8c422f0e3305c4c302fe785010c69f5a57e075ba0bf f515307d9d33c9a718150a41da3ba95d7f1849338903c42537bbc5e4dcc01f78
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/netfilter/nf_conntrack.ko 8400bbcae4b315646b671d0f7590ab2ae65e1935299ac9cc5756b994dfb90790 ca050e5094d4ac401460ddc7735e2f56bfb564684ad42671b988ff5d8c4bb6e1
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/netfilter/nf_nat.ko 1033dc5a1831a3406a85107177a94ef754220460726c4373f2731027fbbcf2f7 9aaf959d2baf1b5b354695475f7f7955659ae8aca1b73f5ae55209db652b8607
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/netfilter/x_tables.ko 35acfd5c0b5bac711c75fe1ce443122a7416209ad4efb394818ea4e23ac31d82 17aa5719b877a55bcd414b2bfc2f8161739b88a9c0a34f3555f5306bbfc41a8c
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/netfilter/xt_conntrack.ko b8b86e929b958103389078772baa4034cdd81f60a041429de94d0ee22055da27 c93df989bd4c661cc3ae537ff8ea4fb6fd3c259945dc3b89f7426d7b73913f0b
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/netfilter/xt_state.ko 190e90527b50fa61d11d9dc1c0c7f921e7964b2f656467b9a59c4a440229aa42 69b568a82b58e41f3bfd0c1f047b259d6d64962454c0deb3347ffabfa715c754
+content  /usr/lib/modules/6.18.24-yocto-standard-00129-gb1ba5428513b/kernel/net/netfilter/xt_tcpudp.ko aefabe4e4d1f4e07bad6d01516c41baca96f6a11c67e7c171f73d1ccdb9d3f31 811c4b25c18494d857d5c9826caca038bf1fc0a11874e8b9e356f245e694a7b3
+only-A   /tactiq-image-tactiq-rock5a.rootfs-20260718113035.ext4 0733e9f64c251996cc9206fbac5f49e782774e99330723495df32f8c3a551f0a -
+only-A   /tactiq-image-tactiq-rock5a.rootfs-20260718113035.tar.gz 7a79e9baedf42c451e3a465312eef6dd39b57c659968655498db510b7c752ba6 -
+only-A   /tactiq-image-tactiq-rock5a.rootfs-20260718113035.wic 1a29eb00685541ce69c9b8c6d3e116d3e131430f7567ff8dcffefc6ca3e8e019 -
+only-A   /tactiq-image-tactiq-rock5a.rootfs-20260718113035.wic.bmap ad3c43d49543647f572a76c9b800cd6088492d97894c07ddea55d036d33a80f2 -
+only-A   /tactiq-image-tactiq-rock5a.rootfs-20260718113035.wic.gz 1cd720910307b9ce8ae0134bff4648a60b295746eaeb10ba68888c0f88b8cf9b -
+only-B   /tactiq-image-tactiq-rock5a.rootfs-20260730084941.ext4 - 840d7c9b06e1496597994fd3e7da6a9f8dd8a51172683ea6d053c7eeae202046
+only-B   /tactiq-image-tactiq-rock5a.rootfs-20260730084941.tar.gz - 78959573684e2debda77a093ec68fcbcca628c28a4deb486fea13b19286284f6
+only-B   /tactiq-image-tactiq-rock5a.rootfs-20260730084941.wic - b267e4866a63416cb71a12529e4b1cac90eb3c15aba121fb7dba982f8c4369b6
+only-B   /tactiq-image-tactiq-rock5a.rootfs-20260730084941.wic.bmap - ad2d867283be40e4527562f8e2fda1dd5682416538c5340cbcd26b6f60d2a1d0
+only-B   /tactiq-image-tactiq-rock5a.rootfs-20260730084941.wic.gz - 9193d2193f749428911c3a6d701448a4b8867d4f99a0dab647cba0491dc0ad52
