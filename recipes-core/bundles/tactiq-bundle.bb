@@ -4,8 +4,8 @@
 # Output: tmp/deploy/images/tactiq-rock5a/tactiq-bundle-tactiq-rock5a.raucb
 #
 # Signing keys configured in local.conf:
-#   RAUC_KEY_FILE  = "/mnt/d/tactiq-os/recipes-core/rauc/files/dev-signing.key.pem"
-#   RAUC_CERT_FILE = "/mnt/d/tactiq-os/recipes-core/rauc/files/dev-signing.cert.pem"
+#   RAUC_KEY_FILE  = "<tactiq-os>/recipes-core/rauc/files/dev-signing.key.pem"
+#   RAUC_CERT_FILE = "<tactiq-os>/recipes-core/rauc/files/dev-signing.cert.pem"
 
 inherit bundle
 S = "${UNPACKDIR}"

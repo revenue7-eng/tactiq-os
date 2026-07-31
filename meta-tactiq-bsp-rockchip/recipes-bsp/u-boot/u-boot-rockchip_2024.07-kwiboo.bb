@@ -22,7 +22,7 @@ SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
 SRC_URI += "file://tactiq-boot.env"
 
-TACTIQ_MIRROR ?= "file:///mnt/c/Users/UserHome/Downloads"
+TACTIQ_MIRROR ?= "https://github.com/revenue7-eng/tactiq-os/releases/download/bsp-mirror-2024.10/"
 
 S = "${UNPACKDIR}/u-boot-rockchip-8cdf606e616baa36751f3b4adcfaefc781126c8c"
 B = "${WORKDIR}/build"
