@@ -16,7 +16,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=11e3673115959bf596feaaa6ea7ce9a5"
 SRC_URI = "${TACTIQ_MIRROR}/rkbin-7c35e21a.tar.gz"
 SRC_URI[sha256sum] = "18bde6ce71df308197db0e1d95fd73a19b6a32f4f0b6f5567333ef3c5b617452"
 
-TACTIQ_MIRROR ?= "file:///mnt/c/Users/UserHome/Downloads"
+TACTIQ_MIRROR ?= "https://github.com/revenue7-eng/tactiq-os/releases/download/bsp-mirror-2024.10/"
 
 S = "${UNPACKDIR}/rkbin-7c35e21a8529b3758d1f051d1a5dc62aae934b2b"
 
