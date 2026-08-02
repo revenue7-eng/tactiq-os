@@ -1,0 +1,14 @@
+# ==== RUN A — artifact manifest ====
+# host: 8ed51d710f35  date_utc: 2026-08-02T10:42:07Z
+# tactiq-os layer HEAD: 536f5516b005a9cd77f12fe77a973b2063ce7f27
+# build-id: 20260802094837   wall-clock: 41m40.761s
+# gcc: gcc (Ubuntu 10.5.0-1ubuntu1~20.04) 10.5.0   python3: Python 3.9.23
+# mirror: own-mirrors + downloads.yoctoproject.org/mirror/sources/
+#
+# --- sha256 of image artifacts (resolved) ---
+7e2fb0b67dc24f1066b44fbd067172a0930e4a14f85abdeb8ababa56013281a8  tactiq-boot-image.ext4
+3cbc179b6ea9f8441747f88726db3cbcb6ee30549a3a2cedd49be718e335a62d  tactiq-image-tactiq-rock5a.rootfs-20260802094837.ext4
+31addd44d5015f541360c77c28d9c92db0c414336681b601b8a09fa9a8cd7d61  tactiq-image-tactiq-rock5a.rootfs-20260802094837.wic
+c89703a787c8fc94bf6f9556e95e8ae576e0ca472f242e07ab2549f80b700954  tactiq-image-tactiq-rock5a.rootfs-20260802094837.wic.gz
+6e5f79c5f97d988675521a1a6fe8d24dcc52c9906becbfc08afc12617573581c  tactiq-image-tactiq-rock5a.rootfs-20260802094837.wic.bmap
+41b668379ae8561206896ec9ad62b71ba9a04d9c48c112ade32c4d696d1b7140  tactiq-image-tactiq-rock5a.rootfs-20260802094837.tar.gz
