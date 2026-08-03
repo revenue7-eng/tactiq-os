@@ -1,0 +1,9 @@
+# ==== RUN B — artifact manifest ====
+# build-id: 20260802104651   wall-clock: 43m59.460s   layer HEAD: 536f5516b005a9cd77f12fe77a973b2063ce7f27
+# --- sha256 (name normalized) ---
+3cb99750518b1f81dc564f7ad49859e257a80a8133caf3fa31a9d2af41f36396  tactiq-boot-image.ext4
+76432eafd2c492959062a90ea8bd2a6f69fcd6a0b141bd411011aafe8141d614  tactiq-image-tactiq-rock5a.rootfs.ext4
+13fd9c64ebfab4fe84d87e41e6d96b5b0bc95624a98b9a194157e7932a71496e  tactiq-image-tactiq-rock5a.rootfs.wic
+ece9dcdd87c35e74cf196aa86eb8d36aaef8b94340850c95c8f087b61bf2cdbc  tactiq-image-tactiq-rock5a.rootfs.wic.gz
+1c8aece7aef410c099b02d112269fde718dbc6d8ad427749b384f3950734b0bc  tactiq-image-tactiq-rock5a.rootfs.wic.bmap
+41b668379ae8561206896ec9ad62b71ba9a04d9c48c112ade32c4d696d1b7140  tactiq-image-tactiq-rock5a.rootfs.tar.gz
