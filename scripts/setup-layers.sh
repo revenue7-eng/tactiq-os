@@ -52,6 +52,26 @@ while read -r NAME REMOTE COMMIT BRANCH; do
   fi
 done < "$LOCK"
 
+# tactiq-os itself is not pinned in the lock: the verifier already has it,
+# at the tag they checked out, and that checkout is what must be built. A
+# lock line for it could not be written before the commit containing that
+# line exists. Place it in the layer set directly instead.
+SELF_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+if want tactiq-os; then
+  case "$(cd "$DEST_ROOT" && pwd)/" in
+    "${SELF_ROOT}"/*)
+      echo "FAIL  tactiq-os: <layers-dir> is inside the repository; choose a path outside it" >&2
+      FAIL=1;;
+    *)
+      if [ -e "${DEST_ROOT}/tactiq-os" ]; then
+        echo "SKIP  tactiq-os: ${DEST_ROOT}/tactiq-os already exists" >&2
+      else
+        ln -s "$SELF_ROOT" "${DEST_ROOT}/tactiq-os"
+        echo "OK    tactiq-os -> ${SELF_ROOT} (this checkout)"
+      fi;;
+  esac
+fi
+
 # meta-rauc: deterministic reconstruction (pin + patch, tree-hash verified).
 # `git am` inside setup-meta-rauc.sh needs a committer identity; on a
 # pristine verification host none is configured. The identity does not
