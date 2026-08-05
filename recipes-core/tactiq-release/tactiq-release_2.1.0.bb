@@ -16,21 +16,32 @@ inherit image-buildinfo
 #      (b) it lets a compromised build host inject a forged commit
 #      hash into the attestation chain.
 #
-# The commit revision is read from TACTIQ_META_GIT_REV, which the CI
-# release pipeline sets explicitly at build time (e.g. from the tag
-# ref). For local development builds without the variable set, the
-# recipe records 'unknown' and emits a build-time NOTE so that an
-# operator does not silently ship an attestation that mis-identifies
-# the build.
+# The revision is carried by release-rev.inc, a file in this repository,
+# so that it arrives with the tag rather than depending on the person
+# running the build remembering to set something. Anyone who clones a
+# release tag and builds it gets the same /etc/tactiq-release as we do,
+# with no extra step. Principle 2 is unaffected: nothing shells out to
+# git, the value is declared in the source tree and travels under the
+# same signature as the rest of it.
+#
+# TACTIQ_META_GIT_REV still takes precedence when set in the environment,
+# for development builds from a working tree that is not at a release.
+# Where neither is available the recipe records 'unknown' and emits a
+# build-time NOTE, so that an operator does not silently ship an
+# attestation that mis-identifies the build.
 #
 # The build date is derived from SOURCE_DATE_EPOCH so it tracks the
 # Yocto reproducibility plumbing rather than the wall-clock at build.
 
-TACTIQ_META_GIT_REV ??= "${@os.environ.get('TACTIQ_META_GIT_REV', 'unknown')}"
+require ${THISDIR}/release-rev.inc
+
+TACTIQ_META_GIT_REV ??= "${@os.environ.get('TACTIQ_META_GIT_REV') or d.getVar('TACTIQ_OS_RELEASE_REV') or 'unknown'}"
 
 python __anonymous() {
     if d.getVar('TACTIQ_META_GIT_REV') == 'unknown':
-        bb.note('TACTIQ_META_GIT_REV is unset; /etc/tactiq-release will record "unknown"')
+        bb.note('No release revision: release-rev.inc carries none and '
+                'TACTIQ_META_GIT_REV is unset; /etc/tactiq-release will '
+                'record "unknown"')
 }
 
 do_compile() {
