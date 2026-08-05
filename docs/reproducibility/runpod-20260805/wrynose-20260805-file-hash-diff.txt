@@ -1,0 +1,19 @@
+# per-file hash differences: v2.1.0-rc7 (wrynose)
+# build A: unspecified
+# build B: unspecified
+# generated: 2026-08-05 by scripts/mk-repro-report.py
+#
+# columns: <class> <path> <sha256-A> <sha256-B> [reason]
+
+content  /linux-yocto-6.18.24+git/.kernel-meta/cfg/merge_config_build.log 72021e2692404e354dee6c5c3e373268f9727fa64aaec9dbfbf0e14b7ef5d5d9 d3afef951a27ccab53e08af7e13fa709ade638642ad1cf10d0f28840d1490cb5
+content  /linux-yocto-6.18.24+git/.kernel-meta/meta-series ebb06ec0840da9888887d33a629580448dad18763d405244806ed165f2581f6e 5dbf9c95f3ad58bff32074f342d0cc5cb07b14e58d3bd0489b95fb13186773c0
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805101047.ext4 (excluded: image-level artifact, not rootfs content)
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805101047.tar.gz (excluded: image-level artifact, not rootfs content)
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805101047.wic (excluded: image-level artifact, not rootfs content)
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805101047.wic.bmap (excluded: image-level artifact, not rootfs content)
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805101047.wic.gz (excluded: image-level artifact, not rootfs content)
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805104701.ext4 (excluded: image-level artifact, not rootfs content)
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805104701.tar.gz (excluded: image-level artifact, not rootfs content)
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805104701.wic (excluded: image-level artifact, not rootfs content)
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805104701.wic.bmap (excluded: image-level artifact, not rootfs content)
+img-cont /tactiq-image-tactiq-rock5a.rootfs-20260805104701.wic.gz (excluded: image-level artifact, not rootfs content)

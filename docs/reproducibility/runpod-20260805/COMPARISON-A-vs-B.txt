@@ -1,0 +1,59 @@
+# ============================================================
+# REPRODUCIBILITY COMPARISON - tactiq-image (rock5a)
+# independent builds A and B, separate hosts, same tag
+# ============================================================
+# date_utc: 2026-08-05
+# tag:      v2.1.0-rc7  (commit 0dd00d0)
+#
+# source policy: own-mirrors -> downloads.yoctoproject.org/mirror/sources/
+#                declared in conf/distro/tactiq.conf (#75), so it arrives
+#                with the tag; nothing was added to local.conf on either
+#                host.
+#
+# host A: RunPod cpu5c, 32 vCPU / 124 GB, Ubuntu 24.04
+# host B: RunPod cpu3g, 32 vCPU / 124 GB, Ubuntu 24.04
+#         different CPU generation, no shared state of any kind:
+#         separate machines, separate DL_DIR and SSTATE_DIR, both empty
+#         at the start.
+#
+# build A: id 20260805101047
+#          cold build 31m05.944s, followed by a 2m39.063s incremental
+#          rebuild after the tag was moved for the release-revision fix
+#          (#76). The A artifacts compared here come from that rebuild.
+# build B: id 20260805104701   wall-clock 40m34.367s
+#          fully cold: 5254 tasks, 0 reused.
+#
+# IDENTICAL (byte-for-byte across A and B):
+#   IDENTICAL  tactiq-image-tactiq-rock5a.rootfs.tar.gz
+#              1516d31e68f84ca756c1080d492e5f06b00f90687ec30c3881a9353542d73a43
+#
+# PER-FILE (SBOM SHA-256, 38719 paths compared):
+#   38717 identical
+#   2 differing, both kernel build-process metadata that does not enter
+#   the rootfs:
+#     /linux-yocto-6.18.24+git/.kernel-meta/cfg/merge_config_build.log
+#     /linux-yocto-6.18.24+git/.kernel-meta/meta-series
+#   kernel image and all 18 kernel modules: identical.
+#
+# ON THE TOOL VERDICT:
+#   mk-repro-report.py treats any path outside its image-level and
+#   volatile lists as rootfs content, so it prints NOT ACHIEVED for the
+#   two .kernel-meta paths above. The report is kept exactly as measured.
+#   .kernel-meta belongs with the build-process exclusions; that is a
+#   change to the tool, not to this result, and is deferred to the next
+#   release rather than applied retroactively here.
+#
+# ON RE-DERIVATION:
+#   the SBOM of build B was not retained - the RunPod container disk is
+#   erased when the pod stops - so the report in this directory cannot be
+#   regenerated from its inputs. It is the record.
+#
+# INTERPRETATION:
+#   rootfs.tar.gz (system contents) BIT-IDENTICAL across two hosts of
+#   different CPU generation sharing no build state -> contents
+#   reproducible from the tag alone.
+#
+#   This is the first release whose kernel and modules also reproduce.
+#   Through rc6 they did not: CONFIG_MODULE_SIG_KEY was left at its
+#   default, so every build from a clean tree generated a fresh signing
+#   key, changing the kernel image and every .ko (#69).
