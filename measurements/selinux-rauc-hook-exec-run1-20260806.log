@@ -1,0 +1,51 @@
+=== 2026-08-06T16:00:00Z run 1: baseline, no execute rule ===
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Memory protection checking:     actual (secure)
+Max kernel policy version:      35
+--- modules:
+tactiq_rauc
+--- release:
+TACTIQ_OS_VERSION=2.1.0
+TACTIQ_OS_CODENAME=hardened-edge
+TACTIQ_BUILD_DATE=2011-04-05T23:00:00Z
+TACTIQ_BUILD_MACHINE=tactiq-rock5a
+TACTIQ_META_TACTIQ_GIT=d99725b6e7671168edf41fc29cf6c5987b08c0fc
+TACTIQ_IMAGE_NAME=
+--- policy before:
+allow tactiq_rauc_t tactiq_squashfs_t:file { getattr ioctl lock open read };
+--- bundle:
+-rw-r--r--    1 root     root     system_u:object_r:tactiq_rauc_bundle_t:s0     32433 Aug  6 08:15 /var/lib/tactiq/rauc/bundles/hooktest.raucb
+2238bcf3a59dc01c10ec733ce990c81e5c5fde69904e7ffef59aa3c7f912c164  /var/lib/tactiq/rauc/bundles/hooktest.raucb
+--- keyring config:
+[keyring]
+path=/etc/rauc/dev-ca.pem
+check-purpose=codesign
+--- install:
+installing
+  0% Installing
+  0% Determining slot states
+ 10% Determining slot states done.
+ 10% Checking bundle
+ 10% Verifying signature
+ 20% Verifying signature done.
+ 20% Checking bundle done.
+ 20% Checking manifest contents
+ 30% Checking manifest contents done.
+ 30% Determining target install group
+ 40% Determining target install group done.
+100% Installing failed.
+LastError: Install-check hook failed: failed to start bundle hook: Failed to execute child process “/run/rauc/mnt/bundle/hook” (Permission denied)
+Installing `/var/lib/tactiq/rauc/bundles/hooktest.raucb` failed
+rc=1
+--- avc:
+Aug 06 16:01:10 tactiq-rock5a audit[442]: AVC avc:  denied  { getattr } for  pid=442 comm="(udev-worker)" path="/var/lib/tactiq/rauc/bundles/hooktest.raucb" dev="mmcblk1p2" ino=8492 scontext=system_u:system_r:udev_t:s0 tcontext=system_u:object_r:tactiq_rauc_bundle_t:s0 tclass=file permissive=0
+Aug 06 16:01:10 tactiq-rock5a audit[445]: AVC avc:  denied  { execute } for  pid=445 comm="installer" name="hook" dev="dm-0" ino=1 scontext=system_u:system_r:tactiq_rauc_t:s0 tcontext=system_u:object_r:tactiq_squashfs_t:s0 tclass=file permissive=0
+Aug 06 16:01:10 tactiq-rock5a audit[446]: AVC avc:  denied  { getattr } for  pid=446 comm="(udev-worker)" path="/var/lib/tactiq/rauc/bundles/hooktest.raucb" dev="mmcblk1p2" ino=8492 scontext=system_u:system_r:udev_t:s0 tcontext=system_u:object_r:tactiq_rauc_bundle_t:s0 tclass=file permissive=0
+Aug 06 16:02:36 tactiq-rock5a audit: EXECVE argc=3 a0="/usr/bin/busybox.nosuid" a1="/bin/grep" a2="AVC"
