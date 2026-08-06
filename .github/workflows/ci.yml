@@ -147,9 +147,14 @@ jobs:
       - name: Assert RAUC keyring posture
         run: |
           set -e
-          # ca.cert.pem in the repo must be the development cert.
-          # CI replaces it via FILESEXTRAPATHS for production builds.
-          grep -q "DEVELOPMENT-ONLY" \
-                  recipes-core/rauc/files/ca.cert.pem \
-            || { echo "::error::ca.cert.pem missing DEVELOPMENT-ONLY header — production cert committed?"; exit 1; }
+          # The in-tree RAUC keyring must be the development root.
+          # Production builds override RAUC_KEYRING_FILE from CI secrets.
+          openssl x509 -in pki/dev/root-ca.pem -noout -subject \
+            | grep -q "NOT FOR PRODUCTION" \
+            || { echo "::error::pki/dev/root-ca.pem is not a development CA — production cert committed?"; exit 1; }
+          # The bundle signer must chain to that root, or devices reject the bundle.
+          openssl verify -CAfile pki/dev/root-ca.pem \
+                         -untrusted pki/dev/signer-chain.pem \
+                         pki/dev/signer-chain.pem \
+            || { echo "::error::pki/dev/signer-chain.pem does not verify against root-ca.pem"; exit 1; }
           echo "rauc keyring posture: OK"
