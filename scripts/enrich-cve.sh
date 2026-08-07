@@ -23,7 +23,11 @@ KVER="6.18.24"
 
 IMPROVE="$HOME/tactiq-build-wrynose/layers/openembedded-core/scripts/contrib/improve_kernel_cve_report.py"
 RAW="$REL_DIR/cve-rock5a.sbom-cve-check.yocto.json"
-SPDX="$BUILD_DIR/tmp/deploy/spdx/3.0.1/tactiq_rock5a/builds/build-linux-yocto.spdx.json"
+# Kernel compiled-sources come from the release SBOM when present: the aggregate
+# image SPDX carries them, so enrichment stays reproducible by anyone holding the
+# release, without a live build tree. Falls back to the build tree.
+SPDX="$REL_DIR/sbom-rock5a.spdx.json"
+[ -f "$SPDX" ] || SPDX="$BUILD_DIR/tmp/deploy/spdx/3.0.1/tactiq_rock5a/builds/build-linux-yocto.spdx.json"
 OUT="$REL_DIR/cve-rock5a.enriched.json"
 
 for f in "$IMPROVE" "$RAW" "$SPDX"; do
