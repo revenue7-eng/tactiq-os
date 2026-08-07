@@ -13,7 +13,7 @@ make that check unreproducible from the outside.
 
 This root is what the image trusts for RAUC updates: it is installed as
 /etc/rauc/root-ca.pem and named in system.conf, which also sets
-check-purpose=codesign to match the signer's extended key usage. Bundles
+check-purpose=codesign-rauc to match the signer's extended key usage. Bundles
 are signed by signer.pem; because that certificate is issued by
 signing-ca.pem rather than by the root directly, the intermediate is
 embedded in the CMS signature through --intermediate. A leaf-only
