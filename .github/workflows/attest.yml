@@ -24,17 +24,18 @@ jobs:
         id: archive
         run: |
           set -eu
-          # Deterministic tar: sorted, no mtime drift, no owner/group leakage.
-          # This matches SLSA L3 intent for non-falsifiable source provenance:
-          # the hash below is what the attestation will bind to.
+          # git archive over the whole tracked tree, not a hand-listed subset.
+          # A list silently goes stale: the previous one named four directories
+          # and predated meta-tactiq-bsp-rockchip and classes-recipe, so layer
+          # and class sources were outside the attested object while the
+          # attestation still claimed to cover the sources. git archive has no
+          # separate idea of what the tree contains, so it cannot drift.
+          # Deterministic by construction: entries sorted, mtime from the commit,
+          # no owner/group. gzip -n so no timestamp enters the gzip header.
           COMMIT=$(git rev-parse HEAD)
           mkdir -p dist
-          tar --sort=name \
-              --owner=0 --group=0 --numeric-owner \
-              --mtime="@$(git log -1 --format=%ct)" \
-              --exclude-vcs \
-              -czf dist/tactiq-os-${COMMIT}.tar.gz \
-              conf recipes-core recipes-kernel scripts
+          git archive --format=tar --prefix="tactiq-os-${COMMIT}/" HEAD \
+            | gzip -n > dist/tactiq-os-${COMMIT}.tar.gz
           sha256sum dist/tactiq-os-${COMMIT}.tar.gz | tee dist/tactiq-os-${COMMIT}.sha256
           echo "path=dist/tactiq-os-${COMMIT}.tar.gz" >> "$GITHUB_OUTPUT"
 
