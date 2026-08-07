@@ -154,7 +154,7 @@ jobs:
             || { echo "::error::pki/dev/root-ca.pem is not a development CA — production cert committed?"; exit 1; }
           # The bundle signer must chain to that root, or devices reject the bundle.
           openssl verify -CAfile pki/dev/root-ca.pem \
-                         -untrusted pki/dev/signer-chain.pem \
-                         pki/dev/signer-chain.pem \
-            || { echo "::error::pki/dev/signer-chain.pem does not verify against root-ca.pem"; exit 1; }
+                         -untrusted pki/dev/signing-ca.pem \
+                         pki/dev/signer.pem \
+            || { echo "::error::pki/dev/signer.pem does not chain to root-ca.pem"; exit 1; }
           echo "rauc keyring posture: OK"

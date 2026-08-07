@@ -213,10 +213,14 @@ chain alone. If the release root is compromised on OTP-burned
 platforms, recovery requires a physical recovery path. This is the
 catastrophic scenario in §8.
 
-### 2.6 Initial transition from `ca.cert.pem`
+### 2.6 Initial transition to a production keyring
 
-The current in-tree development RAUC keyring is
-`recipes-core/rauc/files/ca.cert.pem`. The transition path:
+The current in-tree development RAUC keyring is `pki/dev/root-ca.pem`,
+the same root used for kernel module signing. Its private keys are public
+by design (see `pki/README.md`), so development-signed bundles can be built
+and checked by anyone from the tag alone. That property is what makes the
+keyring a development one: it authenticates nothing. The transition path to
+a keyring that does:
 
 1. **Generate the release root** on an air-gapped signing host.
    Hardware: a workstation or laptop dedicated to this purpose, with
@@ -235,14 +239,19 @@ The current in-tree development RAUC keyring is
 4. **Add the GitHub Actions secret** containing the per-product
    private half.
 5. **Update `recipes-core/rauc/`** to consume `RAUC_KEYRING_FILE`
-   from CI secrets when building production images; retain
-   `ca.cert.pem` as default for development builds.
+   from CI secrets when building production images, retaining
+   `pki/dev/root-ca.pem` as the default for development builds. Note that
+   the signer's `check-purpose` in `system.conf` must match the extended
+   key usage of whichever signer the production hierarchy issues.
 6. **Tag the first release** built with the production keyring;
    publish release notes documenting the keyring transition.
 
 Until step 6 is complete, no release should claim production-keyring
 status. Releases v2.1.0-rc1 through rc6 inclusive use the development
-keyring; this is documented in their release notes.
+keyring; this is documented in their release notes. Up to and including
+rc7 the image shipped a keyring whose private half existed nowhere, so no
+bundle could be installed at all; that defect is described in
+`measurements/rauc-pki-unify-20260806.md`.
 
 ### 2.7 What this section does not cover
 

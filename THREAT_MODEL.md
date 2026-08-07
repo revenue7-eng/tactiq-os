@@ -240,7 +240,7 @@ requires a hosted hermetic builder; the current image build is local
 required CI gate. Filesystem-image bit-identity (vs per-file content
 identity) requires elimination of remaining non-deterministic sources
 in `do_image_ext4`. Production RAUC keyring rotation from in-tree
-development cert (`ca.cert.pem`) to CI-secret-provisioned
+development root (`pki/dev/root-ca.pem`) to CI-secret-provisioned
 keyring is tracked. FIT image signing is not implemented. Full
 roadmap in `SUPPLY_CHAIN.md`.
 

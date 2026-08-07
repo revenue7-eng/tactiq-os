@@ -182,9 +182,12 @@ else
 cat <<'EOF'
 
 ---- next -------------------------------------------------------
-signer.key.pem goes into a GitHub Actions secret (dev signing only).
-root-ca.pem is the DEV keyring: it must NOT be shipped in production
-images. Guard it behind TACTIQ_KEYRING = "dev".
+signer.key.pem is committed, not secret: dev signing is reproducible
+from outside by design (see pki/README.md).
+root-ca.pem is the DEV keyring and is installed only when
+TACTIQ_KEYRING = "dev". Any other value makes recipes-core/rauc refuse to
+parse until RAUC_KEYRING_FILE_EXTERNAL supplies a keyring from outside the
+tree, so this root cannot reach a production image by omission.
 EOF
 fi
 
