@@ -9,6 +9,13 @@
 #
 # Honesty rule: in an instance, `covered` only with confirmed evidence.
 # This template carries NO status — it asserts no coverage, only the map.
+#
+# Mechanism naming rule: a mechanism is a property of the running system,
+# not a build symbol and not a roadmap item. Do not name a kernel config
+# option here: a compiled-in driver is a precondition, and rc5/rc6 inherited
+# "TPM present (CONFIG_TCG_*)" from this file onto a board that has no TPM.
+# Do not name a mechanism that is intended rather than present: this file
+# named dm-verity over the rootfs and IPE, neither of which is in use.
 # ---------------------------------------------------------------------------
 
 schema_version: "0.2"
@@ -42,7 +49,7 @@ techniques:
   - id: "EX-0010"
     name: "Malicious Code (Wiper / Rootkit / Bootkit)"
     tactic: "Execution"
-    mechanism: ["SELinux enforcing", "LSM: lockdown,capability,selinux,integrity", "IMA @ PCR 10"]
+    mechanism: ["SELinux enforcing", "LSM: lockdown,capability,selinux,integrity", "IMA measurement log"]
     nist: ["SI-7", "SI-3"]
     sentinel: { signal: "unexpected_ima_entry", meaning: "execution outside expected IMA set" }
 
@@ -50,21 +57,21 @@ techniques:
     xref: ["T1542", "T2041"]
     name: "Compromise Boot Memory / Pre-OS Boot"
     tactic: "Execution / Defense Evasion"
-    mechanism: ["TPM present (CONFIG_TCG_*)", "IMA @ PCR 10"]
+    mechanism: ["measured boot anchored in a TPM", "IMA measurement log"]
     nist: ["SI-7", "SP 800-193"]
     sentinel: { signal: "boot_measurement_mismatch", meaning: "boot-chain != expected" }
 
   - id: "DE-0007/DE-0008"
     name: "Evasion via Rootkit / Bootkit"
     tactic: "Defense Evasion"
-    mechanism: ["IMA @ PCR 10"]
+    mechanism: ["remote attestation over measured boot"]
     nist: ["SI-7", "CM-6"]
     sentinel: { signal: "attestation_quote_divergence", meaning: "quote != PCR profile" }
 
   - id: "EX-0005"
     name: "Exploit Hardware/Firmware Corruption"
     tactic: "Execution"
-    mechanism: ["dm-verity (rootfs integrity)", "IPE (Integrity Policy Enforcement)"]
+    mechanism: ["dm-verity over the update bundle", "signature verified before mount"]
     nist: ["SI-7"]
     sentinel: { signal: "rootfs_hash_mismatch", meaning: "rootfs hash != expected" }
 
