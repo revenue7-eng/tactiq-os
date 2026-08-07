@@ -214,7 +214,7 @@ A/B partition layout: two ext4 root slots (`rootfs_a` and
 `rootfs_b`), bootloader-driven slot switching through U-Boot
 environment, compatible string `tactiq-edge` for bundle
 compatibility checks, and the on-device verification keyring at
-`/etc/rauc/ca.cert.pem`.
+`/etc/rauc/root-ca.pem`.
 
 **Bundle integrity.** Each RAUC bundle is signed by the keyring
 configured at build time. The device verifies the signature against
@@ -237,10 +237,11 @@ SELinux enforcing in `measurements/selinux-enforcing-boot-prod-20260717.log`.
 Through rc5 the bundle recipe packaged the *development* rootfs; from rc6 it
 carries the production image.
 
-**Keyring management — current state.** The build currently uses
-the in-tree development certificate `ca.cert.pem`
-(`recipes-core/rauc/files/`) as the RAUC keyring. This is shipped
-in the repository for reproducibility of the development path.
+**Keyring management: current state.** The build currently uses the
+in-tree development root `pki/dev/root-ca.pem` as the RAUC keyring, the
+same hierarchy used for kernel module signing. Its private keys are in
+the repository on purpose, so that the verification can be reproduced
+from outside without access to anything held privately.
 Production builds require a separate keyring loaded from CI
 secrets at build time, so that the production verification key is
 not present in the public source tree. The transition from the

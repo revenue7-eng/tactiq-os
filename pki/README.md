@@ -11,8 +11,17 @@ anyone can build a dev-signed bundle and confirm that a production
 image rejects it. A secret dev key would protect nothing and would
 make that check unreproducible from the outside.
 
-Dev-signed bundles install only on images built with
-TACTIQ_KEYRING = "dev". Production images do not carry this root.
+This root is what the image trusts for RAUC updates: it is installed as
+/etc/rauc/root-ca.pem and named in system.conf, which also sets
+check-purpose=codesign to match the signer's extended key usage. Bundles
+are signed by signer.pem; because that certificate is issued by
+signing-ca.pem rather than by the root directly, the intermediate is
+embedded in the CMS signature through --intermediate. A leaf-only
+signature does not verify against the root.
+
+Production images do not carry this root: it is installed only when
+TACTIQ_KEYRING = "dev", and any other value halts the build until a keyring
+is supplied through RAUC_KEYRING_FILE_EXTERNAL.
 
 ## pki/prod/ — production
 
