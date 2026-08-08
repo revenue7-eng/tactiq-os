@@ -55,7 +55,9 @@ fi
 
 FAIL=0
 SEEN=0
-while read -r NAME REMOTE COMMIT BRANCH; do
+# LAYERS.lock columns: <layer> <remote> <commit> <upstream-branch>; remote and
+# branch are recorded for the reader and for --emit, not used by --check.
+while read -r NAME _ COMMIT _; do
   case "$NAME" in ''|\#*) continue;; esac
   if [ "$NAME" = "$SELF" ]; then
     echo "FAIL  ${NAME}: lock must not pin the repository that carries it" >&2
