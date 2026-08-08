@@ -28,8 +28,16 @@
 #
 # INTERPRETATION:
 #   rootfs.tar.gz (system contents) BIT-IDENTICAL -> contents reproducible.
-#   .wic/.ext4/.wic.gz/.wic.bmap/boot differ only in FS-UUID + build timestamp,
-#   not payload. Expected and benign.
+#   The image containers differ. What was measured is that their hashes differ,
+#   nothing more: the cause was not established in this run. FS-UUID and the
+#   embedded build timestamp are the expected causes and neither was ruled in
+#   or out here, which would take unpacking both containers and comparing the
+#   payloads. Until that exists, this run supports the rootfs claim only.
+#
+#   Source policy is a live external dependency: this run drew from
+#   downloads.yoctoproject.org after zlib.net re-rolled its 1.3.2 tarball.
+#   A third party reproducing these hashes depends on that host serving the
+#   same bytes. Self-hosted frozen mirror tracked as follow-up.
 #
 # ---- raw sha A ----
 31addd44d5015f541360c77c28d9c92db0c414336681b601b8a09fa9a8cd7d61  tactiq-image-tactiq-rock5a.rootfs.wic
