@@ -13,8 +13,21 @@
 #
 # For v2.1.0-rc6 the revisions below had to be recovered forensically
 # after the release, from a build tree that carried no git metadata.
-# From this release the layer set is assembled by scripts/setup-layers.sh
-# at these pins, and the release is built from that tree.
+#
+# The rc6 file stated that from v2.1.0-rc7 onward this lock would be
+# maintained at build time rather than reconstructed. That is the intent
+# and it is not yet the practice. v2.1.0-rc7 was built on a cloud host
+# destroyed after artifact retrieval, and scripts/check-layers.sh, which
+# is what proves a layer set against this file, was not tracked in the
+# repository until after that tag. For rc7 as for rc6, a clean working
+# tree at build time is asserted, not proven, and the coverage manifest
+# for that release records the layer set as unpinned.
+#
+# What closes this is mechanical, not editorial: assemble with
+# scripts/setup-layers.sh, run scripts/check-layers.sh --check against
+# the assembled tree before the build, and keep that output with the
+# release. Until a release ships that evidence, treat the revisions here
+# as a record of what the build is believed to have consumed.
 #
 # Format: <layer> <remote> <commit> <upstream-branch>
 # meta-rauc is not listed: it is reconstructed deterministically by
