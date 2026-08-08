@@ -81,6 +81,8 @@ IMAGE_INSTALL:append = " \
     tactiq-agent \
     tactiq-config \
     tactiq-release \
+    agentgateway \
+    agentgateway-config \
 "
 
 # ---------------------------------------------------------------------------
