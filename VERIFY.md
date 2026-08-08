@@ -23,9 +23,9 @@ in the release notes of each such release.
 
 A TactiQ OS release carries three independent layers of evidence:
 
-1. **Artifact integrity** — SHA-256 checksums of every release file,
+1. **Artifact integrity**: SHA-256 checksums of every release file,
    listed in `SHA256SUMS`.
-2. **Signature over `SHA256SUMS`** — produced with Sigstore keyless
+2. **Signature over `SHA256SUMS`**: produced with Sigstore keyless
    signing. Two certificate identities are used depending on the release:
     - **Personal identity** (`revenue7@gmail.com`, OIDC issuer
       `https://github.com/login/oauth`) for `v2.1.0-rc1` and
@@ -36,14 +36,16 @@ A TactiQ OS release carries three independent layers of evidence:
       `v2.1.0-rc3` and later, produced by
       [`.github/workflows/release-sign.yml`](.github/workflows/release-sign.yml).
       Assets: `SHA256SUMS.workflow.pem`, `SHA256SUMS.workflow.sig`.
-3. **SLSA build-provenance attestation** over the deterministic source
-   archive, originally produced by GitHub Actions
-   (`actions/attest-build-provenance@v2`) at the time the release was
-   tagged. For `v2.1.0-rc3` the attestation is a historical record on
-   the Sigstore Rekor transparency log; the integrity binding consumers
-   rely on for this release is the workflow-identity signature over
-   `SHA256SUMS` (layer 2 above), whose Rekor index is published below.
-   See §5 for the full status and the limits of what each layer proves.
+3. **SLSA build-provenance attestation** over a deterministic source
+   archive, produced by GitHub Actions
+   (`actions/attest-build-provenance@v2`) when the release is tagged.
+   The attested subject is a source archive and never a built artifact,
+   so `gh attestation verify` against an image, kernel or bundle asset
+   returns 404. That is the designed scope, not a missing attestation.
+   The integrity binding consumers rely on for the binaries is the
+   workflow-identity signature over `SHA256SUMS` (layer 2 above), whose
+   Rekor index is published below. See §5 for what each layer does and
+   does not prove.
 
 Each TactiQ OS release carries exactly one cosign signature over its
 `SHA256SUMS`. The signing identity differs between release generations:
@@ -97,7 +99,7 @@ done
 
 # Step 2: derive the artifact list from SHA256SUMS itself, then fetch
 # every file named in it. This guarantees the download set matches the
-# integrity manifest exactly — no drift between docs and the release.
+# integrity manifest exactly, no drift between docs and the release.
 awk '{print $2}' SHA256SUMS | while read -r f; do
     [ -f "${f}" ] && continue
     curl -fsSL --retry 3 -O "${BASE}/${f}"
@@ -127,7 +129,7 @@ sha256sum -c SHA256SUMS
 ```
 
 Every line must print `OK`. A single `FAILED` line invalidates the
-release — stop and report.
+release. Stop and report.
 
 ## 4. Verify the signature over `SHA256SUMS`
 
@@ -156,7 +158,7 @@ Expected output: `Verified OK`.
 The `--certificate-identity` value must match the tag you are verifying.
 A certificate whose SAN resolves to `refs/heads/main` or any
 non-`refs/tags/<TAG>` ref is **not valid** for a release signature, even
-if produced by the same workflow — see Appendix B for why this matters.
+if produced by the same workflow. Appendix B explains why this matters.
 
 ### 4.2 Personal identity (`v2.1.0-rc1`, `v2.1.0-rc2`)
 
@@ -189,49 +191,79 @@ Error: invalid signature when validating ASN.1 encoded signature
 
 Do not proceed past this point if cosign reports an error of any kind.
 
-## 5. SLSA build-provenance attestation — status (first issued for `v2.1.0-rc3`)
+## 5. SLSA build-provenance attestation: scope and status
 
-A SLSA v1.0 build-provenance attestation was generated for `v2.1.0-rc3`
-at the time of tagging. The attestation was produced by GitHub Actions
-running `actions/attest-build-provenance@v2`, bound to the deterministic
-source archive `tactiq-os-<commit>.tar.gz` covering the trees `conf/`,
-`recipes-core/`, `recipes-kernel/`, `scripts/`, `wic/` at the tagged
-commit. The attestation event is recorded on the public Sigstore Rekor
-transparency log and remains independently inspectable through
+A SLSA v1.0 build-provenance attestation is generated at tagging time by
+[`.github/workflows/attest.yml`](.github/workflows/attest.yml), running
+`actions/attest-build-provenance@v2`. It was first issued for
+`v2.1.0-rc3`. The attestation event is recorded on the public Sigstore
+Rekor transparency log and remains independently inspectable through
 <https://search.sigstore.dev>.
 
-**Standalone verifiable attestation file is not redistributed for
-`v2.1.0-rc3`.** The attestation event itself is recorded on the
-Sigstore Rekor transparency log at the time of signing and can be
-inspected there; what is not provided alongside the release is a
-distinct attestation asset that an external auditor could fetch and
-verify independently of Rekor lookup. Future releases may ship such
-an asset directly with the release; absence of it does not affect the
-integrity binding established in §4.1.
+**The attested subject is a source archive, not a binary.** The workflow
+attests `tactiq-os-<commit>.tar.gz`, built from the tagged commit. No
+image, kernel, device tree or RAUC bundle is an attested subject, so:
 
-**What this means for trust in `v2.1.0-rc3`:**
+```sh
+gh attestation verify image-rock5a.wic.gz --repo revenue7-eng/tactiq-os
+# HTTP 404: no attestations found
+```
 
-- **Integrity binding is provided by §4.1** — the workflow-identity
-  Sigstore signature over `SHA256SUMS`, which transitively covers
-  every release artifact. Rekor index for this signature: `1361817475`.
-  This is the binding consumers should rely on.
-- **Provenance binding** (which workflow, on which commit, produced the
-  source archive) is recorded on Rekor at the time of signing and can
-  be observed there, but is not redistributed as a standalone
-  verifiable file alongside the `v2.1.0-rc3` release.
-- **No SLSA attestation binds the binary artifacts** themselves —
-  rootfs, kernel, device tree. These are built locally (WSL2 + Docker),
-  not in a hosted builder. This is the largest open gap toward
-  end-to-end SLSA L3 on the image and is tracked in
-  [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md).
+A 404 here is the expected result and not a defect. Verify the source
+archive instead, and rely on the `SHA256SUMS` signature of §4.1 for the
+binaries. Reproducing the archive locally and checking it against the
+attested digest is the meaningful check:
 
-**Going forward.** The signing and attestation path for releases
-produced after `v2.1.0-rc3` is documented in the release notes of
-each such release. Releases that ship a standalone, externally
-verifiable attestation file as a release asset will document the
-exact verification command in their own release notes; absence of
-such a file means the release inherits the same status as `rc3`
-above.
+```sh
+git archive --format=tar --prefix="tactiq-os-<commit>/" <commit> \
+  | gzip -n > tactiq-os-<commit>.tar.gz
+gh attestation verify tactiq-os-<commit>.tar.gz --repo revenue7-eng/tactiq-os
+```
+
+**Archive scope by release.** Through `v2.1.0-rc7` the workflow archived
+a hand-written list of directories rather than the tree. That list was
+measured on 2026-08-07, after the `v2.1.0-rc7` tag was cut, and covers
+four of the twenty-seven top-level entries: `conf/`, `recipes-core/`,
+`recipes-kernel/`, `scripts/`. It predates `meta-tactiq-bsp-rockchip/`
+and `classes-recipe/`, so the BSP layer, the build classes, `pki/`,
+`security/` and `postinst-intercepts/` sit outside the attested object
+while the workflow describes itself as attesting the sources. A tampered
+recipe in the BSP layer is not detectable through provenance at
+`v2.1.0-rc7` or any earlier tag. Earlier revisions of this document
+described the scope as five directories including a `wic/` tree; no such
+directory exists in the repository, and that description was wrong.
+
+The scope is unchanged from `v2.1.0-rc3` through `v2.1.0-rc7`. The fix
+removes the list rather than lengthening it: the workflow now runs
+`git archive` over `HEAD`, which has no separate idea of what the tree
+contains and therefore cannot go stale. It is committed on `main` and
+takes effect **from the next tag**; `v2.1.0-rc7` was produced by the
+four-directory version and is not covered by it. Determinism of the
+replacement was verified locally, two runs byte-identical, 219 entries.
+
+**Standalone verifiable attestation file is not redistributed.** The
+attestation event is recorded on Rekor at the time of signing and can be
+inspected there; what is not shipped alongside the release is a distinct
+attestation asset an external auditor could fetch and verify without a
+Rekor lookup. Absence of it does not affect the integrity binding of
+§4.1.
+
+**What each layer proves:**
+
+- **Integrity binding, §4.1.** The workflow-identity Sigstore signature
+  over `SHA256SUMS`, which transitively covers every release artifact.
+  This is the binding consumers should rely on. Per-release Rekor
+  indices are listed in §7.
+- **Provenance binding**: which workflow, on which commit, produced the
+  source archive. Recorded on Rekor at signing time, within the archive
+  scope stated above.
+- **No SLSA attestation binds the binary artifacts.** The rootfs, kernel
+  and device tree are built locally, not in a hosted builder. This is
+  the largest open gap toward end-to-end SLSA L3 on the image and is
+  tracked in [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md). The rootfs is
+  reproducible across independent hosts, which is a different and weaker
+  property: it shows the build is deterministic under fixed inputs, not
+  that the published binaries came from the attested source.
 
 ## 6. Verify SBOM integrity
 
@@ -239,12 +271,12 @@ The SBOM is listed in `SHA256SUMS`; step 3 above already covers
 it. To inspect content:
 
 ```sh
-# SPDX 3.0.1 image SBOM — count packages and files
+# SPDX 3.0.1 image SBOM: count packages and files
 jq '[.["@graph"][] | select(.type=="software_Package")] | length' sbom-rock5a.spdx.json
 jq '[.["@graph"][] | select(.type=="software_File")]    | length' sbom-rock5a.spdx.json
 ```
 
-SBOM scope — what is included, what is not — is documented in
+SBOM scope, what is included and what is not, is documented in
 [`SUPPLY_CHAIN.md`](SUPPLY_CHAIN.md#sbom).
 
 ## 7. Transparency-log lookup
@@ -274,7 +306,7 @@ release notes. Current release `v2.1.0-rc6`: index `2194858421`;
 
 ---
 
-## Appendix A — expected identity strings, in full
+## Appendix A. Expected identity strings, in full
 
 These strings reproduce verbatim what Sigstore Fulcio recorded in the
 respective release certificates. They are not configurable on the
@@ -296,11 +328,11 @@ preserved as immutable historical artifacts.
 Identity strings used by releases produced after `v2.1.0-rc3` are
 documented in the release notes of each such release.
 
-## Appendix B — why the tag-SAN check matters
+## Appendix B. Why the tag-SAN check matters
 
 Sigstore bakes the OIDC claims of the signing principal into the X.509
 certificate's Subject Alternative Name. For a GitHub Actions workflow,
-the SAN encodes the **exact ref that triggered the run** — branch or
+the SAN encodes the **exact ref that triggered the run**, branch or
 tag. A signature produced by the same workflow running on
 `refs/heads/main` is cryptographically valid, but its SAN does not
 match `refs/tags/<TAG>`, and the corresponding Rekor entry carries the
@@ -310,11 +342,11 @@ mutable branch, not the immutable tag.
 The canonical TactiQ OS release-signing workflow is triggered only by
 tag pushes (`on: push: tags: ['v*']`). If you encounter a
 workflow-identity signature whose SAN does not resolve to the tag you
-downloaded, reject it and surface the discrepancy — the Rekor entry is
+downloaded, reject it and surface the discrepancy. The Rekor entry is
 unremovable but the release signature assets can be (and must be)
 replaced with tag-triggered ones.
 
-## Appendix C — quick one-liner self-check
+## Appendix C. Quick one-liner self-check
 
 The short path once all assets are in a clean directory:
 
