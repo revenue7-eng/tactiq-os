@@ -127,6 +127,11 @@ IMAGE_INSTALL:append = " \
     libselinux-python \
     policycoreutils \
     policycoreutils-setfiles \
+    policycoreutils-semodule \
+    policycoreutils-sestatus \
+    checkpolicy \
+    policycoreutils-hll \
+    libselinux-bin \
     selinux-autorelabel \
     refpolicy-targeted \
     audit \

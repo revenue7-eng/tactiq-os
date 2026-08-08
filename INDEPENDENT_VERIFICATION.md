@@ -132,9 +132,12 @@ source ./layers/openembedded-core/oe-init-build-env ./build
 bitbake tactiq-image
 ```
 
-Wall-time on a 16 vCPU / 64 GB host is typically three to four hours
-for a cold build (empty `DL_DIR` and `SSTATE_DIR`). Subsequent builds
-that reuse the same build directory take minutes.
+Measured cold-build wall-time on a 32 vCPU / 64 GB host with empty
+`DL_DIR` and `SSTATE_DIR`, 5,254 tasks: 33 m 23 s (2026-07-30), and
+41 m 41 s and 43 m 59 s for the two independent builds of 2026-08-02.
+The three-to-four-hour figure previously given here was an estimate
+for a 16 vCPU host, not a measurement. Subsequent builds that reuse
+the same build directory take minutes.
 
 ### 2.5. Compare
 
@@ -143,30 +146,66 @@ Three comparison targets, in decreasing order of strength:
 1. **Per-file SBOM.** For every `software_File` entry in the newly
    built SBOM (`tmp/deploy/images/tactiq-rock5a/tactiq-image-tactiq-rock5a.rootfs.spdx.json`)
    and the published `sbom-rock5a.spdx.json`, compare the SHA-256
-   under the identical file path. Divergence is expected only in the
-   four filesystem-level image artifacts (`.ext4`, `.wic`, `.wic.bmap`,
-   `.wic.gz`); anything else divergent is a finding.
-2. **Kernel and device tree.** SHA-256 of
-   `tmp/deploy/images/tactiq-rock5a/Image` and of
-   `rk3588s-rock-5a.dtb` in the same directory must match the
-   entries for `kernel-rock5a.bin` and `rk3588s-rock-5a.dtb` in the
-   signed `SHA256SUMS`.
+   under the identical file path.
+2. **Device tree.** SHA-256 of `rk3588s-rock-5a.dtb` in
+   `tmp/deploy/images/tactiq-rock5a/` must match the corresponding
+   entry in the signed `SHA256SUMS`.
 3. **Rootfs tarball.** The published `sbom-rock5a.spdx.json` records
    the SHA-256 of the rootfs tarball entry. If the verifier's build
    produces a matching tarball hash, the rootfs is bit-identical.
 
-Filesystem-image bit-identity (target 1's exception list) is a known
-open item, documented in `SUPPLY_CHAIN.md`. Per-file rootfs
-reproducibility (target 1 minus the exception list) and per-artifact
-kernel/dtb reproducibility (target 2) are the properties the
-architecture guarantees today.
+What counts as an expected divergence is a property of the specific
+release, not of the procedure, and is stated here per release.
+Anything divergent that is not listed for the release under
+verification is a finding, and §4 applies.
+
+#### v2.1.0-rc6
+
+| Class | Expected | Reason |
+|---|---|---|
+| Image containers (`.ext4`, `.wic`, `.wic.bmap`, `.wic.gz`) | yes | ext4 metadata: filesystem UUID, inode timestamps, mkfs timestamp |
+| `/etc/tactiq-release` | yes | records build identity, volatile by design |
+| Kernel image, 18 kernel modules, 4 kernel-meta logs | yes, for this release only | unpinned module-signing key, see below |
+| Anything else | no | finding |
+
+Excluding the classes above, userspace reproduces per-file: 38,694 of
+38,695 files identical on an independent cold rebuild, on unrelated
+infrastructure, twelve days after the reference build.
+
+The kernel-side exception is not a tolerance. In `v2.1.0-rc6`,
+`CONFIG_MODULE_SIG` was enabled with `CONFIG_MODULE_SIG_KEY` left at
+its default, so the kernel build generated a fresh RSA key pair on
+every build starting from a clean tree: the certificate was compiled
+into the built-in keyring and the private half signed every module
+under `CONFIG_MODULE_SIG_ALL`. The signing key was an unpinned build
+input. The key that signed the published `rc6` artifacts was
+ephemeral and no longer exists, so no party can byte-reproduce the
+`rc6` kernel image or its modules. For `rc6`, kernel integrity rests
+on signed-artifact provenance (§1) and the measured boot chain, not
+on independent rebuild. The device tree lies outside the signing path
+and does reproduce, which is why it is target 2 above.
+
+This defect was found by executing this procedure against our own
+release. It is fixed forward: the signing key is now a pinned,
+published development artifact, and two independent cold builds of
+the fixed tree, sharing no build state, produced a bit-identical
+`rootfs.tar.gz` (SHA-256
+`41b668379ae8561206896ec9ad62b71ba9a04d9c48c112ade32c4d696d1b7140`),
+with divergence confined to the image containers. The measurement is
+in `docs/reproducibility/`.
+
+Filesystem-image bit-identity remains a known open item, documented
+in `SUPPLY_CHAIN.md`.
 
 ## 3. What a successful verification proves, and what it does not
 
 Successful completion of §1 proves that the release artifacts were
 signed by the declared workflow at the declared tag and have not been
 altered since. Successful completion of §2 proves that these artifacts
-correspond to the sources in this repository at the declared tag.
+correspond to the sources in this repository at the declared tag, for
+the file set that the release under verification reproduces (§2.5).
+Where a release carries a documented kernel-side exception, that part
+of the image is covered by §1 alone.
 Together, they establish the property claimed by the accompanying
 paper (§5): that an independent party can determine, without vendor
 participation, whether the deployed binary matches the published

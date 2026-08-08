@@ -1,0 +1,62 @@
+=== run 2: with execute rule ===
+2026-08-06T16:07:52Z
+--- cil:
+(allow tactiq_rauc_t tactiq_squashfs_t (file (execute execute_no_trans)))
+--- semodule -i:
+libsemanage.semanage_reload_policy: load_policy returned error code 1. (No such file or directory).
+libsemanage.semanage_reload_policy: load_policy returned error code 1. (No such file or directory).
+semodule:  Failed!
+rc=1
+--- modules:
+tactiq_rauc
+--- policy after:
+allow tactiq_rauc_t tactiq_squashfs_t:file { getattr ioctl lock open read };
+=== run 2: with execute rule ===
+2026-08-06T17:05:49Z
+--- cil:
+(allow tactiq_rauc_t tactiq_squashfs_t (file (execute execute_no_trans)))
+--- semodule -i:
+libsemanage.semanage_reload_policy: load_policy returned error code 1. (No such file or directory).
+libsemanage.semanage_reload_policy: load_policy returned error code 1. (No such file or directory).
+semodule:  Failed!
+rc=1
+--- modules:
+tactiq_rauc
+--- policy after:
+allow tactiq_rauc_t tactiq_squashfs_t:file { getattr ioctl lock open read };
+--- policy file:
+-rw-r--r--    1 root     root       1945328 Aug  6 17:05 /etc/selinux/targeted/policy/policy.35
+b3acae463561c8af591779fa84731f27dd1e3aa4fef8a9cee55400b588caef9b  /etc/selinux/targeted/policy/policy.35
+--- load via selinuxfs:
+cat: write error: Invalid argument
+rc=1
+--- policy after load:
+allow tactiq_rauc_t tactiq_squashfs_t:file { getattr ioctl lock open read };
+--- load via dd:
+0+1 records in
+0+1 records out
+rc=0
+--- policy in kernel after load:
+allow tactiq_rauc_t tactiq_squashfs_t:file { execute execute_no_trans getattr ioctl lock open read };
+--- install with execute:
+installing
+  0% Installing
+  0% Determining slot states
+ 10% Determining slot states done.
+ 10% Checking bundle
+ 10% Verifying signature
+ 20% Verifying signature done.
+ 20% Checking bundle done.
+ 20% Checking manifest contents
+ 30% Checking manifest contents done.
+ 30% Determining target install group
+ 40% Determining target install group done.
+100% Installing failed.
+LastError: Install-check hook failed: failed to start bundle hook: Failed to execute child process “/run/rauc/mnt/bundle/hook” (Permission denied)
+Installing `/var/lib/tactiq/rauc/bundles/hooktest.raucb` failed
+rc=1
+--- avc since run2:
+Aug 06 17:44:24 tactiq-rock5a audit[714]: AVC avc:  denied  { getattr } for  pid=714 comm="(udev-worker)" path="/var/lib/tactiq/rauc/bundles/hooktest.raucb" dev="mmcblk1p2" ino=8492 scontext=system_u:system_r:udev_t:s0 tcontext=system_u:object_r:tactiq_rauc_bundle_t:s0 tclass=file permissive=0
+Aug 06 17:44:24 tactiq-rock5a audit[719]: AVC avc:  denied  { execute } for  pid=719 comm="installer" name="bash.bash" dev="mmcblk1p2" ino=611 scontext=system_u:system_r:tactiq_rauc_t:s0 tcontext=system_u:object_r:shell_exec_t:s0 tclass=file permissive=0
+Aug 06 17:44:24 tactiq-rock5a audit[714]: AVC avc:  denied  { getattr } for  pid=714 comm="(udev-worker)" path="/var/lib/tactiq/rauc/bundles/hooktest.raucb" dev="mmcblk1p2" ino=8492 scontext=system_u:system_r:udev_t:s0 tcontext=system_u:object_r:tactiq_rauc_bundle_t:s0 tclass=file permissive=0
+Aug 06 17:44:24 tactiq-rock5a audit: EXECVE argc=3 a0="/usr/bin/busybox.nosuid" a1="/bin/grep" a2="AVC"

@@ -235,7 +235,7 @@ The transitions that move the chain from current state to fully
 verified, in dependency order:
 
 1. **Production keyring through CI secrets.** Replace the in-tree
-   `ca.cert.pem` with a keyring loaded from CI-managed
+   `pki/dev/root-ca.pem` with a keyring loaded from CI-managed
    secrets at build time. Tracked in the supply-chain area; this is
    a prerequisite for everything downstream because OTP burn binds
    to whatever keyring is canonical at burn time.
@@ -308,8 +308,8 @@ the order shown.
   steps.
 - `recipes-core/rauc/files/system.conf` — RAUC A/B slot definitions
   and bootloader integration.
-- `recipes-core/rauc/files/ca.cert.pem` — current
-  development RAUC keyring; production keyring transition tracked
+- `pki/dev/root-ca.pem`: current development RAUC keyring, shared
+  with kernel module signing. Production keyring transition tracked
   separately.
 - `docs/machines/` — per-platform bring-up status, including TPM
   class, OTP fuses state, and vendor firmware blob inventory per

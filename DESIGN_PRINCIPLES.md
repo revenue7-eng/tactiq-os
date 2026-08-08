@@ -67,9 +67,10 @@ not to software-held secrets.
 `recipes-kernel/linux/linux-yocto/tactiq-security.cfg`). The attestation
 agent at `/opt/tactiq/bin/tactiq-agent` uses Ed25519 for signing
 (`recipes-core/tactiq-agent/`). RAUC A/B updates carry a CMS signature, but the current tree ships a
-development keyring (`ca.cert.pem`, subject `TactiQ RAUC Dev CA`) whose
-private key is in the repository. The chain closes, so bundles install;
-it establishes availability of the update path, not authenticity.
+development keyring (`pki/dev/root-ca.pem`) whose private keys are in
+the repository on purpose. Anyone can therefore sign a bundle this image
+accepts, which is what makes the check reproducible from outside. It
+establishes availability of the update path, not authenticity.
 
 **Tracked.** Production RAUC keyring rotation from the in-tree
 development certificate to a keyring provisioned from CI secrets at
