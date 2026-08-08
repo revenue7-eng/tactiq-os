@@ -106,6 +106,61 @@ if [[ "$mixed" == 1 ]]; then
     fi
 fi
 
+# ---------------------------------------------------------------------------
+# Release-identity gate.
+#
+# The guard above proves the deploy dir is internally consistent: all rootfs
+# artifacts from ONE build. It cannot prove it is THE build this tag ships. A
+# stale but self-consistent deploy tree passes it silently, and everything
+# below this line overwrites the artifact set. The coverage manifest is the
+# only file in this pipeline that is committed, pinned to the tag and covered
+# by the release signature, so it is the external statement the tree is
+# checked against.
+#
+# If build_id here is wrong, the tag is wrong: the manifest is pinned to the
+# tag, so the remedy is a new tag, not an edit to a published manifest.
+# ---------------------------------------------------------------------------
+COV_SRC="${SCRIPT_DIR}/../security/coverage-${BOARD}.${TAG}.yaml"
+[[ -e "$COV_SRC" ]] || { echo "::error:: coverage manifest not found: $COV_SRC" >&2; exit 1; }
+
+cov_field() {  # echo a 2-space-indented scalar from the top-level manifest: block
+    awk -v k="$1" '
+        /^manifest:[ \t]*$/ { m = 1; next }
+        /^[^ \t#]/          { m = 0 }
+        m && $0 ~ "^  " k ":" {
+            sub("^  " k ":[ \t]*", "")
+            sub("[ \t]*(#.*)?$", "")
+            gsub(/^"|"$/, "")
+            print; exit
+        }
+    ' "$COV_SRC"
+}
+
+COV_BUILD_ID="$(cov_field build_id)"
+COV_GENERATED="$(cov_field generated_utc)"
+
+[[ -n "$COV_BUILD_ID" ]] || { echo "::error:: no manifest.build_id in ${COV_SRC}" >&2; exit 1; }
+
+if [[ "$COV_BUILD_ID" != "$T" ]]; then
+    echo "::error:: release identity mismatch — this deploy tree did not produce ${TAG}." >&2
+    echo "::error::   deploy tree      : ${T}" >&2
+    echo "::error::   manifest build_id: ${COV_BUILD_ID}" >&2
+    echo "::error:: assemble on the host that ran the build, or cut a tag whose manifest names this build." >&2
+    if [[ "${ALLOW_BUILD_ID_MISMATCH:-0}" == 1 ]]; then
+        echo "::warning:: proceeding (ALLOW_BUILD_ID_MISMATCH=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+    else
+        exit 1
+    fi
+fi
+
+case "$COV_GENERATED" in
+    ""|"<iso8601>")
+        echo "::error:: manifest.generated_utc is '${COV_GENERATED}' in ${COV_SRC} — set it before cutting the release." >&2
+        exit 1 ;;
+esac
+
+echo "==> release identity: ${T} matches manifest.build_id  (generated ${COV_GENERATED})"
+
 mkdir -p "$OUT"; cd "$OUT"
 
 copy() {  # copy <src-relative-to-deploy> <dest>  — resolves symlinks, asserts existence
@@ -185,8 +240,7 @@ fi
 # if absent: a transparency release without its coverage map is a defect.
 # ---------------------------------------------------------------------------
 echo "==> coverage manifest"
-COV_SRC="${SCRIPT_DIR}/../security/coverage-${BOARD}.${TAG}.yaml"
-[[ -e "$COV_SRC" ]] || { echo "::error:: coverage manifest not found: $COV_SRC" >&2; exit 1; }
+# COV_SRC resolved and validated by the release-identity gate above.
 cp -L "$COV_SRC" "coverage-${BOARD}.${TAG}.yaml"
 echo "    + coverage-${BOARD}.${TAG}.yaml"
 echo "==> SHA256SUMS"
