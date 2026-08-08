@@ -151,7 +151,7 @@ manifest:
     - "IMA enforce mode: correct form is CONFIG_IMA_ARCH_POLICY compiled in with CONFIG_IMA_WRITE_POLICY disabled"
     - "TACTIQ_IMAGE_NAME in /etc/tactiq-release is empty; TACTIQ_BUILD_DATE is the fixed SOURCE_DATE_EPOCH"
     - "no RTC on the board: a device with no time source rejects valid bundles with 'certificate is not yet valid'; use-bundle-signing-time and min-bundle-version not yet set"
-  generated_utc: "2026-08-07T00:00:00Z"
+  generated_utc: "2026-08-08T07:05:57Z"
 
 reference_frameworks:
   - "SPARTA v3.2 (Aerospace Corp)"
