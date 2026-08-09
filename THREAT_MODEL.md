@@ -336,8 +336,11 @@ the strength of the hardware primitives that anchor each part:
 
 The supported machine configurations and their current state along
 these axes are tracked in `docs/machines/` as each platform completes
-bring-up. At the time of this writing the qemu-x86 machine is the
-only validated functional CI target; the physical Rockchip-family
+bring-up. At the time of this writing no machine has a functional
+validation gate in CI: the workflows run static checks only (Yocto
+recipe lint, SELinux policy syntax, shellcheck, YAML and distro
+config validation) and build no image. Functional evidence is
+recorded per run under `measurements/`. The physical Rockchip-family
 machines (rock5a, rock5b, rock5t) are in active bring-up phase, with
 no TPM device exercised on the reference hardware and the secure boot
 anchor not yet activated. The generic-arm64 machine is a
