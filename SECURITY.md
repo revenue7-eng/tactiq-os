@@ -13,10 +13,11 @@ and are not maintained.
 
 | Version        | Supported          |
 |----------------|--------------------|
-| v2.1.0-rc6     | :white_check_mark: (canonical) |
-| v2.1.0-rc5     | :warning: superseded by rc6 |
-| v2.1.0-rc4     | :warning: superseded by rc6 |
-| v2.1.0-rc3     | :warning: superseded by rc6 |
+| v2.1.0-rc7     | :white_check_mark: (canonical) |
+| v2.1.0-rc6     | :warning: superseded by rc7 |
+| v2.1.0-rc5     | :warning: superseded by rc7 |
+| v2.1.0-rc4     | :warning: superseded by rc7 |
+| v2.1.0-rc3     | :warning: superseded by rc7 |
 | v2.1.0-rc2     | :warning: deprecated — use rc4 (binary payload identical to rc3; see [`docs/release-notes/v2.1.0-rc2-deprecated.md`](docs/release-notes/v2.1.0-rc2-deprecated.md)) |
 | v2.1.0-rc1     | :x:                |
 | v2.0.1         | :white_check_mark: (critical fixes only) |
@@ -147,7 +148,7 @@ inspectable through <https://search.sigstore.dev>.
 
 The integrity binding consumers should rely on is the workflow-identity
 Sigstore signature over `SHA256SUMS`. For the canonical release
-`v2.1.0-rc6` the corresponding Rekor index is `2194858421`. The full
+`v2.1.0-rc7` the corresponding Rekor index is `2380986847`. The full
 consumer-side verification procedure is documented in
 [`VERIFY.md`](VERIFY.md).
 
