@@ -14,14 +14,14 @@ Last reviewed: 2026-04-25.
 ## Status
 
 The attestation framework specified here is the architectural target.
-The current implementation status in v2.1.0-rc6 is a stub: the binary
+The current implementation status is a stub: the binary
 installed at `/opt/tactiq/bin/tactiq-agent` is a placeholder
 (`recipes-core/tactiq-agent/files/tactiq-agent-stub.sh`) that holds
 the systemd unit, SELinux domain, vault directory layout, and TPM
 device access permissions in place while the real implementation is
 built.
 
-What exists in v2.1.0-rc6 is the supporting infrastructure: kernel
+What exists today is the supporting infrastructure: kernel
 TPM drivers compiled in, IMA machinery enabled at PCR 10, SELinux
 domain (`tactiq_agent_t`) with permissions to access the TPM device
 nodes through the `tactiq_tpm_access` interface macro (defined in
@@ -213,7 +213,7 @@ roots.
 The framework, even when fully implemented, has explicit limits.
 Stating them is part of the documentation, not an oversight.
 
-**In the current v2.1.0-rc6 stub state.** Nothing. The binary at
+**In the current stub state.** Nothing. The binary at
 `/opt/tactiq/bin/tactiq-agent` does not produce attestations. The
 SELinux policy, systemd unit, and TPM access primitives are in
 place; the agent that uses them is not. Any document describing

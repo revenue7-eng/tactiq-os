@@ -173,7 +173,7 @@ into `/etc/tactiq-release` on every image (version, codename, UTC
 build date, machine target, meta-layer git short hash, image
 basename) by the `tactiq-release` recipe, so that a remote verifier
 can correlate a running system with a specific build artifact. The
-binary at `/opt/tactiq/bin/tactiq-agent` in v2.1.0-rc3 is a stub
+binary at `/opt/tactiq/bin/tactiq-agent` is a stub
 (`recipes-core/tactiq-agent/files/tactiq-agent-stub.sh`) that holds
 the systemd unit, SELinux domain, and TPM access primitives in place
 while the real implementation is built.
@@ -229,5 +229,5 @@ artifacts of the current release:
   security fragment.
 - `recipes-core/tactiq-agent/` — attestation agent recipe.
 - `recipes-core/rauc/` — RAUC A/B update configuration.
-- `docs/release-notes/v2.1.0-rc3.md` — current release notes and known
+- `docs/release-notes/v2.1.0-rc7.md` — current release notes and known
   limitations.
