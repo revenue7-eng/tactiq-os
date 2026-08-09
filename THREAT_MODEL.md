@@ -339,8 +339,8 @@ these axes are tracked in `docs/machines/` as each platform completes
 bring-up. At the time of this writing the qemu-x86 machine is the
 only validated functional CI target; the physical Rockchip-family
 machines (rock5a, rock5b, rock5t) are in active bring-up phase, with
-fTPM as the available TPM class on the reference hardware and the
-secure boot anchor not yet activated. The generic-arm64 machine is a
+no TPM device exercised on the reference hardware and the secure boot
+anchor not yet activated. The generic-arm64 machine is a
 template configuration whose state depends on the target board.
 
 `docs/machines/` is the canonical source for current per-platform
