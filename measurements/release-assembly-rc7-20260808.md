@@ -21,6 +21,14 @@ The script has no check that the deploy tree matches the tag being released.
 Adding one (compare `ts_of` against `build_id` in the coverage manifest) is
 an open task.
 
+**Closed since.** `scripts/mk-release.sh` now reads `manifest.build_id` from
+the coverage manifest and refuses to assemble when it does not match the
+deploy tree, before writing anything. `ALLOW_BUILD_ID_MISMATCH=1` overrides
+it and marks the output as not a valid release. The manifest is the only file
+in the pipeline that is committed, pinned to the tag and covered by the
+release signature, which is what makes it the thing to check against. The
+rest of this report is the record of the 8 August run and is unchanged.
+
 ## What was executed
 
     cd ~/rc7-artifacts/release-rc7
