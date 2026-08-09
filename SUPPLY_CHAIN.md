@@ -275,6 +275,37 @@ per-deployment configuration concern, not a distro-level property.
 Bandwidth optimization, delta updates, and update-progress
 reporting are operational features outside the current scope.
 
+## Measurement evidence: integrity and image scope
+
+The threat-coverage manifest for a tag cites files under `measurements/`
+as evidence, referencing them by path.
+
+**Integrity.** The manifest is hashed into `SHA256SUMS` and covered by
+the release signature. The files it cites are not. `measurements/` is
+outside the release artifact set, so the integrity of the cited
+evidence rests on git history alone. `measurements/SHA256SUMS` is an
+index for local comparison. It is unsigned, it sits in the same tree as
+the files it hashes, and its entries cover a different set of files
+than the manifest cites.
+
+**Image scope.** The eleven citations in the rc7 manifest resolve to
+four files. `selinux-enforcing-boot-prod-20260717.log` was taken on the
+production profile, on v2.0.0-rc6, in July 2026.
+`rauc-rollback-test-20260716.md` and `rauc-pki-unify-20260806.md` were
+taken on the development profile `tactiq-image-dev.bb`.
+`cve-posture-rc7-20260807.md` analyses a build report and names no
+image. The development profile keeps passwordless
+root, an SSH server and the SELinux policy tooling, and is never signed
+as a release artifact. The production profile `tactiq-image.bb` removes
+those items and inherits the rest by `require`. A result from the
+development image therefore covers the shared base only.
+
+These limits bear on each other. Placing the cited files under the
+release signature would extend that signature over measurements taken
+on an image that is never released. The integrity gap stays open until
+the evidence is retaken on the production profile. No date is set for
+that here.
+
 ## SLSA self-assessment
 
 SLSA v1.0 build track, per the current posture:
