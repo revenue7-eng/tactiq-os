@@ -93,7 +93,7 @@ describes the present state of each link.
 | Kernel runtime → file accesses | n/a | ON | IMA measures file accesses and extends PCR 10. This part of the measured-boot chain is functional in the present configuration. |
 | Kernel runtime → file access enforcement | OFF | n/a | IMA appraisal is configured at the kernel level (`CONFIG_IMA_APPRAISE=y`) but the on-disk policy that tells the kernel which files require valid signatures is not deployed. Without policy, IMA measures but does not block. |
 | Kernel → userspace MAC | ON | n/a | SELinux is enforcing from boot, with the targeted reference policy plus the TactiQ-specific modules from `meta-tactiq-selinux`. This is the strongest enforced boundary in the current chain. |
-| Userspace → attestation payload | STUB | n/a | The agent at `/opt/tactiq/bin/tactiq-agent` in v2.1.0-rc6 is a stub. Full architectural specification in `ATTESTATION.md`, including the path from stub to TPM-quote-integrated implementation. |
+| Userspace → attestation payload | STUB | n/a | The agent at `/opt/tactiq/bin/tactiq-agent` is a stub. Full architectural specification in `ATTESTATION.md`, including the path from stub to TPM-quote-integrated implementation. |
 
 The single ON row in the Verified column at the kernel-to-userspace
 boundary, and the single ON row in the Measured column for IMA

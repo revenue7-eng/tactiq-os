@@ -90,7 +90,7 @@ cannot cause unauthorized code to run.
 **Known gaps at this stage.** The attestation agent currently shipped
 is a stub (`recipes-core/tactiq-agent/files/tactiq-agent-stub.sh`); the
 mTLS path described in `DESIGN_PRINCIPLES.md` is the design target, not
-a running implementation in v2.1.0-rc6. Anti-rollback on RAUC bundles
+a running implementation. Anti-rollback on RAUC bundles
 (generation counter) is not yet wired. Update bundle delivery channel
 authenticity beyond signature verification (e.g. authenticated transport
 to a known update endpoint) is per-deployment configuration, not
@@ -288,7 +288,7 @@ the adversary classes because it is the most consequential current
 limitation and a consumer of this document needs to understand it
 explicitly.
 
-The attestation agent in v2.1.0-rc3 is a stub. When the agent is
+The attestation agent is a stub. When the agent is
 brought to a real implementation, the design target is for it to
 include a TPM quote in its signed payload, so that what the device
 attests is what the hardware measured at boot. Until that integration
@@ -390,7 +390,7 @@ part of the current state and are not on the near-term roadmap.
 - `SUPPLY_CHAIN.md` — supply-chain self-assessment and roadmap.
 - `SECURITY.md` — vulnerability disclosure policy.
 - `VERIFY.md` — consumer verification procedure.
-- `docs/release-notes/v2.1.0-rc3.md` — current release notes and known
+- `docs/release-notes/v2.1.0-rc7.md` — current release notes and known
   limitations.
 - `docs/machines/` — per-platform bring-up status (canonical source for
   per-platform state).
