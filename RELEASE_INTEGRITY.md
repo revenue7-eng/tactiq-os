@@ -55,7 +55,7 @@ applies to every signature this document specifies.
 
 **Per-product keyring scope.** The release integrity chain serves
 TactiQ OS as a foundation layer. Products built on top of it (TactiQ
-Edge, TactiQ Box, TactiQ Sentinel) sign their own artifacts with their
+Edge, TactiQ Box) sign their own artifacts with their
 own keys. The keyring hierarchy in §2 reflects this.
 
 **Air-gap compatibility is a property of the verifier setup, not of
@@ -259,8 +259,8 @@ bundle could be installed at all; that defect is described in
   medium (hardware security module, paper backup, threshold sharing),
   physical location, access protocol, and recovery procedure are an
   operational concern documented in `KEY_CUSTODY.md` (not public).
-- **Per-product keys for products other than TactiQ OS.** TactiQ Edge,
-  TactiQ Box, and TactiQ Sentinel each maintain their own per-product
+- **Per-product keys for products other than TactiQ OS.** TactiQ Edge
+  and TactiQ Box each maintain their own per-product
   keys under the same release root, in their own repositories. The
   hierarchy is shared; the per-product key material is not.
 - **Threshold signing for the release root.** A future hardening step
@@ -595,7 +595,7 @@ the same protocol over both.
 - **TactiQ OS on a specific MACHINE configuration:** the available
   TPM class for that platform, named explicitly, with the threat
   model parameters from `THREAT_MODEL.md` § 6.
-- **TactiQ Box, TactiQ Sentinel, or any specific product:** the TPM
+- **TactiQ Box or any specific product:** the TPM
   class delivered with the product. If the product ships with a
   discrete TPM chip (e.g. Infineon SLB9670), that is stated. If it
   uses the SoC's fTPM, that is stated. Product positioning that
@@ -844,7 +844,7 @@ before OTP burn on the first generation of fielded devices.
 product-level, not OS-level.** TactiQ OS supports either choice: the
 boot chain accepts a U-Boot that validates against one OTP-fused key,
 or one that validates against either of two OTP-fused keys. TactiQ
-Box, TactiQ Sentinel, and OEM-built devices each make their own call.
+Box and OEM-built devices each make their own call.
 The architectural recommendation is to include a recovery root; the
 operational cost is one additional key under stricter custody, and
 the alternative is field replacement of all OTP-burned devices on
@@ -911,7 +911,7 @@ proceed in parallel.
 
 ## 10. What this document does not cover
 
-- **TactiQ Edge, Box, Sentinel release integrity.** Each product
+- **TactiQ Edge and Box release integrity.** Each product
   maintains its own per-product key and its own release pipeline,
   under the same release root and following the same patterns.
   Product-specific deviations from these patterns are documented in
