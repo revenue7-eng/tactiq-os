@@ -21,7 +21,7 @@ part --source rawcopy --sourceparams="file=u-boot.itb" --no-table --offset ${RK3
 part --source rawcopy --sourceparams="file=tactiq-boot-image.ext4" --fstype=ext4 --label boot_a --align 4096 --size 256M --active
 part / --source rootfs --fstype=ext4 --label rootfs_a --align 4096 --size 2048M --no-fstab-update
 
-# Partition B (standby - empty initially, populated by RAUC in Phase 4)
+# Partition B (standby - empty initially, populated by RAUC on the first bundle install)
 part --fstype=ext4 --label boot_b --align 4096 --size 256M
 part --fstype=ext4 --label rootfs_b --align 4096 --size 2048M
 
