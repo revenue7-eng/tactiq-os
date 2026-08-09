@@ -760,7 +760,7 @@ should:
   sense.** This section names categories of capability and what is
   mitigated, but does not provide formal attack trees, blast radius
   tables, or per-asset impact analyses. Formal security architecture
-  documentation is a Phase 3+ deliverable; what is here is engineering
+  documentation is a future deliverable; what is here is engineering
   honesty about the present state, not a substitute for that work.
 - **Incident response playbooks.** What the team does on detection of
   any of A1–A6 is an operational document, not an architecture
@@ -927,7 +927,7 @@ proceed in parallel.
   item documented in `Platform_Strategy` § "Roadmap".
 - **Formal security architecture artifacts.** Attack capability
   matrices, blast radius tables, recovery timelines, incident
-  playbooks, formal trust boundary diagrams — these are Phase 3+
+  playbooks, formal trust boundary diagrams — these are future
   deliverables. v0.2 makes engineering decisions and documents
   them with the rigor appropriate to the present state of the
   project; it does not substitute for that future work.
@@ -1000,7 +1000,7 @@ endorsed by the review; preserved unchanged.
 **Review pt. 11 — Formal security architecture.** §10 expanded to
 name explicitly that formal artifacts (attack capability matrices,
 blast radius tables, recovery timelines, incident playbooks, formal
-trust boundary diagrams) are Phase 3+ deliverables and that v0.2
+trust boundary diagrams) are future deliverables and that v0.2
 does not substitute for them. §7 contributes the engineering-level
 threat model that approximates one component of this future work.
 
