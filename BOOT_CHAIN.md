@@ -3,7 +3,7 @@
 This document describes the chain of trust from the silicon root to
 the running attestation agent — what each stage in the boot path
 verifies and measures, where the chain is anchored, and the state of
-each stage in v2.1.0-rc6. It sits alongside `DESIGN_PRINCIPLES.md`
+each stage. It sits alongside `DESIGN_PRINCIPLES.md`
 (per-domain rationale), `THREAT_MODEL.md` (consolidated adversary
 model), `ATTESTATION.md` (attestation framework),
 `KERNEL_HARDENING.md` (kernel hardening posture), `SUPPLY_CHAIN.md`
@@ -161,7 +161,7 @@ candidate whose generation is lower than what the platform has
 already accepted. RAUC's bundle metadata supports this; U-Boot can
 enforce it through environment-stored counters.
 
-In v2.1.0-rc6 the machinery exists at the RAUC layer but the
+The machinery exists at the RAUC layer but the
 generation counter check at the bootloader is not enforced. This
 is tracked alongside FIT image signing.
 
@@ -214,8 +214,8 @@ boot attempt fails. If the bootloader marks a slot as pending
 within a configured number of attempts, the bootloader rolls back
 to the previously known-good slot.
 
-This is one of the parts of the chain that is functional in
-v2.1.0-rc6: the RAUC system configuration in
+This is one of the parts of the chain that is functional today:
+the RAUC system configuration in
 `recipes-core/rauc/files/system.conf` defines the A/B slots, and
 the bootloader environment carries the slot-state machine. The
 recovery semantics work at the slot-switching level today, even

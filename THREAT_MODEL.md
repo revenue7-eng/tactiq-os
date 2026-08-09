@@ -295,7 +295,7 @@ attests is what the hardware measured at boot. Until that integration
 lands, an attestation produced by the agent attests to what userspace
 declares about the device, not to what the hardware measured. This is
 the difference between "the agent signs" and "the system proves what
-it ran." TactiQ OS is in the first state at v2.1.0-rc3 and is
+it ran." TactiQ OS is in the first state and is
 designed to reach the second.
 
 A consumer of attestation produced by TactiQ OS today should treat
