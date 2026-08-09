@@ -46,20 +46,24 @@ and placed by `meta-tactiq-bsp-rockchip/files/wic/tactiq-ab-rockchip.wks.in`:
 | Blob | Sector | Contents |
 |---|---|---|
 | `idbloader.img` | 64 | TPL, SPL |
-| `u-boot.itb` | 16384 | ARM Trusted Firmware, OP-TEE, U-Boot proper |
+| `u-boot.itb` | 16384 | ARM Trusted Firmware BL31, U-Boot proper |
 
 Both come from `u-boot-rockchip`. The binaries inside `u-boot.itb` are
-vendor-supplied and are trusted by delegation. That delegation is not
-currently written down anywhere in this repository.
+vendor-supplied and are trusted by delegation. That delegation is stated
+in `BOOT_CHAIN.md` § "Vendor firmware blobs".
 
 `tactiq-qemu-x86` and `tactiq-generic-arm64` do not boot from this
 path.
 
 ## OP-TEE
 
-The RK3588 include names OP-TEE as part of `u-boot.itb`, from the
-vendor build. Version, configuration and advisory tracking:
-`not established`.
+No TEE is in the boot path. `u-boot-rockchip_2024.07-kwiboo.bb:42`
+passes `BL31=` to the FIT and nothing else, and `rkbin_2024.10.bb`
+supplies DDR init and BL31 ATF only. BL31 confirms this at runtime:
+`selinux-enforcing-boot-prod-20260717.log:119` and both
+`selinux-rauc-upstream-enforcing-20260721` runs report no OPTEE from
+BL2, and `opteed_fast` fails to initialise. Whether the platform should
+carry a TEE at all is an open design question, not a build defect.
 
 ## Bring-up status
 
