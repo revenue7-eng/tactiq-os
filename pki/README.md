@@ -49,10 +49,17 @@ key: without it, nobody outside can rebuild a dev image and verify that
 its signatures are what they claim. A production image applies neither the
 signing class nor the policy, so this key does not reach one.
 
-`gen-pki.sh` has no IMA branch. The material here was issued by hand in
-July, so its origin cannot be reproduced from the script. The branch
-should follow the RAUC pattern above: leaf issued from the dev Signing CA,
-`digitalSignature` only, no `codeSigning` EKU.
+`./gen-pki.sh ima` issues this leaf from the dev Signing CA and writes all
+four files. It works inside an existing hierarchy rather than creating
+one, and refuses if `ima-signer.*` is already there: a reissued key
+invalidates every signature in a rootfs that was already built. To replace
+the key, delete the four files first and rebuild the image.
+
+The files committed here were made by hand in July, before the branch
+existed. Rerunning the script produces a different key, because RSA generation is
+not deterministic. The certificate comes out the same in every respect
+that matters: extensions, criticality, issuer. What the branch reproduces
+is the procedure, not the file.
 
 Appraisal runs in `ima_appraise=log`. `KERNEL_HARDENING.md` records what
 the switch to `enforce` is waiting on.
