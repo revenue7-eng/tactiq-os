@@ -36,22 +36,26 @@ Regenerate either tree with ./gen-pki.sh {dev|prod}.
 
 ## pki/dev/ima-* — IMA appraisal signing
 
-No IMA signing key is issued here, and `gen-pki.sh` has no branch that
-produces one. This is a consequence of there being nothing to sign yet:
-`CONFIG_IMA_APPRAISE=y` is set in the kernel fragment, but no on-disk
-appraisal policy is deployed, so IMA measures and does not block (see
-`BOOT_CHAIN.md` and `THREAT_MODEL.md`).
+`ima-signer.key.pem` signs every file in the `tactiq-image-dev` rootfs at
+build time. The image applies `IMAGE_CLASSES += "ima-evm-rootfs"`, and the
+class reads this key through the `IMA_EVM_*` variables in
+`conf/distro/tactiq.conf`. `ima-signer.der` is the public half.
+`system-trusted-bundle.pem` is compiled into the kernel keyring.
+`root-ca.x509` carries the root certificate; its name follows the
+encoding the kernel expects, but the file itself is PEM, not DER.
 
-Issuing a key before the policy exists would put unexplained key material
-in this directory without a consumer. When the appraisal policy lands, the
-IMA branch is added to `gen-pki.sh` in the same change, following the RAUC
-pattern above: leaf issued from the dev Signing CA, `digitalSignature`
-only, no `codeSigning` EKU. This is listed as a Phase 3 prerequisite in
-`KERNEL_HARDENING.md`.
+The private half is in-tree for the same reason as the RAUC development
+key: without it, nobody outside can rebuild a dev image and verify that
+its signatures are what they claim. A production image applies neither the
+signing class nor the policy, so this key does not reach one.
 
-Until then the repository `.gitignore` keeps stray `dev/ima-*` material
-out of git: unlike the RAUC dev keys, whose publication is a deliberate
-design property, nothing has been decided about IMA key handling.
+`gen-pki.sh` has no IMA branch. The material here was issued by hand in
+July, so its origin cannot be reproduced from the script. The branch
+should follow the RAUC pattern above: leaf issued from the dev Signing CA,
+`digitalSignature` only, no `codeSigning` EKU.
+
+Appraisal runs in `ima_appraise=log`. `KERNEL_HARDENING.md` records what
+the switch to `enforce` is waiting on.
 
 ## pki/dev/module-signing/ — kernel module signing
 

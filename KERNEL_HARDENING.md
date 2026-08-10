@@ -102,15 +102,24 @@ remote verifier, once the attestation framework is fully
 implemented, can ask for a TPM quote over PCR 10 and validate that
 the running set of measured files matches an expected reference.
 
-What this does not yet mean: IMA appraisal in userspace is not yet
-enforced. `CONFIG_IMA_APPRAISE=y` enables the kernel machinery; the
-on-disk policy that tells the kernel which files require valid
-signatures and what to do when verification fails is not currently
-deployed. With kernel machinery present and policy absent, IMA
-measures but does not block. The transition to enforcing IMA
-appraisal — and the deployment of an on-disk policy covering
-`/opt/tactiq/` and the `tactiq-*` systemd unit files — is a Phase 3
-item alongside the agent implementation.
+What this does not yet mean: IMA appraisal is not enforced.
+`CONFIG_IMA_APPRAISE=y` enables the kernel machinery, and the
+development image deploys the on-disk policy
+(`recipes-security/ima-policy/files/tactiq-ima-appraise.policy`,
+installed as `/etc/ima/ima-policy`) with its rootfs signed at build
+time. What keeps it from blocking is the boot argument: that image
+boots with `ima_appraise=log`, so a failed appraisal is recorded and
+the access proceeds.
+
+The remaining step to `ima_appraise=enforce` is `/data/tactiq`. The
+policy appraises reads of `tactiq_vault_data_t`, and nothing on that
+partition is signed: enforcing today would block the model weights
+and the measurement artifacts. Signing the data partition, then the
+switch to enforce, is a Phase 3 item alongside the agent
+implementation.
+
+A production image is unaffected by any of the above: it applies
+neither the signing class nor the policy.
 
 `CONFIG_IMA_APPRAISE_MODSIG=y`, which extends IMA appraisal to
 kernel module signatures, is not yet enabled. It is a Phase 3

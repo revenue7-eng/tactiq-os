@@ -164,9 +164,12 @@ bypass.
 confidentiality mode (`CONFIG_LOCK_DOWN_KERNEL_FORCE_CONFIDENTIALITY=y`),
 which additionally blocks kernel memory reads and is relevant against
 key extraction, is phase-3 work. IMA appraisal at the kernel level is
-configured (`CONFIG_IMA_APPRAISE=y`, PCR 10), but on-disk appraisal
-policy covering `/opt/tactiq/` and the tactiq systemd units is not
-yet deployed; without on-disk policy, IMA measures but does not
+configured (`CONFIG_IMA_APPRAISE=y`, PCR 10). The development image
+ships an on-disk policy at `/etc/ima/ima-policy`; it appraises every
+executable and mapped library through `BPRM_CHECK` and `MMAP_CHECK`,
+which covers `/opt/tactiq/` and the tactiq systemd units without
+naming them. That image boots with `ima_appraise=log`, so IMA
+records violations but does not
 enforce on file access.
 
 ### Physical attacker
