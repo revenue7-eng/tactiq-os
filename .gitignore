@@ -49,9 +49,4 @@ reproducibility-data/**/cmp-raw.log
 # RAUC PKI: production private keys never enter the repository.
 # pki/dev/ IS committed on purpose — see pki/README.md
 pki/prod/*.key.pem
-# IMA signing material: no decision recorded yet, and no consumer in the
-# tree — see pki/README.md. Keep drafts out until the appraisal policy lands.
-pki/dev/ima-*
-pki/dev/system-trusted-bundle.pem
-pki/dev/root-ca.x509
 pki/**/*.srl
