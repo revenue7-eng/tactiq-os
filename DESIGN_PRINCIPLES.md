@@ -203,8 +203,9 @@ artifacts of the current release:
   rootfs image. L3 requires a hermetic builder, tracked in
   `SUPPLY_CHAIN.md`.
 - FIPS 140-3 or Common Criteria certification.
-- IMA appraisal enforced in userspace. Kernel machinery is present,
-  on-disk policy is not deployed.
+- IMA appraisal enforced in userspace. The development image signs its
+  rootfs and ships the policy, but boots with `ima_appraise=log`; a
+  production image carries neither.
 - `dm-verity` on rootfs. Tracked in the kernel fragment as phase 3.
 - A threat model document. The consolidated adversary model is now
   published in [`THREAT_MODEL.md`](THREAT_MODEL.md). It is a v0.1

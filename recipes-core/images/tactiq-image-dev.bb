@@ -186,8 +186,10 @@ INHERIT += "create-spdx"
 # ---------------------------------------------------------------------------
 # IMA/EVM rootfs signing (measurement/dev profile only)
 # ---------------------------------------------------------------------------
-# Signs the whole rootfs at build time and installs the appraisal policy.
-# Keyed off the IMA_EVM_* variables, which live in local.conf and are NOT
-# under version control — a clean checkout will not reproduce this without
-# them. Never built in CI; see the branch commit message.
+# Signs the whole rootfs at build time and installs the appraisal policy
+# as /etc/ima/ima-policy. Keyed off the IMA_EVM_* variables, which are set
+# in conf/distro/tactiq.conf against LAYERDIR_tactiq-os, so a clean
+# checkout reproduces this. Applied here and not in tactiq-image.bb: the
+# signing key is the in-tree development one and must not reach a
+# production image. Never built in CI.
 IMAGE_CLASSES += "ima-evm-rootfs"
