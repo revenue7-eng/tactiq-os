@@ -31,10 +31,16 @@ require conf/machine/include/arm/armv8-2a/tune-cortexa76-cortexa55.inc
 PREFERRED_PROVIDER_virtual/bootloader = "u-boot-rockchip"
 
 # ---- Kernel ----
-# PREFERRED_PROVIDER + PREFERRED_VERSION live in core layer's linux-yocto
-# bbappend (recipes-kernel/linux/linux-yocto_%.bbappend) — kernel version
-# is a distro-level decision, not a vendor BSP one. BSP layer only owns
-# bootloader and SoC-specific defconfig knobs.
+# The kernel version for board targets is set in the core layer's linux-yocto
+# bbappend (recipes-kernel/linux/linux-yocto_%.bbappend), which pins 6.18%
+# distro-wide. Kernel version is a distro-level decision, not a vendor BSP
+# one; the BSP layer owns bootloader and SoC-specific defconfig knobs.
+#
+# Two machines override that pin back to 6.6% in their own machine conf:
+# conf/machine/tactiq-qemu-x86.conf and conf/machine/tactiq-generic-arm64.conf.
+# Machine conf outranks the bbappend, so those targets build 6.6 LTS. This is
+# the split README.md and SECURITY.md describe: 6.18 for board targets, 6.6 LTS
+# for QEMU and generic.
 PREFERRED_PROVIDER_virtual/kernel = "linux-yocto"
 KBUILD_DEFCONFIG = "defconfig"
 KCONFIG_MODE = "alldefconfig"
