@@ -231,11 +231,18 @@ move the posture from current to enforcing:
 
 The transitions are gated on the userspace prerequisites being in
 place: a deployed module-signing keyring on production machines, an
-on-disk IMA appraisal policy covering the protected paths, and
-integration testing of the confidentiality-mode kernel against the
-runtime workload set. The transitions happen per-machine as each
-platform completes the prerequisites; there is no single global
-Phase 3 cutover date.
+on-disk IMA appraisal policy covering the protected paths, an IMA
+signing key issued for the target trust hierarchy, and integration
+testing of the confidentiality-mode kernel against the runtime
+workload set.
+
+`gen-pki.sh` does not issue an IMA signing key today (see
+`pki/README.md`). Whoever deploys the appraisal policy must add that
+branch to the script in the same change, or the key that signs the
+rootfs will have no recorded provenance.
+
+The transitions happen per-machine as each platform completes the
+prerequisites; there is no single global Phase 3 cutover date.
 
 ## What this hardening does not cover
 

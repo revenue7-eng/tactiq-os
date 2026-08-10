@@ -34,6 +34,25 @@ enter CI. Release bundles are signed offline via `rauc resign`.
 
 Regenerate either tree with ./gen-pki.sh {dev|prod}.
 
+## pki/dev/ima-* — IMA appraisal signing
+
+No IMA signing key is issued here, and `gen-pki.sh` has no branch that
+produces one. This is a consequence of there being nothing to sign yet:
+`CONFIG_IMA_APPRAISE=y` is set in the kernel fragment, but no on-disk
+appraisal policy is deployed, so IMA measures and does not block (see
+`BOOT_CHAIN.md` and `THREAT_MODEL.md`).
+
+Issuing a key before the policy exists would put unexplained key material
+in this directory without a consumer. When the appraisal policy lands, the
+IMA branch is added to `gen-pki.sh` in the same change, following the RAUC
+pattern above: leaf issued from the dev Signing CA, `digitalSignature`
+only, no `codeSigning` EKU. This is listed as a Phase 3 prerequisite in
+`KERNEL_HARDENING.md`.
+
+Until then the repository `.gitignore` keeps stray `dev/ima-*` material
+out of git: unlike the RAUC dev keys, whose publication is a deliberate
+design property, nothing has been decided about IMA key handling.
+
 ## pki/dev/module-signing/ — kernel module signing
 
 This key is a build input rather than a rotatable credential. It is compiled
