@@ -182,3 +182,12 @@ EXTRA_IMAGE_FEATURES:append = " ${TACTIQ_DEBUG_FEATURES}"
 # SBOM generation
 # ---------------------------------------------------------------------------
 INHERIT += "create-spdx"
+
+# ---------------------------------------------------------------------------
+# IMA/EVM rootfs signing (measurement/dev profile only)
+# ---------------------------------------------------------------------------
+# Signs the whole rootfs at build time and installs the appraisal policy.
+# Keyed off the IMA_EVM_* variables, which live in local.conf and are NOT
+# under version control — a clean checkout will not reproduce this without
+# them. Never built in CI; see the branch commit message.
+IMAGE_CLASSES += "ima-evm-rootfs"

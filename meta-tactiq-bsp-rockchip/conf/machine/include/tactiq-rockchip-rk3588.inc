@@ -72,3 +72,10 @@ UBOOT_EXTLINUX_CONSOLE = "console=tty1 console=ttyS2,1500000n8"
 # U-Boot boot_ab sets rauc_slot/rauc_part env vars per slot before sysboot.
 # extlinux.conf uses ${rauc_slot} placeholder, resolved at boot time.
 UBOOT_EXTLINUX_KERNEL_ARGS:append = " rauc.slot=__RAUC_SLOT__"
+
+# ---- IMA appraisal: measurement/dev profile only ----
+# Gated on the tactiq-dev-policy override axis, which is set in local.conf
+# (OVERRIDES:append = ":tactiq-dev-policy") and is therefore not under version
+# control. Production (tactiq-image.bb) does not carry the override and gets no
+# IMA appraisal. ima_appraise=log logs violations without blocking.
+UBOOT_EXTLINUX_KERNEL_ARGS:append:tactiq-dev-policy = " ima_appraise=log ima_policy=appraise_tcb"
