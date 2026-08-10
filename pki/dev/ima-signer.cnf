@@ -1,0 +1,5 @@
+[v3_signer]
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
