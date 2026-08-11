@@ -50,3 +50,6 @@ reproducibility-data/**/cmp-raw.log
 # pki/dev/ IS committed on purpose — see pki/README.md
 pki/prod/*.key.pem
 pki/**/*.srl
+
+apply-meta-security.sh
+setup-tpm-layers.sh

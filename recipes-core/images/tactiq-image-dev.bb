@@ -210,10 +210,20 @@ tactiq_ima_policy_mode() {
     fi
 }
 
-python tactiq_ima_policy_mode_handler () {
-    if not e.data or 'ima' not in e.data.getVar('DISTRO_FEATURES').split():
-        return
-    e.data.appendVar('IMAGE_PREPROCESS_COMMAND', ' tactiq_ima_policy_mode; ')
-}
-addhandler tactiq_ima_policy_mode_handler
-tactiq_ima_policy_mode_handler[eventmask] = "bb.event.RecipePreFinalise"
+# Run after do_image's body, which is where the class installs the policy
+# and signs the rootfs; before do_image_<type> packs the filesystem. A
+# static varflag, so unlike an event handler it lands in the basehash
+# deterministically.
+do_image[postfuncs] += "tactiq_ima_policy_mode"
+
+# ---------------------------------------------------------------------------
+# TPM bring-up tooling (dev profile only)
+# ---------------------------------------------------------------------------
+# tpm2-tools for manual interaction during bring-up, and the mssim TCTI so
+# the same image can talk to swtpm over the simulator socket. Neither ships
+# in the production profile: production talks to /dev/tpmrm0 through
+# libtss2-tcti-device, which the agent pulls in as an RDEPENDS.
+IMAGE_INSTALL:append = " \
+    tpm2-tools \
+    libtss2-tcti-mssim \
+"
