@@ -193,3 +193,27 @@ INHERIT += "create-spdx"
 # signing key is the in-tree development one and must not reach a
 # production image. Never built in CI.
 IMAGE_CLASSES += "ima-evm-rootfs"
+
+# ima-evm-rootfs installs IMA_EVM_POLICY with a bare install(1), leaving
+# /etc/ima/ima-policy at 0755. The kernel reads the file at init; the
+# executable bit is meaningless and group/other have no reason to see it.
+#
+# The class appends ima_evm_sign_rootfs to IMAGE_PREPROCESS_COMMAND from a
+# RecipePreFinalise handler specifically so that it runs last, which means a
+# plain :append in this recipe would be ordered ahead of it and would chmod a
+# file that does not exist yet. Append from a handler of our own instead: this
+# recipe is parsed after the class, so our handler registers later and our
+# command lands after theirs.
+tactiq_ima_policy_mode() {
+    if [ -f ${IMAGE_ROOTFS}${sysconfdir}/ima/ima-policy ]; then
+        chmod 0600 ${IMAGE_ROOTFS}${sysconfdir}/ima/ima-policy
+    fi
+}
+
+python tactiq_ima_policy_mode_handler () {
+    if not e.data or 'ima' not in e.data.getVar('DISTRO_FEATURES').split():
+        return
+    e.data.appendVar('IMAGE_PREPROCESS_COMMAND', ' tactiq_ima_policy_mode; ')
+}
+addhandler tactiq_ima_policy_mode_handler
+tactiq_ima_policy_mode_handler[eventmask] = "bb.event.RecipePreFinalise"
