@@ -2,19 +2,41 @@
 ConditionPathExists=!/etc/tactiq/skip-tpm
 Description=TactiQ Attestation Agent
 Documentation=file:///usr/share/doc/tactiq-os/ATTESTATION.md
-After=network-online.target data-tactiq-dirs.service
+After=data-tactiq-dirs.service
 Requires=data-tactiq-dirs.service
-Wants=network-online.target
 RequiresMountsFor=/data
 
-[Service]
-Type=simple
-ExecStart=/opt/tactiq/bin/tactiq-agent
-Restart=on-failure
-RestartSec=10
+# An unprovisioned device fails to start, three times, and then stops. That is
+# the intended posture: a device that cannot attest should be visibly down, not
+# quietly running. Provision with `tactiq-agent provision <device-id>` and the
+# unit starts normally.
 StartLimitIntervalSec=60
 StartLimitBurst=3
+
+[Service]
+# The agent sends READY=1 once it has confirmed its identity, and WATCHDOG=1
+# after every successful attestation cycle. Type=notify makes systemd wait for
+# the first and act on the absence of the second: an agent that stops producing
+# envelopes is restarted rather than left running as a healthy process that
+# attests nothing.
+Type=notify
+ExecStart=/opt/tactiq/bin/tactiq-agent run
+Restart=on-failure
+RestartSec=10
+
+# Four missed cycles at the default 30s interval.
 WatchdogSec=120
+
+# ProtectSystem=strict makes the whole hierarchy read-only, /run included, so
+# the scratch directory has to be requested explicitly. The agent writes only
+# transient TPM output here — counter reads, PCR reads — never key material.
+RuntimeDirectory=tactiq-agent
+RuntimeDirectoryMode=0700
+
+# The TPM is reached through the resource manager device, which serialises
+# access and handles transient object eviction. /dev/tpm0 is the raw device and
+# is granted below only so a diagnostic run can use it.
+Environment=TPM2TOOLS_TCTI=device:/dev/tpmrm0
 
 # Resource limits
 MemoryMax=128M
@@ -28,6 +50,10 @@ CPUQuota=25%
 # rather than as part of a generic root context. SELinux confinement to
 # tactiq_agent_t is the primary boundary; the directives below are
 # defense-in-depth.
+#
+# The supplementary group tss comes from the useradd in the recipe: tpm2-tss
+# ships udev rules that give the TPM device nodes to that group, so DeviceAllow
+# alone would grant a node this process could not open.
 User=tactiq-agent
 Group=tactiq-agent
 NoNewPrivileges=yes
@@ -76,6 +102,8 @@ RemoveIPC=yes
 # ---------------------------------------------------------------------------
 # Network restrictions
 # ---------------------------------------------------------------------------
+# AF_UNIX is required for sd_notify. The agent writes envelopes to /data and
+# does not open a socket of its own in this phase.
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 IPAddressDeny=any
 # The verifier endpoint is per-deployment configuration; enable specific

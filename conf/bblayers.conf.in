@@ -19,6 +19,8 @@ BBLAYERS ?= " \
   ${LAYERS_DIR}/meta-openembedded/meta-networking \
   ${LAYERS_DIR}/meta-openembedded/meta-filesystems \
   ${LAYERS_DIR}/meta-selinux \
+  ${LAYERS_DIR}/meta-security \
+  ${LAYERS_DIR}/meta-security/meta-tpm \
   ${LAYERS_DIR}/tactiq-os \
   ${LAYERS_DIR}/tactiq-os/meta-tactiq-bsp-rockchip \
   ${LAYERS_DIR}/tactiq-os-selinux \

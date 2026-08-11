@@ -40,6 +40,7 @@ openembedded-core    https://github.com/openembedded/openembedded-core    06dd66
 meta-yocto           https://git.yoctoproject.org/meta-yocto              8251bdad5fda780a000fb41e6eda82eadf0fa39e  wrynose
 meta-openembedded    https://github.com/openembedded/meta-openembedded    9af4488d46cb4fd4c0d2d64820c86225ebd6ac71  wrynose
 meta-selinux         https://git.yoctoproject.org/meta-selinux            1ba26da4b9bec3f102bd831efe0db00c7d61f7f2  wrynose
+meta-security        https://git.yoctoproject.org/meta-security           c0d1d6200e7a84c39fb940cb1f22aad4b0b3d808  wrynose
 meta-arm             https://git.yoctoproject.org/meta-arm                31dd0e8a891800a6dc6823a84389e7bc115d149a  wrynose
 meta-rockchip        https://git.yoctoproject.org/meta-rockchip           9d02575bfd9ca5e87c394f593f2bbdbdee914d4e  wrynose
 meta-tensorflow-lite https://github.com/NobuoTsukamoto/meta-tensorflow-lite f87ee8eab434497e3a1f8329013a4af5415cbd1e main
