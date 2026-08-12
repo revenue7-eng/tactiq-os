@@ -15,12 +15,35 @@ SRC_URI = "git://github.com/agentgateway/agentgateway.git;protocol=https;branch=
 
 inherit cargo systemd useradd
 
-# Pre-vendored sources from the premirror; no per-crate fetch at build.
-# Point the class vendoring mechanism at our cargo-vendor tree. The class
-# writes [source.bitbake] -> CARGO_VENDORING_DIRECTORY into the real cargo
-# config (${CARGO_HOME}/config.toml). Override in local.conf if the mirror
-# lives elsewhere.
+# Vendored crate tree. Three dependencies come from git forks (http-serde,
+# schemars, wiremock-rs), and cargo-update-recipe-crates only emits crate://
+# entries for packages whose Cargo.lock source contains "crates.io" -- so those
+# three cannot be expressed that way and this recipe builds from a vendored
+# tree instead.
+#
+# The tree is a function of SRCREV alone: `cargo vendor --locked` at this
+# commit is byte-for-byte reproducible (verified by generating it twice, the
+# second time with the cargo registry cache cleared, and comparing with
+# diff -r across 727 crates: no differences). scripts/vendor-agentgateway.sh
+# regenerates it and checks the result against a recorded hash, so a clean
+# machine can produce the same tree rather than needing one copied to it.
 CARGO_VENDORING_DIRECTORY ?= "${DL_DIR}/agentgateway-vendor-${PV}"
+
+# Fail early and legibly. Without this the build gets as far as do_compile and
+# dies inside cargo with "failed to read root of directory source", which says
+# nothing about what to do next.
+do_configure[prefuncs] += "agentgateway_check_vendor"
+agentgateway_check_vendor() {
+    if [ ! -d "${CARGO_VENDORING_DIRECTORY}" ]; then
+        bbfatal "vendored crate tree missing: ${CARGO_VENDORING_DIRECTORY}\n\
+Generate it with:\n\
+\n\
+    <tactiq-os>/scripts/vendor-agentgateway.sh ${DL_DIR}\n\
+\n\
+It is regenerated from SRCREV ${SRCREV} and checked against a recorded\n\
+hash; it is not something to be copied between machines by hand."
+    fi
+}
 
 # Unprivileged system user for the service (no home, no shell).
 USERADD_PACKAGES = "${PN}"
