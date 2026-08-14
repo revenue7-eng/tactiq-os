@@ -9,17 +9,25 @@ verification procedure).
 
 This is a v0.1 document. It iterates as the implementation matures.
 
-Last reviewed: 2026-04-25.
+Last reviewed: 2026-08-14.
 
 ## Status
 
 The attestation framework specified here is the architectural target.
-The current implementation status is a stub: the binary
-installed at `/opt/tactiq/bin/tactiq-agent` is a placeholder
-(`recipes-core/tactiq-agent/files/tactiq-agent-stub.sh`) that holds
-the systemd unit, SELinux domain, vault directory layout, and TPM
-device access permissions in place while the real implementation is
-built.
+The agent that produces attestations is built and shipped in the
+image. `recipes-core/tactiq-agent/tactiq-agent_0.1.0.bb` builds it from
+`tactiq-attest` at a pinned revision and installs it at
+`/opt/tactiq/bin/tactiq-agent`.
+
+What it produces is the canonical envelope described below:
+`device_id(16) || counter_be(8) || pcr_selection(5) || pcr_hash(32)`,
+61 bytes, signed with an ECDSA P-256 key held inside the TPM.
+Freshness comes from a TPM NV monotonic counter, so a device can
+attest after months offline with no server nonce, no CA and no NTP.
+
+What is not yet closed is the boundary between what userspace declares
+and what the hardware measured. See *What attestation does not prove*
+below.
 
 What exists today is the supporting infrastructure: kernel
 TPM drivers compiled in, IMA machinery enabled at PCR 10, SELinux
@@ -30,8 +38,7 @@ read/write on `/dev/tpm0` and `/dev/tpmrm0` and append on
 `tpm_log_t`-labelled kernel TPM event log files), vault domain
 (`tactiq_vault_t`) for sealed key material, and the build-identity
 manifest at `/etc/tactiq-release` written by the `tactiq-release`
-recipe. These are the parts that an attestation agent will use; the
-agent itself is not yet there.
+recipe. These are the parts the agent uses.
 
 This document describes what the agent is being built toward. It
 deliberately separates design from implementation status so that a
@@ -213,23 +220,20 @@ roots.
 The framework, even when fully implemented, has explicit limits.
 Stating them is part of the documentation, not an oversight.
 
-**In the current stub state.** Nothing. The binary at
-`/opt/tactiq/bin/tactiq-agent` does not produce attestations. The
-SELinux policy, systemd unit, and TPM access primitives are in
-place; the agent that uses them is not. Any document describing
-attestation produced by TactiQ OS today is describing an unbuilt
-target, not a running system.
+**Before TPM quote integration is complete.** This is the current
+state. The agent reads the PCR values from the TPM (`tpm2_pcrread`),
+hashes them, and signs the resulting envelope with its TPM-resident
+key. So the platform state in the envelope is measured, not declared
+by userspace.
 
-**Once the real agent is implemented but before TPM quote
-integration is complete.** The agent will be able to sign payloads
-with its TPM-resident key, but the payloads will reflect what
-userspace declares about the platform state, not what the hardware
-measured. This is the boundary called out in `DESIGN_PRINCIPLES.md`
-and `THREAT_MODEL.md`: the difference between "the agent signs" and
-"the system proves what it ran." A consumer of attestation in this
-intermediate state should treat it as authenticated build-identity
-self-declaration, not as a hardware-measured statement of platform
-state.
+What is missing is that the TPM does not attest to those values
+itself. Without a quote, the binding between the PCR contents and the
+TPM is made by the agent process rather than by the TPM signature, so
+an adversary who already controls that process on a running system
+can present values of their choosing. This is the boundary called out
+in `DESIGN_PRINCIPLES.md` and `THREAT_MODEL.md`: the difference
+between "the agent signs" and "the system proves what it ran."
+
 
 **On platforms with firmware TPM rather than discrete TPM.** The
 cryptographic root of trust is software-anchored in the SoC's
@@ -253,25 +257,18 @@ OS-layer attestation concern.
 
 ## Implementation roadmap
 
-The work to bring the framework from current stub state to the
-specification above falls into roughly four pieces, in dependency
-order.
+The work remaining to reach the specification above falls into three
+pieces, in dependency order. The agent binary itself is done: it is
+built from `tactiq-attest` and produces the envelope described above.
 
-1. **Real agent binary.** Replace `tactiq-agent-stub.sh` with a Go
-   implementation that creates the keypair on first boot, generates
-   the attestation payload structure described above, signs it with
-   the TPM-resident key, and serves the verification protocol over
-   mTLS. Without TPM quote at this stage; the agent attests
-   userspace state.
-
-2. **TPM quote integration.** Add the TPM quote over PCRs 0–10 to
+1. **TPM quote integration.** Add the TPM quote over PCRs 0–10 to
    the attestation payload. This is the integration that closes the
    declaration-vs-measurement boundary.
 
-3. **Reference verifier.** Implement and publish the verifier as
+2. **Reference verifier.** Implement and publish the verifier as
    described above.
 
-4. **Reference Integrity Manifest (RIM) generation.** Produce
+3. **Reference Integrity Manifest (RIM) generation.** Produce
    per-build expected-PCR manifests as part of the release pipeline,
    so verifiers can validate attestations against known-good
    measurements without each verifier independently determining
@@ -289,7 +286,8 @@ the work progresses.
 - `SUPPLY_CHAIN.md` — build provenance and release-artifact signing
   posture, which the build-identity field of the attestation payload
   ties into.
-- `recipes-core/tactiq-agent/` — current agent recipe (stub).
+- `recipes-core/tactiq-agent/` — agent recipe; builds the agent from
+  `tactiq-attest`.
 - `recipes-core/tactiq-release/` — build identity manifest writer.
 - `recipes-kernel/linux/linux-yocto/tactiq-security.cfg` — kernel
   TPM and IMA configuration.
