@@ -3,12 +3,13 @@
 Yocto layer for TactiQ OS — a security-hardened embedded Linux distribution
 for edge AI deployments on Rockchip RK3588 and compatible ARM64 targets.
 
-> **Status: pre-production.** Hardware bring-up phase, no customer
-> deployments at this time. Documentation maturity precedes
-> implementation maturity at this stage of the project — the
-> architectural framework is described in the documents linked from
-> the *Architectural principles* section below, while several of the
-> implementation steps those documents target are still in progress.
+> **Status: pre-production.** Hardware bring-up phase. Documentation
+> maturity precedes implementation maturity at this stage of the
+> project — the architectural framework is described in the documents
+> linked from the *Architectural principles* section below, while
+> several of the implementation steps those documents target are still
+> in progress. Where a document and the tree disagree, the tree is
+> authoritative; please open an issue.
 
 > **Continuous integration:** the CI configuration in `.github/workflows/`
 > runs on GitHub Actions and includes lint, shell-check, YAML
