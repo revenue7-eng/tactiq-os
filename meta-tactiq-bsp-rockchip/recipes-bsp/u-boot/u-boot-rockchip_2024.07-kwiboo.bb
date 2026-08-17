@@ -20,6 +20,7 @@ SRC_URI += "file://0001-pylibfdt-swig-4.3-compat.patch"
 SRC_URI += "file://0002-binman-drop-pkg-resources.patch"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
+SRC_URI += "file://env-lockdown.cfg"
 SRC_URI += "file://tactiq-boot.env"
 
 TACTIQ_MIRROR ?= "https://github.com/revenue7-eng/tactiq-os/releases/download/bsp-mirror-2024.10/"
@@ -52,7 +53,7 @@ python () {
 
 do_configure() {
     oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
-    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg
     cp ${UNPACKDIR}/tactiq-boot.env ${S}/tactiq-boot.env
     oe_runmake -C ${S} O=${B} olddefconfig
 }
