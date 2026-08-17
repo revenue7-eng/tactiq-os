@@ -1,0 +1,17 @@
+[Unit]
+Description=Generate fw_env.config for the boot medium in use
+Documentation=man:fw_printenv(1)
+DefaultDependencies=no
+After=local-fs.target
+Requires=local-fs.target
+Before=rauc-mark-good.service rauc.service
+ConditionPathExists=/proc/self/mountinfo
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/tactiq/bin/tactiq-fw-env-setup
+
+[Install]
+WantedBy=sysinit.target
+RequiredBy=rauc-mark-good.service

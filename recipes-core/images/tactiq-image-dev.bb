@@ -90,6 +90,10 @@ IMAGE_INSTALL:append = " \
 # ---------------------------------------------------------------------------
 IMAGE_INSTALL:append = " rauc"
 
+# Generates /etc/fw_env.config for the boot medium in use; RAUC cannot mark
+# a slot good without it. See recipes-bsp/tactiq-fw-env.
+IMAGE_INSTALL:append = " tactiq-fw-env"
+
 # ---------------------------------------------------------------------------
 # System utilities — minimal set
 # ---------------------------------------------------------------------------
