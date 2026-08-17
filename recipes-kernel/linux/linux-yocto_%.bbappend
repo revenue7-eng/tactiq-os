@@ -17,6 +17,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 SRC_URI += "file://tactiq-security.cfg"
 SRC_URI += "file://tactiq-netfilter-legacy.cfg"
 SRC_URI += "file://tactiq-ot-disable.cfg"
+SRC_URI += "file://tactiq-verity.cfg"
 
 # ===========================================================================
 # 2. Supply-chain pinning (SLSA L2 posture)
