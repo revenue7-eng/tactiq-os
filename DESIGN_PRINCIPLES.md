@@ -65,7 +65,7 @@ not to software-held secrets.
 (`CONFIG_TCG_TPM`, `CONFIG_TCG_TIS`, `CONFIG_TCG_TIS_SPI`,
 `CONFIG_TCG_TIS_I2C`, `CONFIG_TCG_CRB`, `CONFIG_HW_RANDOM_TPM` in
 `recipes-kernel/linux/linux-yocto/tactiq-security.cfg`). The attestation
-agent at `/opt/tactiq/bin/tactiq-agent` uses Ed25519 for signing
+agent at `/opt/tactiq/bin/tactiq-agent` signs with an ECDSA P-256 key held inside the TPM
 (`recipes-core/tactiq-agent/`). RAUC A/B updates carry a CMS signature, but the current tree ships a
 development keyring (`pki/dev/root-ca.pem`) whose private keys are in
 the repository on purpose. Anyone can therefore sign a bundle this image
@@ -162,31 +162,34 @@ explicitly marked as "CHANGE IN PRODUCTION").
 **Principle.** The device is able to prove to a remote party what it
 is running.
 
-**Current state.** The supporting infrastructure for an attestation
-agent is in place: kernel TPM drivers compiled in (see Hardware root
-of trust above); IMA machinery enabled at PCR 10; a systemd unit
-(`tactiq-agent.service` in `recipes-core/tactiq-agent/files/`); a
-SELinux domain (`tactiq_agent_t`) with permissions to access TPM
+**Current state.** The supporting infrastructure is in place: kernel
+TPM drivers compiled in (see Hardware root of trust above); IMA
+machinery enabled at PCR 10; a systemd unit (`tactiq-agent.service`);
+a SELinux domain (`tactiq_agent_t`) with permissions to access TPM
 device nodes through the `tactiq_tpm_access` macro; a vault domain
 (`tactiq_vault_t`) for sealed key material; build identity written
-into `/etc/tactiq-release` on every image (version, codename, UTC
-build date, machine target, meta-layer git short hash, image
-basename) by the `tactiq-release` recipe, so that a remote verifier
-can correlate a running system with a specific build artifact. The
-binary at `/opt/tactiq/bin/tactiq-agent` is a stub
-(`recipes-core/tactiq-agent/files/tactiq-agent-stub.sh`) that holds
-the systemd unit, SELinux domain, and TPM access primitives in place
-while the real implementation is built.
+into `/etc/tactiq-release` on every image by the `tactiq-release`
+recipe, so that a remote verifier can correlate a running system with
+a specific build artifact. The binary at
+`/opt/tactiq/bin/tactiq-agent` is the real agent, built from
+`tactiq-attest` at the revision pinned in
+`recipes-core/tactiq-agent/tactiq-agent_0.1.0.bb`. It produces the
+canonical 61-byte attestation envelope — device_id(16) ||
+counter_be(8) || pcr_selection(5) || pcr_hash(32) — signed with an
+ECDSA P-256 key held inside the TPM, with freshness from a TPM NV
+monotonic counter: a device can attest after months offline with no
+server nonce, no CA and no NTP. The verifier — signature checking,
+the anti-replay high-water mark, the reference-value appraisal — is a
+separate closed component (the Custinel workspace), pinned to the
+same revision, so the two sides of the protocol are the same code.
 
 **Tracked.** The full architectural specification of the attestation
-framework — payload structure, key management, freshness mechanism,
-verification protocol, what attestation does and does not prove — is
-in [`ATTESTATION.md`](ATTESTATION.md). The implementation roadmap
-from the current stub state to the specification is also there. The
-key items: real agent binary (Ed25519 signing with TPM-resident
-non-exportable keys, mTLS 1.3 transport); TPM-quote integration that
-closes the gap between "the agent signs" and "the system proves what
-it ran"; reference verifier implementation; per-build Reference
+framework is in [`ATTESTATION.md`](ATTESTATION.md); parts of it
+describe the target protocol rather than the current agent. The key
+items still open: TPM-quote integration that closes the gap between
+"the agent signs" and "the system proves what it ran"; mTLS 1.3
+transport; porting TPM access from `tpm2-tools` to `tss-esapi`; a
+publishable reference verifier; per-build Reference
 Integrity Manifest (RIM) generation in the release pipeline.
 
 ## Out of scope for the current release
