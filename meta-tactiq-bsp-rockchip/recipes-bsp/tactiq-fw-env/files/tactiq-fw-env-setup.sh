@@ -16,7 +16,7 @@ set -eu
 
 ENV_OFFSET=0xB00000
 ENV_SIZE=0x8000
-CONF=/run/tactiq/fw_env.config
+CONF=/run/tactiq-ubootenv/fw_env.config
 
 # major:minor of the device mounted at /
 devno="$(awk '$5 == "/" { print $3; exit }' /proc/self/mountinfo)"

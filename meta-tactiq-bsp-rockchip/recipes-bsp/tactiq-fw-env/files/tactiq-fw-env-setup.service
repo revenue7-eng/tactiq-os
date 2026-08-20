@@ -8,7 +8,7 @@ Before=rauc-mark-good.service rauc.service
 ConditionPathExists=/proc/self/mountinfo
 
 [Service]
-RuntimeDirectory=tactiq
+RuntimeDirectory=tactiq-ubootenv
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/opt/tactiq/bin/tactiq-fw-env-setup

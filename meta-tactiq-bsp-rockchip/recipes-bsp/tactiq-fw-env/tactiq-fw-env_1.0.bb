@@ -2,10 +2,13 @@ SUMMARY = "Generate the fw_env.config for the boot medium in use"
 DESCRIPTION = "The U-Boot environment lives in a raw window on the medium the \
 system booted from. Rockchip U-Boot resolves that medium at runtime, so it \
 cannot be hardcoded at build time. This oneshot service derives it from the \
-block device carrying the mounted rootfs and writes it to /run/tactiq before \
-RAUC touches the environment."
+block device carrying the mounted rootfs and writes it to \
+/run/tactiq-ubootenv before RAUC touches the environment."
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
+
+# No upstream tarball: all sources ship in this recipe directory.
+S = "${UNPACKDIR}"
 
 SRC_URI = "file://tactiq-fw-env-setup.sh \
            file://tactiq-fw-env-setup.service"
@@ -27,7 +30,7 @@ do_install() {
     # config lives on tmpfs. This symlink keeps the canonical path working for
     # fw_setenv/fw_printenv and RAUC without passing -c.
     install -d ${D}${sysconfdir}
-    ln -sf /run/tactiq/fw_env.config ${D}${sysconfdir}/fw_env.config
+    ln -sf /run/tactiq-ubootenv/fw_env.config ${D}${sysconfdir}/fw_env.config
 }
 
 FILES:${PN} = "${sysconfdir}/fw_env.config \
