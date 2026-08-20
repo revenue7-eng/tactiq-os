@@ -1,5 +1,5 @@
 #!/bin/sh
-# TactiQ OS — generate /etc/fw_env.config for the boot medium in use.
+# TactiQ OS — generate fw_env.config (on tmpfs) for the boot medium in use.
 #
 # The U-Boot environment lives in a raw window on the same medium the system
 # booted from. Rockchip U-Boot resolves that medium at runtime from
@@ -16,7 +16,7 @@ set -eu
 
 ENV_OFFSET=0xB00000
 ENV_SIZE=0x8000
-CONF=/etc/fw_env.config
+CONF=/run/tactiq/fw_env.config
 
 # major:minor of the device mounted at /
 devno="$(awk '$5 == "/" { print $3; exit }' /proc/self/mountinfo)"
