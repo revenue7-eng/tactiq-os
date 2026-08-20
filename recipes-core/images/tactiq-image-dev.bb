@@ -196,6 +196,7 @@ INHERIT += "create-spdx"
 # checkout reproduces this. Applied here and not in tactiq-image.bb: the
 # signing key is the in-tree development one and must not reach a
 # production image. Never built in CI.
+IMAGE_INSTALL:append = " ima-evm-keys"
 IMAGE_CLASSES += "ima-evm-rootfs"
 
 # ima-evm-rootfs installs IMA_EVM_POLICY with a bare install(1), leaving

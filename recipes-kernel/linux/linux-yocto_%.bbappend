@@ -18,6 +18,7 @@ SRC_URI += "file://tactiq-security.cfg"
 SRC_URI += "file://tactiq-netfilter-legacy.cfg"
 SRC_URI += "file://tactiq-ot-disable.cfg"
 SRC_URI += "file://tactiq-verity.cfg"
+SRC_URI += "file://tactiq-ima-keyring.cfg"
 
 # ===========================================================================
 # 2. Supply-chain pinning (SLSA L2 posture)
