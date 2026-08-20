@@ -65,6 +65,12 @@ hardware, per TactiQ Edge release:
 The scenarios are tested independently because they are independent
 failure paths. A release that fails either test does not ship.
 
+A passing result is itself a dated claim and decays: each recorded
+run carries its date, and a release claim is only as fresh as the
+latest passing run — min(dated commitment, freshest passing test).
+The commitment caps what a test may claim; the test caps what the
+commitment may claim. (Formulation due to Shyan-Ming Perng.)
+
 ## DC-2: Open/proprietary boundary shifts are announced, not discovered
 
 *Adopted 2026-08-19.*
