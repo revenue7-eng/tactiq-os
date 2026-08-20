@@ -210,7 +210,32 @@ IMAGE_CLASSES += "ima-evm-rootfs"
 # command lands after theirs.
 tactiq_ima_policy_mode() {
     if [ -f ${IMAGE_ROOTFS}${sysconfdir}/ima/ima-policy ]; then
+        # Label first: /etc/ima and the policy file are created by
+        # ima-evm-rootfs after the build-time setfiles pass, so they land
+        # unlabeled and init cannot load the policy. The tactiq_ima module
+        # maps /etc/ima(/.*)? to tactiq_ima_policy_t and grants init_t
+        # read + system:policy_load on it (see AVC: class system,
+        # policy_load is checked against the file label).
+        setfiles -r ${IMAGE_ROOTFS} \
+            ${IMAGE_ROOTFS}/etc/selinux/targeted/contexts/files/file_contexts \
+            ${IMAGE_ROOTFS}${sysconfdir}/ima \
+            ${IMAGE_ROOTFS}${sysconfdir}/ima/ima-policy
+
         chmod 0600 ${IMAGE_ROOTFS}${sysconfdir}/ima/ima-policy
+
+        # Re-sign: the class signs with --portable, which covers mode and
+        # security xattrs. Both the relabel and the chmod above invalidate
+        # that signature, so redo it exactly as the class does.
+        tmp="$(file ${IMAGE_ROOTFS}/lib/libc.so.6 | grep -o 'ELF .*-bit')"
+        if [ "${tmp}" = "ELF 32-bit" ]; then
+            evmctl_param="--m32"
+    else
+            evmctl_param=""
+        fi
+        export EVMCTL_KEY_PASSWORD=${IMA_EVM_EVMCTL_KEY_PASSWORD}
+        evmctl sign --imasig ${evmctl_param} --portable -a sha256 \
+            --key "${IMA_EVM_PRIVKEY}" ${IMA_EVM_PRIVKEY_KEYID_OPT} \
+            "${IMAGE_ROOTFS}${sysconfdir}/ima/ima-policy"
     fi
 }
 
