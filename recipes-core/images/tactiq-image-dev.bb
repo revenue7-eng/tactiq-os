@@ -238,6 +238,31 @@ tactiq_ima_policy_mode() {
             --key "${IMA_EVM_PRIVKEY}" ${IMA_EVM_PRIVKEY_KEYID_OPT} \
             "${IMAGE_ROOTFS}${sysconfdir}/ima/ima-policy"
     fi
+
+    # /etc/fstab: read_only_rootfs_hook (read-only-rootfs in IMAGE_FEATURES,
+    # rootfs-postcommands.bbclass) rewrites it with sed -i during do_rootfs.
+    # sed -i replaces the inode, so the security.selinux xattr set by the
+    # build-time setfiles pass is lost; ima_evm_sign_rootfs then signs the
+    # unlabeled file. On target the generator gets Permission denied on
+    # unlabeled_t, fstab is never parsed and the root stays rw. Relabel and
+    # re-sign, same reasoning as the ima-policy block above; no chmod, the
+    # packaged mode is already correct.
+    if [ -f ${IMAGE_ROOTFS}${sysconfdir}/fstab ]; then
+        setfiles -r ${IMAGE_ROOTFS} \
+            ${IMAGE_ROOTFS}/etc/selinux/targeted/contexts/files/file_contexts \
+            ${IMAGE_ROOTFS}${sysconfdir}/fstab
+
+        tmp="$(file ${IMAGE_ROOTFS}/lib/libc.so.6 | grep -o 'ELF .*-bit')"
+        if [ "${tmp}" = "ELF 32-bit" ]; then
+            evmctl_param="--m32"
+        else
+            evmctl_param=""
+        fi
+        export EVMCTL_KEY_PASSWORD=${IMA_EVM_EVMCTL_KEY_PASSWORD}
+        evmctl sign --imasig ${evmctl_param} --portable -a sha256 \
+            --key "${IMA_EVM_PRIVKEY}" ${IMA_EVM_PRIVKEY_KEYID_OPT} \
+            "${IMAGE_ROOTFS}${sysconfdir}/fstab"
+    fi
 }
 
 # Run after do_image's body, which is where the class installs the policy
