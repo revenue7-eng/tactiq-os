@@ -127,6 +127,14 @@ IMAGE_INSTALL:append = " \
 
 # ---------------------------------------------------------------------------
 # Security: SELinux + audit
+#
+# Policy tooling (semodule, setfiles, sesearch) ships in the dev profile for
+# on-target debugging; the production image excludes it. selinux-autorelabel
+# is installed in NEITHER profile: runtime relabeling of the root filesystem
+# does not exist on this system by design. The rootfs is labeled at build
+# time and signed; a bulk relabel would rewrite security.selinux everywhere
+# and invalidate every EVM portable signature. The only runtime relabel is
+# the one-shot that labels the empty /data partition on first boot.
 # ---------------------------------------------------------------------------
 IMAGE_INSTALL:append = " \
     libselinux \
@@ -138,7 +146,6 @@ IMAGE_INSTALL:append = " \
     checkpolicy \
     policycoreutils-hll \
     libselinux-bin \
-    selinux-autorelabel \
     refpolicy-targeted \
     audit \
 "
