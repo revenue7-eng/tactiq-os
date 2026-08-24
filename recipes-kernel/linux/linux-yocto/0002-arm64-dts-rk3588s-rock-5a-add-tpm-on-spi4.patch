@@ -1,0 +1,39 @@
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Fri, 21 Aug 2026 00:00:00 +0000
+Subject: [PATCH] arm64: dts: rk3588s-rock-5a: enable spi4 with SLB9670 TPM
+
+Enable spi4 (left status="disabled" in rk3588-base.dtsi) on the M2
+pinmux (spi4m2_pins + spi4m2_cs0, GPIO1_A0..A3) and describe an
+Infineon SLB9670 TPM 2.0 on chip-select 0. The M2 mux routes a single
+chip select, so num-cs is reduced from the inherited <2> to <1>.
+
+The node binds the tpm_tis_spi driver (compatible "infineon,slb9670",
+CONFIG_TCG_TIS_SPI=y in tactiq-security.cfg scope). Bus clock starts
+at a conservative 1 MHz; raise after bring-up.
+
+Upstream-Status: Inappropriate [TactiQ BSP integration — board-specific
+ peripheral wiring; not intended for mainline submission]
+Signed-off-by: TactiQ OS BSP <bsp@tactiqedge.com>
+---
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts b/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
+index 041a0fff22cc..413a432b70fe 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
+@@ -857,3 +857,17 @@ vp0_out_hdmi0: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
+ 		remote-endpoint = <&hdmi0_in_vp0>;
+ 	};
+ };
++
++&spi4 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi4m2_cs0 &spi4m2_pins>;
++	num-cs = <1>;
++
++	tpm@0 {
++		compatible = "infineon,slb9670";
++		reg = <0>;
++		/* Conservative initial bus clock; raise after bring-up. */
++		spi-max-frequency = <1000000>;
++	};
++};
