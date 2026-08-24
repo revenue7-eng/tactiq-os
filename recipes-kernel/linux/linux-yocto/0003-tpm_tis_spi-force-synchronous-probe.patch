@@ -1,0 +1,26 @@
+From f0c5ec9fd36f786fd122da17b0336c3c7b38feed Mon Sep 17 00:00:00 2001
+From: Andrey Lazarev <revenue7@gmail.com>
+Date: Mon, 24 Aug 2026 12:36:04 +0300
+Subject: [PATCH] tpm_tis_spi: force synchronous probe
+
+IMA runs at late_initcall and looks for a TPM chip once, expecting the chip to be registered by then. With asynchronous probe the SPI TPM may still be probing at that point, in which case IMA permanently activates its TPM bypass and the measurement list is never anchored to the chip. Force synchronous probe so that registration completes before late_initcall runs. The strategy is set explicitly rather than left at the default, which can be flipped back by driver_async_probe= on the kernel command line.
+---
+ drivers/char/tpm/tpm_tis_spi_main.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/char/tpm/tpm_tis_spi_main.c b/drivers/char/tpm/tpm_tis_spi_main.c
+index 61b42c83ced8..7aa3958822bf 100644
+--- a/drivers/char/tpm/tpm_tis_spi_main.c
++++ b/drivers/char/tpm/tpm_tis_spi_main.c
+@@ -350,7 +350,7 @@ static struct spi_driver tpm_tis_spi_driver = {
+ 		.pm = &tpm_tis_pm,
+ 		.of_match_table = of_match_ptr(of_tis_spi_match),
+ 		.acpi_match_table = ACPI_PTR(acpi_tis_spi_match),
+-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
++		.probe_type = PROBE_FORCE_SYNCHRONOUS,
+ 	},
+ 	.probe = tpm_tis_spi_driver_probe,
+ 	.remove = tpm_tis_spi_remove,
+-- 
+2.43.0
+
