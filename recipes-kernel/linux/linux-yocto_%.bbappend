@@ -122,3 +122,18 @@ do_configure:append() {
 #   - 0002-...tpm-on-spi4.patch : enables spi4 and adds a TPM 2.0 node
 #     (infineon,slb9670).
 SRC_URI:append:tactiq-rock5a = " file://0002-arm64-dts-rk3588s-rock-5a-add-tpm-on-spi4.patch"
+
+# =============================================================================
+# 7. Kernel driver fixes (machine-neutral)
+# =============================================================================
+#
+# These patches touch drivers, not board device trees, and apply to any
+# machine built from this layer. No override scope is needed or wanted:
+# scoping them per machine would silently reintroduce the defect on a new
+# board.
+#
+#   - 0003-...force-synchronous-probe.patch : IMA runs at late_initcall and
+#     checks for a TPM chip once; asynchronous probe can miss that window,
+#     leaving IMA permanently in TPM-bypass.
+#
+SRC_URI:append = " file://0003-tpm_tis_spi-force-synchronous-probe.patch"
