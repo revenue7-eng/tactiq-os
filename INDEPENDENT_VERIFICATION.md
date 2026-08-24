@@ -98,7 +98,7 @@ recipes and their SHA-256 is checked on unpack.
 ```
 git clone -b v2.1.0-rc6 https://github.com/revenue7-eng/tactiq-os
 cd tactiq-os
-./scripts/setup-layers.sh ./layers
+./scripts/setup-layers.sh ../layers
 ```
 
 `setup-layers.sh` reads `integration/LAYERS.lock` and clones every
@@ -113,11 +113,11 @@ hash. Origin and provenance of every pin are documented in
 ### 2.3. Initialize the build directory
 
 ```
-./scripts/init-build.sh ./layers ./build
+./scripts/init-build.sh ../layers ./build
 ```
 
 `init-build.sh` expands `conf/bblayers.conf.in` and `conf/local.conf.in`
-into `./build/conf/` with absolute paths pointing at `./layers`. The
+into `./build/conf/` with absolute paths pointing at `../layers`. The
 templates are minimal: everything security-relevant (SELinux, TPM2,
 RAUC, `BUILD_REPRODUCIBLE_BINARIES`, PACKAGE_CLASSES, INHERIT +=
 "archiver", sbom-cve-check, security CFLAGS, kernel SPDX inclusion)
@@ -128,7 +128,7 @@ build directory before running bitbake.
 ### 2.4. Build
 
 ```
-source ./layers/openembedded-core/oe-init-build-env ./build
+source ../layers/openembedded-core/oe-init-build-env ./build
 bitbake tactiq-image
 ```
 
