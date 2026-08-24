@@ -8,4 +8,4 @@
 # Between releases this holds the tag the working tree descends from, which
 # is what a development build should report.
 
-TACTIQ_OS_RELEASE_REV = "v2.1.0-rc7"
+TACTIQ_OS_RELEASE_REV = "v2.1.0-rc8"
