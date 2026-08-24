@@ -110,3 +110,15 @@ do_configure:append() {
     install -d ${B}/certs
     install -m 0600 "${TACTIQ_MODULE_SIG_KEY}" ${B}/certs/tactiq-module-signing.pem
 }
+
+
+# ===========================================================================
+# 6. Board device tree additions (scoped per machine)
+# ===========================================================================
+# This is a core, vendor-agnostic layer: an unscoped rockchip DTS patch would
+# also be applied to non-rockchip machines and fail there. Every entry in this
+# section must therefore carry a machine or override scope.
+#
+#   - 0002-...tpm-on-spi4.patch : enables spi4 and adds a TPM 2.0 node
+#     (infineon,slb9670).
+SRC_URI:append:tactiq-rock5a = " file://0002-arm64-dts-rk3588s-rock-5a-add-tpm-on-spi4.patch"
