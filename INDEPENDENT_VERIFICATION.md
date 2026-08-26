@@ -83,6 +83,7 @@ resulting artifacts have the same content as the published release.
 - Ubuntu 24.04 LTS or equivalent, with the Yocto host prerequisites
   installed (see the Yocto Project documentation for the current
   package list).
+- `cargo` on the host, for the agentgateway vendoring step in §2.3a.
 - Network access to GitHub and the Yocto Project git servers for
   the initial clone; the build itself is offline after `DL_DIR`
   is populated.
@@ -124,6 +125,21 @@ RAUC, `BUILD_REPRODUCIBLE_BINARIES`, PACKAGE_CLASSES, INHERIT +=
 is set in `conf/distro/tactiq.conf` and inherited by activating
 `DISTRO = "tactiq"`. The verifier can inspect both files in the
 build directory before running bitbake.
+
+### 2.3a. Vendor the agentgateway crate tree
+
+```
+./scripts/vendor-agentgateway.sh ./build/downloads
+```
+
+`agentgateway` builds from a vendored crate tree because three of its
+dependencies come from git forks that the crate fetcher cannot express.
+The script clones the pinned revision, runs `cargo vendor --locked`, and
+refuses to proceed unless the resulting tree hashes to the value recorded
+in the script. Without this step `bitbake tactiq-image` fails in
+`agentgateway:do_configure` with "vendored crate tree missing". The step
+was introduced in #115 and first documented here after the `v2.1.0-rc9`
+cold builds failed on it.
 
 ### 2.4. Build
 
