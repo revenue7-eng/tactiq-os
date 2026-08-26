@@ -97,10 +97,17 @@ TACTIQ_FIT_KEY_REQUIRE ??= "conf"
 TACTIQ_FIT_CONTROL_DTB ??= "${B}/dts/upstream/src/arm64/rockchip/rk3588s-rock-5a.dtb"
 
 do_compile:append() {
+    # Two dangerous states, both keyed off the boot method: a key in the control
+    # FDT is only consulted when U-Boot actually boots a FIT.
+    if [ "${TACTIQ_BOOT_METHOD}" = "fit" ]; then
+        [ -n "${TACTIQ_FIT_KEY_DIR}" ] || \
+            bbfatal "TACTIQ_BOOT_METHOD=fit but TACTIQ_FIT_KEY_DIR is empty: U-Boot would boot a FIT kernel it cannot verify"
+        [ "${TACTIQ_FIT_SIGN_KERNEL}" = "1" ] || \
+            bbfatal "TACTIQ_BOOT_METHOD=fit with a verification key in the control FDT, but TACTIQ_FIT_SIGN_KERNEL=0: the kernel FIT would be unsigned and the board would not boot"
+        [ "${FIT_KERNEL_SIGN_KEYNAME}" = "${TACTIQ_FIT_KEY_NAME}" ] || \
+            bbfatal "key name mismatch: control FDT gets '${TACTIQ_FIT_KEY_NAME}', kernel FIT is signed with '${FIT_KERNEL_SIGN_KEYNAME}'"
+    fi
     if [ -z "${TACTIQ_FIT_KEY_DIR}" ]; then
-        if [ -n "${KERNEL_CLASSES}" ]; then
-            bbfatal "KERNEL_CLASSES is set (${KERNEL_CLASSES}) but TACTIQ_FIT_KEY_DIR is empty: U-Boot would boot a FIT kernel it cannot verify"
-        fi
         bbwarn "TACTIQ_FIT_KEY_DIR is not set - u-boot.itb has no FIT verification key"
         return
     fi

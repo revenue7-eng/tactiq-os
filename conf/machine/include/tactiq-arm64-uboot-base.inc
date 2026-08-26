@@ -24,13 +24,31 @@
 
 # ---- Kernel ----
 KERNEL_IMAGETYPE ?= "Image"
-# rc5 Stage 1: FIT disabled for extlinux identity-test. Re-add "kernel-fit-image" in rc5/rc6 with fit-signed.
+# Global default: no extra kernel classes. The kernel FIT track sets a
+# pn-specific override below (see TACTIQ_FIT_SIGN_KERNEL).
 KERNEL_CLASSES   ?= ""
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
 
 # ---- Extension points ----
-# rc4: extlinux only. rc5/rc6 will add "fit-signed".
+# extlinux boots Image+DTB directly. "fit" is accepted by the gate below but
+# has no boot path yet: setting it does not change how the board boots.
 TACTIQ_BOOT_METHOD ?= "extlinux"
+
+# ---- FIT verification key: single source of truth ----
+# The key embedded in the U-Boot control FDT and the key signing the kernel
+# FIT must be one key. Declared here so both contours derive from one place.
+# This reduces the chance of divergence; it does not make it impossible -
+# a later assignment (local.conf, machine conf) still wins silently.
+TACTIQ_FIT_KEY_NAME ?= "dev-fit"
+
+# Master switch for the kernel FIT signing track. Default off: a clean clone
+# with no key must build a reproducible unsigned image.
+TACTIQ_FIT_SIGN_KERNEL ?= "0"
+
+FIT_KERNEL_SIGN_ENABLE  ?= "${TACTIQ_FIT_SIGN_KERNEL}"
+FIT_KERNEL_SIGN_KEYDIR  ?= "${TACTIQ_FIT_KEY_DIR}"
+FIT_KERNEL_SIGN_KEYNAME ?= "${TACTIQ_FIT_KEY_NAME}"
+KERNEL_CLASSES:pn-linux-yocto ?= "${@'kernel-fit-extra-artifacts' if d.getVar('TACTIQ_FIT_SIGN_KERNEL') == '1' else ''}"
 
 # rc4: boot always from slot A. RAUC bootcount integration is a separate phase.
 TACTIQ_AB_ENABLED ?= "0"
