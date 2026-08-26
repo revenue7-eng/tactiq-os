@@ -1,7 +1,10 @@
 SUMMARY = "TactiQ attestation agent"
 DESCRIPTION = "Produces the canonical attestation envelope from the platform TPM: \
-device_id(16) || counter_be(8) || pcr_selection(5) || pcr_hash(32), signed with \
-an ECDSA P-256 key held inside the TPM. Freshness comes from a TPM NV monotonic \
+device_id(16) || counter_be(8) || pcr_selection(5) || pcr_hash(32) || \
+evidence_hash(32), signed with an ECDSA P-256 key held inside the TPM. The \
+evidence hash binds an accompanying bundle to the signature; an edge node has \
+no sub-attesters, so the agent attests an empty bundle and that absence is \
+signed like everything else. Freshness comes from a TPM NV monotonic \
 counter, so a device can attest after months offline with no server nonce, no \
 CA and no NTP."
 HOMEPAGE = "https://github.com/revenue7-eng/tactiq-attest"
@@ -14,12 +17,16 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 # built here. The Custinel workspace pins this same revision, so the two sides
 # of the protocol are the same code, not two implementations kept in step by
 # review.
-SRCREV = "6ad02b6ece3571eed591e3158257982b6f0c24e4"
+SRCREV = "84362d39e96a9968de2dd8aa461ea5189f1f8955"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
 SRC_URI += "file://tactiq-agent.service"
 
 PV = "0.1.0+git"
 
+# Eleven crates, all pure computation reached through sha2 and hex. The agent
+# depends on attest-envelope alone: no async runtime, no TLS stack and no
+# serialisation framework inside the TCB. The list below is generated, so this
+# note lives here rather than in it.
 require tactiq-agent-crates.inc
 
 inherit cargo cargo-update-recipe-crates systemd useradd

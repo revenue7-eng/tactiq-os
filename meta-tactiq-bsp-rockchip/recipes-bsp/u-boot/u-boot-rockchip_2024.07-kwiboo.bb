@@ -18,9 +18,13 @@ SRC_URI[sha256sum] = "b6fc46e29457003d86041c299d15bde9dfc6597643d6cd303d4b692577
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += "file://0001-pylibfdt-swig-4.3-compat.patch"
 SRC_URI += "file://0002-binman-drop-pkg-resources.patch"
+SRC_URI += "file://0003-arm64-dts-rk3588s-rock-5a-add-tpm-on-spi4-uboot.patch \
+            file://0004-spi-rockchip-add-support-for-cs-gpios.patch"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
 SRC_URI += "file://env-lockdown.cfg"
+SRC_URI += "file://fit-signature.cfg"
+SRC_URI += "file://tpm-spi.cfg"
 SRC_URI += "file://tactiq-boot.env"
 
 TACTIQ_MIRROR ?= "https://github.com/revenue7-eng/tactiq-os/releases/download/bsp-mirror-2024.10/"
@@ -53,7 +57,7 @@ python () {
 
 do_configure() {
     oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
-    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg
     cp ${UNPACKDIR}/tactiq-boot.env ${S}/tactiq-boot.env
     oe_runmake -C ${S} O=${B} olddefconfig
 }
@@ -78,3 +82,47 @@ deltask do_install
 deltask do_populate_sysroot
 
 PROVIDES = "virtual/bootloader u-boot"
+
+# --- FIT verification key in U-Boot control FDT ---
+# Target established by reading dts/.dt.dtb.cmd: binman takes @fdt-SEQ inputs
+# from -I $(dt_dir) per of-list, not from -d (the assembly description).
+# u-boot.dtb is NOT the target. A pristine copy of the control FDT is kept so
+# key insertion is idempotent and a key-name change cannot leave a stale
+# required key in the image (all required keys must verify => stale key
+# bricks boot). Known limit: if the source .dts is ever edited, the pristine
+# copy goes stale and must be removed by hand (or cleansstate).
+TACTIQ_FIT_KEY_DIR  ??= ""
+TACTIQ_FIT_KEY_NAME ??= "dev-fit"
+TACTIQ_FIT_KEY_REQUIRE ??= "conf"
+TACTIQ_FIT_CONTROL_DTB ??= "${B}/dts/upstream/src/arm64/rockchip/rk3588s-rock-5a.dtb"
+
+do_compile:append() {
+    if [ -z "${TACTIQ_FIT_KEY_DIR}" ]; then
+        if [ -n "${KERNEL_CLASSES}" ]; then
+            bbfatal "KERNEL_CLASSES is set (${KERNEL_CLASSES}) but TACTIQ_FIT_KEY_DIR is empty: U-Boot would boot a FIT kernel it cannot verify"
+        fi
+        bbwarn "TACTIQ_FIT_KEY_DIR is not set - u-boot.itb has no FIT verification key"
+        return
+    fi
+    [ -f "${TACTIQ_FIT_KEY_DIR}/${TACTIQ_FIT_KEY_NAME}.crt" ] || \
+        bbfatal "certificate not found: ${TACTIQ_FIT_KEY_DIR}/${TACTIQ_FIT_KEY_NAME}.crt"
+    [ -x "${B}/tools/fdt_add_pubkey" ] || bbfatal "tools/fdt_add_pubkey not built"
+    [ -f "${TACTIQ_FIT_CONTROL_DTB}" ] || bbfatal "control FDT not found: ${TACTIQ_FIT_CONTROL_DTB}"
+
+    # Keep/restore pristine control FDT: exactly one key, exactly the current one.
+    if [ ! -f "${TACTIQ_FIT_CONTROL_DTB}.pristine" ]; then
+        cp "${TACTIQ_FIT_CONTROL_DTB}" "${TACTIQ_FIT_CONTROL_DTB}.pristine"
+    fi
+    cp "${TACTIQ_FIT_CONTROL_DTB}.pristine" "${TACTIQ_FIT_CONTROL_DTB}"
+
+    "${B}/tools/fdt_add_pubkey" -a sha256,rsa2048 \
+        -k "${TACTIQ_FIT_KEY_DIR}" -n "${TACTIQ_FIT_KEY_NAME}" \
+        -r "${TACTIQ_FIT_KEY_REQUIRE}" "${TACTIQ_FIT_CONTROL_DTB}"
+    grep -qa "key-${TACTIQ_FIT_KEY_NAME}" "${TACTIQ_FIT_CONTROL_DTB}" || \
+        bbfatal "fdt_add_pubkey reported success but key is absent in control FDT"
+
+    oe_runmake -C ${S} O=${B}
+
+    grep -qa "key-${TACTIQ_FIT_KEY_NAME}" "${B}/u-boot.itb" || \
+        bbfatal "key did not reach u-boot.itb after repack"
+}

@@ -1,0 +1,89 @@
+From 26b6b539414fc1f2cdfad378ba6dd21ba8a0a36b Mon Sep 17 00:00:00 2001
+From: Andrey Lazarev <revenue7@gmail.com>
+Date: Wed, 26 Aug 2026 09:34:33 +0300
+Subject: [PATCH 4/4] spi: rockchip: add support for cs-gpios
+
+The Rockchip SPI controller releases its native chip select whenever the controller is disabled. This driver disables the controller at the end of every transfer and again inside the transfer loop to program CTRLR1, so the chip select cannot be held across a transaction made of several spi_xfer() calls (SPI_XFER_BEGIN ... SPI_XFER_END). Devices that require this, such as TPM 2.0 modules using the TIS SPI protocol with its flow-control wait states, fail with a wait-state timeout.
+
+Add optional cs-gpios support, mirroring what Linux does for the same controller: when a GPIO chip select is described for the slave, drive it for the whole transaction. SER is still written, as the controller needs a slave selected to start a transfer.
+
+Upstream-Status: Pending
+---
+ drivers/spi/rk_spi.c | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/drivers/spi/rk_spi.c b/drivers/spi/rk_spi.c
+index c8694fdf..98aa8480 100644
+--- a/drivers/spi/rk_spi.c
++++ b/drivers/spi/rk_spi.c
+@@ -20,6 +20,7 @@
+ #include <time.h>
+ #include <linux/delay.h>
+ #include <linux/errno.h>
++#include <asm/gpio.h>
+ #include <asm/io.h>
+ #include <asm/arch-rockchip/clock.h>
+ #include <asm/arch-rockchip/periph.h>
+@@ -50,6 +51,8 @@ struct rockchip_spi_plat {
+ 	uint activate_delay_us;		/* Delay to wait after activate */
+ };
+ 
++#define ROCKCHIP_SPI_MAX_CS	2
++
+ struct rockchip_spi_priv {
+ 	struct rockchip_spi *regs;
+ 	struct clk clk;
+@@ -59,6 +62,7 @@ struct rockchip_spi_priv {
+ 	unsigned int speed_hz;
+ 	unsigned int last_speed_hz;
+ 	uint input_rate;
++	struct gpio_desc cs_gpios[ROCKCHIP_SPI_MAX_CS];
+ };
+ 
+ #define SPI_FIFO_DEPTH		32
+@@ -154,6 +158,8 @@ static void spi_cs_activate(struct udevice *dev, uint cs)
+ 
+ 	debug("activate cs%u\n", cs);
+ 	writel(1 << cs, &regs->ser);
++	if (cs < ROCKCHIP_SPI_MAX_CS && dm_gpio_is_valid(&priv->cs_gpios[cs]))
++		dm_gpio_set_value(&priv->cs_gpios[cs], 1);
+ 	if (plat->activate_delay_us)
+ 		udelay(plat->activate_delay_us);
+ }
+@@ -166,6 +172,8 @@ static void spi_cs_deactivate(struct udevice *dev, uint cs)
+ 	struct rockchip_spi *regs = priv->regs;
+ 
+ 	debug("deactivate cs%u\n", cs);
++	if (cs < ROCKCHIP_SPI_MAX_CS && dm_gpio_is_valid(&priv->cs_gpios[cs]))
++		dm_gpio_set_value(&priv->cs_gpios[cs], 0);
+ 	writel(0, &regs->ser);
+ 
+ 	/* Remember time of this transaction so we can honour the bus delay */
+@@ -281,6 +289,24 @@ static int rockchip_spi_probe(struct udevice *bus)
+ 	priv->input_rate = ret;
+ 	debug("%s: rate = %u\n", __func__, priv->input_rate);
+ 
++	/*
++	 * Optional GPIO chip selects. The native chip select is released
++	 * whenever the controller is disabled, which this driver does
++	 * between (and within) transfers, so it cannot be held across a
++	 * multi-part transaction as required by e.g. TPM TIS. A GPIO
++	 * chip select is driven for the whole transaction instead; SER is
++	 * still written since the controller needs it to start a transfer.
++	 */
++	if (CONFIG_IS_ENABLED(OF_REAL)) {
++		ret = gpio_request_list_by_name(bus, "cs-gpios", priv->cs_gpios,
++						ROCKCHIP_SPI_MAX_CS, GPIOD_IS_OUT);
++		if (ret < 0 && ret != -ENOENT) {
++			debug("%s: cs-gpios failed: %d\n", __func__, ret);
++			return ret;
++		}
++		debug("%s: %d gpio chip select(s)\n", __func__, ret < 0 ? 0 : ret);
++	}
++
+ 	return 0;
+ }
+ 
+-- 
+2.43.0
+
