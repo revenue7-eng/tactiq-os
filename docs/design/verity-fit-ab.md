@@ -385,3 +385,96 @@ Step 5 is the point of no return for a given flash: devices declared by
 `dm-mod.create=` are constructed at `late_initcall`, before userspace exists, so
 a hash mismatch or a malformed FIT fails where there is no console userspace and
 no diagnostics. Confirm a working re-flash path before attempting it.
+
+---
+
+## 11. State as of 2026-08-26
+
+This section is an addendum. Sections 1-10 describe the tree at `8551899`
+(2026-08-17) and are left unedited: the divergence recorded below was only
+visible because the document dates itself.
+
+The header line "decision recorded, not implemented" remains accurate for the
+architecture in §§4-6 (two-configuration FIT, hash tree, `dm-mod.create=`).
+It is superseded for the four items below.
+
+Every item here was established by executing a command in this tree on
+2026-08-26, not by reading prose. The command is given so it can be re-run.
+
+### 11.1 Four divergences from §§2, 7, 8
+
+**§2.2 "Signed FIT was never enabled" - superseded.**
+`CONFIG_FIT_SIGNATURE=y` is present in the built U-Boot `.config`. The
+enabling change is `fit-signature.cfg` in `meta-tactiq-bsp-rockchip`, wired
+through both required points of the recipe: `SRC_URI` (line 26) and explicit
+enumeration in the `merge_config.sh` invocation inside `do_configure`
+(line 60). Both points are required; `olddefconfig` silently drops fragments
+listed only in `SRC_URI`.
+
+This is **capability, not enforcement**. No public key is present in the U-Boot
+control FDT, and U-Boot does not reject unsigned images. `KERNEL_CLASSES =
+"kernel-fit-image"` is not set; no FIT is produced.
+
+    grep -E 'FIT_SIGNATURE' <build>/u-boot-rockchip/2024.07-kwiboo/build/.config
+
+**§7.1 boot command - superseded.**
+The document reads `sysboot mmc 1:1` for slot A and `mmc 1:3` for slot B.
+The file in `main` reads `mmc 0:1` and `mmc 0:3`. Whether this was corrected
+after 2026-08-17 or misrecorded at the time is **not established**.
+
+    git show main:meta-tactiq-bsp-rockchip/recipes-bsp/u-boot/files/tactiq-boot.env
+
+**§7.1 environment lockdown - merged, not pending.**
+`ac871af` is in `main`. `env-lockdown.cfg` is present and wired through both
+points of the recipe (`SRC_URI` line 25, `merge_config.sh` line 60).
+`CONFIG_ENV_WRITEABLE_LIST=y`, `CONFIG_ENV_ACCESS_IGNORE_FORCE=y` and
+`CONFIG_ENV_APPEND=y` are all present in the built `.config`. The writeable
+list itself is in the default environment as
+`.flags=BOOT_ORDER:sw,BOOT_A_LEFT:dw,BOOT_B_LEFT:dw`.
+
+Still **not verified on hardware**. The attack described in §7.1 - replacing
+`bootcmd` by writing raw sectors at `0xB00000` - is closed by build
+configuration only. Until a board test exists, the claim is that the option is
+compiled in, not that the environment resists substitution.
+
+    grep -E 'ENV_WRITEABLE_LIST|ENV_ACCESS_IGNORE_FORCE|ENV_APPEND' <build>/.config
+
+**§8 question 2 - closed.**
+`TACTIQ_BOOT_METHOD` is no longer read by nothing. A build-time gate consumes
+it, refusing to build in three states under `TACTIQ_BOOT_METHOD = "fit"`:
+signing key directory unset; kernel signing disabled; key names diverging
+between the `.inc` and the recipe. Accepted by six runs, three failing and
+three building, each executed separately with the configuration returned to a
+known baseline before every negative test.
+
+Note the gate's own limit, recorded in the commit: `TACTIQ_BOOT_METHOD = "fit"`
+is accepted by the gate but **has no boot path**. Setting it changes build
+behaviour and does not change what the board boots.
+
+Branch `uboot/fit-key-single-source`, commit `ae23285`. Not merged as of this
+writing; `main` is `7b84f3b`.
+
+### 11.2 SPL signature verification - correction, not a change
+
+`CONFIG_SPL_FIT_SIGNATURE=y` is **line 17 of the upstream
+`rock5a-rk3588s_defconfig`**. It is not introduced by `fit-signature.cfg`, is
+not the result of a `select`, and has been set in every build of this tree.
+
+    grep -rn 'FIT_SIGNATURE' <workdir>/sources/*/configs/rock5a-rk3588s_defconfig
+
+Consequence for §10 steps 3-4: there are two verification stages, not one, and
+the key material for both travels in `u-boot.dtb`, which binman assembles into
+`u-boot.itb` on RK3588. Placing a key in the control FDT activates a code path
+in SPL that has been present and inert.
+
+This does not change the threat model. `idbloader` and `u-boot.itb` are written
+to eMMC by a single raw `dd` at offset 16384 and are not themselves verified;
+replacing them removes both stages at once. Closing that requires Rockchip
+secure boot with efuse burning, which is irreversible and is not in the plan.
+
+### 11.3 Deviation from the order of work in §10
+
+Step 3 (`CONFIG_FIT_SIGNATURE=y`, and the gate governing `KERNEL_CLASSES`) was
+implemented before step 2 (hash tree generation) and before step 1 was verified
+on hardware. Recorded as a fact about how the work went, not as a revision of
+the order. Steps 2 and 4-6 remain in the sequence §10 gives them.
