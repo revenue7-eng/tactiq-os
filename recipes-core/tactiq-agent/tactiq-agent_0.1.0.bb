@@ -23,6 +23,10 @@ SRC_URI += "file://tactiq-agent.service"
 
 PV = "0.1.0+git"
 
+# Eleven crates, all pure computation reached through sha2 and hex. The agent
+# depends on attest-envelope alone: no async runtime, no TLS stack and no
+# serialisation framework inside the TCB. The list below is generated, so this
+# note lives here rather than in it.
 require tactiq-agent-crates.inc
 
 inherit cargo cargo-update-recipe-crates systemd useradd
