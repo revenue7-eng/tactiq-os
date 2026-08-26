@@ -46,3 +46,10 @@ BB_DISKMON_DIRS ??= "\
 # build directory self-contained. An independent verifier can point
 # these elsewhere with -e or a wrapper if desired; the resulting
 # artifacts are unaffected.
+
+# Layer revisions in the image: buildhistory writes LAYER_REVISIONS into
+# image-info.txt, which is the only artifact that ties a built image back to
+# the trees it came from. buildinfo-rock5a.json carries METADATA_REVISION for
+# oe-core only.
+INHERIT += "buildhistory"
+BUILDHISTORY_COMMIT = "1"
