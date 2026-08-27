@@ -1,62 +1,188 @@
-# TactiQ OS — PRODUCTION image profile
+# TactiQ OS — PRODUCTION image profile (base)
 # ============================================================================
-# Canonical image for tagged releases. Hardened posture:
-#   - No debug-tweaks (root account is locked, no passwordless login)
-#   - No OpenSSH server in the image
-#   - No interactive debug tooling
+# This recipe is the base of the image family. It defines the component set
+# that ships to a device: no interactive login path, no SSH server, no policy
+# management tooling, no bring-up utilities.
 #
-# Built from the same component set as the development profile
-# (`tactiq-image-dev.bb`) but with development-only IMAGE_FEATURES and
-# packages explicitly removed.
+# The development profile (`tactiq-image-dev.bb`) requires this file and adds
+# to it. A component present here reaches both profiles; a component present
+# only in the development recipe cannot reach production by omission. This is
+# the inverse of the previous arrangement, where production was derived from
+# the development profile by removal and any forgotten `:remove` shipped a
+# development component to a device.
 #
 # Build: MACHINE=tactiq-rock5a bitbake tactiq-image
 # ============================================================================
 SUMMARY = "TactiQ OS — production profile"
+LICENSE = "MIT"
 
-require tactiq-image-dev.bb
+inherit core-image
+inherit selinux-image
 
 # ---------------------------------------------------------------------------
-# Disable development conveniences
+# Base: core-image-minimal (no kernel-modules group!)
 # ---------------------------------------------------------------------------
-# Strip the development debug feature set (passwordless/empty root login).
-# dev appends ${TACTIQ_DEBUG_FEATURES}; production removes exactly that set,
-# referencing the same variable so the two can never drift out of sync.
-# (The previous remove of "debug-tweaks" was a no-op: that token is never set.)
-EXTRA_IMAGE_FEATURES:remove = "${TACTIQ_DEBUG_FEATURES}"
+IMAGE_INSTALL:append = " \
+    packagegroup-core-boot \
+"
 
-# Production root account is locked. The agent and its services run under
-# their SELinux domains; there is no interactive root login path on a
-# production image. Lock the account by setting an invalid password hash
-# via the extrausers class.
-INHERIT += "extrausers"
+# ---------------------------------------------------------------------------
+# Kernel modules: only what the runtime needs (instead of kernel-modules
+# which pulls in all ~500 modules built for the kernel).
+# ---------------------------------------------------------------------------
+# Crypto — required for TPM, mTLS, dm-verity
+IMAGE_INSTALL:append = " \
+    kernel-module-af-alg \
+    kernel-module-algif-rng \
+"
+
+# Netfilter — required for the iptables firewall
+IMAGE_INSTALL:append = " \
+    kernel-module-ip-tables \
+    kernel-module-ip6-tables \
+    kernel-module-iptable-filter \
+    kernel-module-iptable-nat \
+    kernel-module-iptable-mangle \
+    kernel-module-nf-conntrack \
+    kernel-module-nf-nat \
+    kernel-module-nf-defrag-ipv4 \
+    kernel-module-nf-defrag-ipv6 \
+    kernel-module-nf-reject-ipv4 \
+    kernel-module-x-tables \
+    kernel-module-xt-conntrack \
+    kernel-module-xt-state \
+    kernel-module-xt-tcpudp \
+"
+# NOTE(6.18): kernel-module-nfnetlink intentionally absent above —
+# CONFIG_NETFILTER_NETLINK is builtin (=y) in the 6.18 linux-yocto config,
+# so no module package is generated; nfnetlink is compiled into Image.
+
+# ---------------------------------------------------------------------------
+# Networking (required for mTLS attestation)
+# ---------------------------------------------------------------------------
+# No SSH server: the development profile adds one. A production image has no
+# interactive login path.
+IMAGE_INSTALL:append = " \
+    openssl \
+    openssl-bin \
+    ca-certificates \
+    chrony \
+    iproute2 \
+    iptables \
+"
+
+# ---------------------------------------------------------------------------
+# TactiQ components
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " \
+    tactiq-agent \
+    tactiq-config \
+    tactiq-release \
+    agentgateway \
+    agentgateway-config \
+"
+
+# ---------------------------------------------------------------------------
+# OTA Updates (RAUC A/B)
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " rauc"
+
+# Generates /etc/fw_env.config for the boot medium in use; RAUC cannot mark
+# a slot good without it. See recipes-bsp/tactiq-fw-env.
+IMAGE_INSTALL:append = " tactiq-fw-env"
+
+# ---------------------------------------------------------------------------
+# System utilities — minimal set
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " \
+    bash \
+    curl \
+    procps \
+"
+
+# util-linux: install only the binaries the runtime uses, not the full
+# package (~80 utilities).
+IMAGE_INSTALL:append = " \
+    util-linux-mount \
+    util-linux-umount \
+    util-linux-blkid \
+    util-linux-lsblk \
+    util-linux-findmnt \
+    util-linux-dmesg \
+    util-linux-hwclock \
+    util-linux-losetup \
+    util-linux-flock \
+    util-linux-nsenter \
+    util-linux-unshare \
+    util-linux-agetty \
+    util-linux-sulogin \
+    util-linux-switch-root \
+    util-linux-fsck \
+    util-linux-fdisk \
+"
+
+# ---------------------------------------------------------------------------
+# Security: SELinux runtime
+#
+# Enforcement needs libselinux (C) and the loaded policy. Relabeling of the
+# empty /data partition on first boot needs setfiles, which is the only
+# RDEPENDS of selinux-autorelabel. Policy management tooling (semodule,
+# sesearch, semanage) is not required at runtime and ships only in the
+# development profile: the full `policycoreutils` meta package hard-RDEPENDS
+# selinux-python, which pulls setools and the whole python3 runtime.
+#
+# selinux-autorelabel is installed in NEITHER profile: runtime relabeling of
+# the root filesystem does not exist on this system by design. The rootfs is
+# labeled at build time; a bulk relabel would rewrite security.selinux
+# everywhere and invalidate every EVM portable signature.
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " \
+    libselinux \
+    policycoreutils-setfiles \
+    policycoreutils-sestatus \
+    refpolicy-targeted \
+"
+
+# ---------------------------------------------------------------------------
+# Boot infrastructure — kernel devicetree blobs in rootfs /boot/
+# ---------------------------------------------------------------------------
+# extlinux loads the FDT from a path inside the rootfs (FDT = /boot/<dtb>).
+# Without kernel-devicetree in IMAGE_INSTALL the .dtb files are deployed
+# only to the boot_a FAT partition via IMAGE_BOOT_FILES (wic mechanism)
+# and are absent from the rootfs, which causes extlinux to fail FDT load.
+IMAGE_INSTALL:append = " kernel-devicetree"
+
+# ---------------------------------------------------------------------------
+# Image features
+# ---------------------------------------------------------------------------
+IMAGE_FEATURES += "read-only-rootfs"
+# package-management is dropped — opkg is not useful on a read-only rootfs.
+# ssh-server-openssh is added by the development profile only.
+
+# ---------------------------------------------------------------------------
+# Disk space — trimmed
+# ---------------------------------------------------------------------------
+IMAGE_ROOTFS_EXTRA_SPACE = "65536"
+IMAGE_OVERHEAD_FACTOR = "1.15"
+
+# ---------------------------------------------------------------------------
+# Root account is locked
+# ---------------------------------------------------------------------------
+# The agent and its services run under their SELinux domains; there is no
+# interactive root login path on a production image. The account is locked by
+# setting an invalid password hash via the extrausers class.
+#
+# `inherit`, not `INHERIT +=`: INHERIT is resolved at configuration parse
+# time. Written inside a recipe it adds the name to the list, but the class
+# body never runs, so the `ROOTFS_POSTPROCESS_COMMAND += "set_user_group"`
+# in extrausers.bbclass never takes effect and the account is not locked.
+# Verify with:
+#   bitbake-getvar -r tactiq-image --value ROOTFS_POSTPROCESS_COMMAND
+# set_user_group must appear in the output.
+inherit extrausers
 EXTRA_USERS_PARAMS = "usermod -p '!' root;"
 
 # ---------------------------------------------------------------------------
-# No SSH server in the production image
+# Runtime-unneeded leaf packages (no in-image hard-RDEPENDS)
 # ---------------------------------------------------------------------------
-IMAGE_FEATURES:remove = "ssh-server-openssh"
-IMAGE_INSTALL:remove = "openssh-sshd openssh-ssh openssh-keygen"
-
-# ---------------------------------------------------------------------------
-# No interactive debug tooling
-# ---------------------------------------------------------------------------
-# Reserved as the canonical place to remove tooling that may be appended
-# in the dev recipe for bring-up convenience. Dev recipe currently has
-# strace/tcpdump/nano/less commented out; if they get re-enabled there
-# in future, listing them here keeps the production image clean by
-# default.
-IMAGE_INSTALL:remove = "strace tcpdump nano less"
-
-# ---------------------------------------------------------------------------
-# No SELinux policy-management tooling (drops python3 entirely)
-# ---------------------------------------------------------------------------
-# Full `policycoreutils` hard-RDEPENDS `selinux-python` (semanage/audit2allow),
-# pulling setools + the *-python bindings + the whole python3 runtime
-# (~50 MB, 13 CVEs incl. python3 CVE-2026-7210). None is needed at runtime:
-# enforcement uses libselinux (C) + loaded policy; relabel uses setfiles (C,
-# policycoreutils-setfiles) — the only RDEPENDS of selinux-autorelabel, kept
-# explicitly in the dev recipe. Drop the meta package + the python binding.
-IMAGE_INSTALL:remove = "policycoreutils libselinux-python"
-
-# rc5: drop runtime-unneeded leaf pkgs (no in-image hard-RDEPENDS) — jq, shared-mime-info(+libxml2)
-PACKAGE_EXCLUDE += "jq shared-mime-info libxml2"
+PACKAGE_EXCLUDE += "shared-mime-info libxml2"
