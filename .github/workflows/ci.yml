@@ -101,15 +101,31 @@ jobs:
             || { echo "::error::production image recipe missing: $prod"; exit 1; }
           # Debug-only image features (passwordless login, root login, empty
           # root password, post-install logging) are defined once as
-          # TACTIQ_DEBUG_FEATURES in the dev recipe and removed by exactly that
-          # variable in production, so the two sides cannot drift apart.
-          grep -qE 'TACTIQ_DEBUG_FEATURES[[:space:]]*=.*empty-root-password' "$dev" \
+          # TACTIQ_DEBUG_FEATURES in the dev recipe. The production recipe is
+          # the base and the dev recipe requires it, so debug features are
+          # absent from production by never being declared there — not by
+          # being removed. A :remove in the base would be dead code and is
+          # rejected below: if the base ever mentions the variable at all,
+          # something has started adding it back.
+          # Comments legitimately discuss both, so the checks below look at
+          # code lines only.
+          prod_code=$(grep -v '^[[:space:]]*#' "$prod")
+          dev_code=$(grep -v '^[[:space:]]*#' "$dev")
+          grep -qE 'TACTIQ_DEBUG_FEATURES[[:space:]]*=.*empty-root-password' <<<"$dev_code" \
             || { echo "::error::dev recipe does not define TACTIQ_DEBUG_FEATURES with debug features"; exit 1; }
-          grep -qE 'EXTRA_IMAGE_FEATURES:remove.*TACTIQ_DEBUG_FEATURES' "$prod" \
-            || { echo "::error::production image does not remove TACTIQ_DEBUG_FEATURES"; exit 1; }
-          # Production recipe must not ship an SSH server.
-          grep -q 'IMAGE_FEATURES:remove.*ssh-server-openssh' "$prod" \
-            || { echo "::error::production image still ships ssh-server-openssh"; exit 1; }
+          grep -q 'TACTIQ_DEBUG_FEATURES' <<<"$prod_code" \
+            && { echo "::error::production base mentions TACTIQ_DEBUG_FEATURES; debug features must be declared in the dev recipe only"; exit 1; }
+          # The dev recipe must require the production base, not the reverse.
+          grep -qE '^require[[:space:]]+tactiq-image\.bb' <<<"$dev_code" \
+            || { echo "::error::dev recipe does not require tactiq-image.bb; inheritance must run dev -> production"; exit 1; }
+          grep -qE '^require[[:space:]]+tactiq-image-dev\.bb' <<<"$prod_code" \
+            && { echo "::error::production base requires the dev recipe; inheritance is inverted"; exit 1; }
+          # Production recipe must not ship an SSH server. Same reasoning: the
+          # base must not declare it, rather than declare and then remove it.
+          grep -q 'ssh-server-openssh' <<<"$prod_code" \
+            && { echo "::error::production base declares ssh-server-openssh; the SSH server belongs to the dev recipe only"; exit 1; }
+          grep -q 'IMAGE_FEATURES.*ssh-server-openssh' <<<"$dev_code" \
+            || { echo "::error::dev recipe does not add ssh-server-openssh"; exit 1; }
           # Dev recipe must exist and must NOT be the build target for
           # tagged releases. (CI does not enforce that here; that gate
           # belongs to the release workflow.)
