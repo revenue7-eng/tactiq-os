@@ -135,6 +135,19 @@ IMAGE_INSTALL:append = " \
 # the root filesystem does not exist on this system by design. The rootfs is
 # labeled at build time; a bulk relabel would rewrite security.selinux
 # everywhere and invalidate every EVM portable signature.
+#
+# audit ships in this profile and is not removable: it is an RDEPENDS of
+# dbus-1, shadow-base, libsemanage2 and policycoreutils-setfiles. Verified
+# 27.08.2026 against buildhistory depends.dot. This is accepted rather than
+# worked around — SELinux runs in enforcing mode, and without auditd an AVC
+# denial goes to the kernel ring buffer and is lost on reboot, which
+# contradicts the immutable-logging property the product claims. Do not
+# attempt to strip it; removing setfiles breaks /data labelling on first boot.
+#
+# NOT ESTABLISHED: that auditd is configured for this platform — rule set,
+# log persistence across reboot, flash wear bounds. Package presence in the
+# manifest is not a working audit subsystem. External claims about logging
+# must not rely on this line.
 # ---------------------------------------------------------------------------
 IMAGE_INSTALL:append = " \
     libselinux \
