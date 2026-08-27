@@ -1,193 +1,76 @@
 # TactiQ OS — DEVELOPMENT image profile
 # ============================================================================
-# This profile retains debug-tweaks (passwordless root, root-login over SSH)
-# and an OpenSSH server for bring-up and integration debugging. It is NOT
-# suitable for production deployments and is NEVER signed as a release
-# artifact. The production profile is `tactiq-image.bb`; CI gates ensure
-# tagged releases build from the production recipe.
+# The production profile (`tactiq-image.bb`) is the base; this recipe requires
+# it and adds bring-up conveniences: a passwordless root, an SSH server,
+# SELinux policy management tooling, the audit daemon, TPM bring-up utilities
+# and build-time IMA/EVM signing with the in-tree development key.
+#
+# Everything added here is absent from production by construction, not by
+# removal. This profile is NOT suitable for deployment and is NEVER signed as
+# a release artifact; CI gates ensure tagged releases build from the
+# production recipe.
 #
 # Build: MACHINE=tactiq-rock5a bitbake tactiq-image-dev
 # ============================================================================
 SUMMARY = "TactiQ OS — development profile (debug-tweaks, SSH server)"
-LICENSE = "MIT"
-inherit core-image
-inherit selinux-image
+
+require tactiq-image.bb
 
 # ---------------------------------------------------------------------------
-# Base: core-image-minimal (no kernel-modules group!)
+# SSH server for bring-up and integration debugging
 # ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " \
-    packagegroup-core-boot \
-"
-
-# ---------------------------------------------------------------------------
-# Kernel modules: only what the runtime needs (instead of kernel-modules
-# which pulls in all ~500 modules built for the kernel).
-# ---------------------------------------------------------------------------
-# Crypto — required for TPM, mTLS, dm-verity
-IMAGE_INSTALL:append = " \
-    kernel-module-af-alg \
-    kernel-module-algif-rng \
-"
-
-# Netfilter — required for the iptables firewall
-IMAGE_INSTALL:append = " \
-    kernel-module-ip-tables \
-    kernel-module-ip6-tables \
-    kernel-module-iptable-filter \
-    kernel-module-iptable-nat \
-    kernel-module-iptable-mangle \
-    kernel-module-nf-conntrack \
-    kernel-module-nf-nat \
-    kernel-module-nf-defrag-ipv4 \
-    kernel-module-nf-defrag-ipv6 \
-    kernel-module-nf-reject-ipv4 \
-    kernel-module-x-tables \
-    kernel-module-xt-conntrack \
-    kernel-module-xt-state \
-    kernel-module-xt-tcpudp \
-"
-# NOTE(wrynose/6.18): kernel-module-nfnetlink intentionally absent above —
-# CONFIG_NETFILTER_NETLINK is builtin (=y) in the 6.18 linux-yocto config,
-# so no module package is generated; nfnetlink is compiled into Image.
-
-# System — watchdog, TUN (VPN), FUSE
-IMAGE_INSTALL:append = " \
-"
-
-# IPsec — placeholder for VPN modules if a deployment requires them
-IMAGE_INSTALL:append = " \
-"
-
-# ---------------------------------------------------------------------------
-# Networking (required for mTLS attestation)
-# ---------------------------------------------------------------------------
+IMAGE_FEATURES += "ssh-server-openssh"
 IMAGE_INSTALL:append = " \
     openssh-sshd \
     openssh-ssh \
     openssh-keygen \
-    openssl \
-    openssl-bin \
-    ca-certificates \
-    chrony \
-    iproute2 \
-    iptables \
 "
 
 # ---------------------------------------------------------------------------
-# TactiQ components
-# ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " \
-    tactiq-agent \
-    tactiq-config \
-    tactiq-release \
-    agentgateway \
-    agentgateway-config \
-"
-
-# ---------------------------------------------------------------------------
-# OTA Updates (RAUC A/B)
-# ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " rauc"
-
-# Generates /etc/fw_env.config for the boot medium in use; RAUC cannot mark
-# a slot good without it. See recipes-bsp/tactiq-fw-env.
-IMAGE_INSTALL:append = " tactiq-fw-env"
-
-# ---------------------------------------------------------------------------
-# System utilities — minimal set
-# ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " \
-    bash \
-    curl \
-    jq \
-    procps \
-"
-
-# util-linux: install only the binaries the runtime uses, not the full
-# package (~80 utilities).
-IMAGE_INSTALL:append = " \
-    util-linux-mount \
-    util-linux-umount \
-    util-linux-blkid \
-    util-linux-lsblk \
-    util-linux-findmnt \
-    util-linux-dmesg \
-    util-linux-hwclock \
-    util-linux-losetup \
-    util-linux-flock \
-    util-linux-nsenter \
-    util-linux-unshare \
-    util-linux-agetty \
-    util-linux-sulogin \
-    util-linux-switch-root \
-    util-linux-fsck \
-    util-linux-fdisk \
-"
-
-# ---------------------------------------------------------------------------
-# Security: SELinux + audit
-#
-# Policy tooling (semodule, setfiles, sesearch) ships in the dev profile for
-# on-target debugging; the production image excludes it. selinux-autorelabel
-# is installed in NEITHER profile: runtime relabeling of the root filesystem
-# does not exist on this system by design. The rootfs is labeled at build
-# time and signed; a bulk relabel would rewrite security.selinux everywhere
-# and invalidate every EVM portable signature. The only runtime relabel is
-# the one-shot that labels the empty /data partition on first boot.
-# ---------------------------------------------------------------------------
-IMAGE_INSTALL:append = " \
-    libselinux \
-    libselinux-python \
-    policycoreutils \
-    policycoreutils-setfiles \
-    policycoreutils-semodule \
-    policycoreutils-sestatus \
-    checkpolicy \
-    policycoreutils-hll \
-    libselinux-bin \
-    refpolicy-targeted \
-    audit \
-"
-
-# ---------------------------------------------------------------------------
-# Boot infrastructure — kernel devicetree blobs in rootfs /boot/
-# ---------------------------------------------------------------------------
-# extlinux loads the FDT from a path inside the rootfs (FDT = /boot/<dtb>).
-# Without kernel-devicetree in IMAGE_INSTALL the .dtb files are deployed
-# only to the boot_a FAT partition via IMAGE_BOOT_FILES (wic mechanism)
-# and are absent from the rootfs, which causes extlinux to fail FDT load.
-IMAGE_INSTALL:append = " kernel-devicetree"
-# setools and selinux-python are kept for the development phase.
-# Production can drop them (saves ~50MB of Python).
-
-# ---------------------------------------------------------------------------
-# Debug tools — REMOVE BEFORE PRODUCTION
-# ---------------------------------------------------------------------------
-# IMAGE_INSTALL:append = " strace tcpdump nano less"
-
-# ---------------------------------------------------------------------------
-# Image features
-# ---------------------------------------------------------------------------
-IMAGE_FEATURES += "ssh-server-openssh"
-IMAGE_FEATURES += "read-only-rootfs"
-# package-management is dropped — opkg is not useful on a read-only rootfs.
-
-# ---------------------------------------------------------------------------
-# Disk space — trimmed
-# ---------------------------------------------------------------------------
-IMAGE_ROOTFS_EXTRA_SPACE = "65536"
-IMAGE_OVERHEAD_FACTOR = "1.15"
-# Was: 524288 (512MB headroom). Now: 65536 (64MB) — enough for logs.
-
-# ---------------------------------------------------------------------------
-# Root password (CHANGE IN PRODUCTION)
+# Root password
 # ---------------------------------------------------------------------------
 # Development debug feature set (passwordless/empty root, root login).
-# Defined once here; the production profile removes exactly this set by
-# referencing ${TACTIQ_DEBUG_FEATURES}, so the two cannot drift apart.
+# Defined here and nowhere else: production never declares it, so there is no
+# pair of definitions that can drift apart.
 TACTIQ_DEBUG_FEATURES = "allow-empty-password allow-root-login empty-root-password post-install-logging"
 EXTRA_IMAGE_FEATURES:append = " ${TACTIQ_DEBUG_FEATURES}"
+
+# The base locks the root account through extrausers. Clear the parameter so
+# the lock does not fight the debug feature set above; the class stays
+# inherited but has nothing to apply.
+EXTRA_USERS_PARAMS = ""
+
+# ---------------------------------------------------------------------------
+# SELinux policy management tooling
+# ---------------------------------------------------------------------------
+# semodule, sesearch and the python bindings are used for on-target policy
+# debugging. The `policycoreutils` meta package hard-RDEPENDS selinux-python,
+# which pulls setools and the whole python3 runtime — acceptable on a bench
+# image, not on a device.
+IMAGE_INSTALL:append = " \
+    policycoreutils \
+    policycoreutils-semodule \
+    policycoreutils-hll \
+    libselinux-python \
+    libselinux-bin \
+    checkpolicy \
+"
+
+# ---------------------------------------------------------------------------
+# Audit daemon
+# ---------------------------------------------------------------------------
+# AVC denials are read from the audit log during policy work.
+IMAGE_INSTALL:append = " audit"
+
+# ---------------------------------------------------------------------------
+# Bench utilities
+# ---------------------------------------------------------------------------
+IMAGE_INSTALL:append = " jq"
+
+# ---------------------------------------------------------------------------
+# Debug tools — enable per bring-up session, never in a release
+# ---------------------------------------------------------------------------
+# IMAGE_INSTALL:append = " strace tcpdump nano less"
 
 # ---------------------------------------------------------------------------
 # SBOM generation
@@ -195,14 +78,14 @@ EXTRA_IMAGE_FEATURES:append = " ${TACTIQ_DEBUG_FEATURES}"
 INHERIT += "create-spdx"
 
 # ---------------------------------------------------------------------------
-# IMA/EVM rootfs signing (measurement/dev profile only)
+# IMA/EVM rootfs signing (development profile only)
 # ---------------------------------------------------------------------------
 # Signs the whole rootfs at build time and installs the appraisal policy
 # as /etc/ima/ima-policy. Keyed off the IMA_EVM_* variables, which are set
 # in conf/distro/tactiq.conf against LAYERDIR_tactiq-os, so a clean
-# checkout reproduces this. Applied here and not in tactiq-image.bb: the
-# signing key is the in-tree development one and must not reach a
-# production image. Never built in CI.
+# checkout reproduces this. The signing key is the in-tree development one:
+# it is applied here and the production base does not require this recipe,
+# so it cannot reach a production image. Never built in CI.
 IMAGE_INSTALL:append = " ima-evm-keys"
 IMAGE_CLASSES += "ima-evm-rootfs"
 
@@ -279,12 +162,12 @@ tactiq_ima_policy_mode() {
 do_image[postfuncs] += "tactiq_ima_policy_mode"
 
 # ---------------------------------------------------------------------------
-# TPM bring-up tooling (dev profile only)
+# TPM bring-up tooling
 # ---------------------------------------------------------------------------
 # tpm2-tools for manual interaction during bring-up, and the mssim TCTI so
-# the same image can talk to swtpm over the simulator socket. Neither ships
-# in the production profile: production talks to /dev/tpmrm0 through
-# libtss2-tcti-device, which the agent pulls in as an RDEPENDS.
+# the same image can talk to swtpm over the simulator socket. Production
+# talks to /dev/tpmrm0 through libtss2-tcti-device, which the agent pulls in
+# as an RDEPENDS.
 IMAGE_INSTALL:append = " \
     tpm2-tools \
     libtss2-tcti-mssim \
