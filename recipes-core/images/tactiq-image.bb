@@ -199,3 +199,24 @@ EXTRA_USERS_PARAMS = "usermod -p '!' root;"
 # Runtime-unneeded leaf packages (no in-image hard-RDEPENDS)
 # ---------------------------------------------------------------------------
 PACKAGE_EXCLUDE += "shared-mime-info libxml2"
+
+# ---------------------------------------------------------------------------
+# dm-verity hash tree
+# ---------------------------------------------------------------------------
+# image_types_verity is enabled distro-wide; listing the type here is what
+# actually produces <image>.verity — the ext4 filesystem followed by its hash
+# tree, written as one sequence with --no-superblock. The parameters needed to
+# mount it (root hash, salt, block counts) land in <image>.verity-params and
+# must travel with the image: without a superblock the artefact does not
+# describe itself, so a flashed device cannot be checked against it alone.
+#
+# IMAGE_TYPEDEP:verity pulls in ext4, which IMAGE_FSTYPES already carries, so
+# no extra filesystem is built.
+#
+# NOT ESTABLISHED: nothing consumes this artefact yet. The wks still writes
+# the rootfs from --source rootfs and the RAUC bundle still declares ext4, so
+# the generated tree is produced and ignored. Those two changes belong
+# together and must not be split: a tree that is generated while wic keeps
+# building its own filesystem boots normally and hides the defect until
+# verity is switched on.
+IMAGE_FSTYPES += "verity"
