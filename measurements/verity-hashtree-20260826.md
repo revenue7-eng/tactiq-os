@@ -103,3 +103,92 @@ consequences and does not appear in the design document.
 
     veritysetup format rootfs.ext4 hash.bin \
         --data-block-size=4096 --hash-block-size=4096
+
+---
+
+# Addendum: figures from the build, 2026-08-27
+
+The measurement above was taken by hand with `veritysetup` on a scratch
+copy. This section records what the build itself produces now that
+`image_types_verity` is enabled and `IMAGE_FSTYPES` lists `verity`.
+
+Different image, so the figures differ from the section above and neither
+set supersedes the other. The 2026-08-26 image was 363 859 968 bytes
+(88833 data blocks, 702 hash blocks); this one is smaller.
+
+## Inputs
+
+| | |
+|---|---|
+| Image | `tactiq-image-tactiq-rock5a.rootfs-20260827134257.ext4` |
+| Produced by | the build, not by a manual `veritysetup` run |
+| Branch | `feat/verity-hashtree-generation`, commit b220fe2 |
+| Salt | fixed in `conf/distro/tactiq.conf`, no longer random |
+
+## Result, read from `.ext4.verity-params`
+
+```
+VERITY_DATA_BLOCKS=87472
+VERITY_DATA_BLOCK_SIZE=4096
+VERITY_HASH_BLOCKS=691
+VERITY_HASH_BLOCK_SIZE=4096
+VERITY_HASH_ALGORITHM=sha256
+VERITY_DATA_SECTORS=699776
+VERITY_SALT=8a7b98d830ac3bf9daa968b9c322bc1e6d9300c632f8f610be59dd67d2c4d797
+VERITY_ROOT_HASH=757319692c22f636839788c580d6dcc1390505d8748e4673e96641d0a674cb27
+```
+
+The salt in the artefact matches the value declared in the distro
+configuration character for character. That resolves the "Also not
+established" point above: the salt is now fixed, published in-tree, and
+identical across devices by design.
+
+## Cross-checks
+
+| | |
+|---|---|
+| Tree arithmetic | ceil(87472/128)=684, ceil(684/128)=6, ceil(6/128)=1 → 691, matches the tool |
+| Combined artefact | (87472+691) × 4096 = 361 115 648 bytes, matches `stat` exactly |
+| Overhead over data | 0.79 % |
+| Superblock | none — the total equals data + tree with nothing left over, confirming `--no-superblock` |
+
+The 2026-08-26 section reports 703 hash blocks including a superblock. The
+build output has no superblock, which is why the two are not comparable
+block for block.
+
+## The filesystem is not block-aligned
+
+This does not appear in the section above and matters for partitioning.
+
+    ext4 file size        358 282 240 bytes = 87471.25 blocks
+    VERITY_DATA_BLOCKS    87472 → 358 285 312 bytes
+    difference            3072 bytes
+
+The tool rounded the data area up to a whole block and hashed the padded
+region. `VERITY_DATA_BLOCKS` therefore describes an area, not the file.
+
+Consequence for the wks change identified above: the rootfs partition must
+receive the full 87472-block data area followed by the tree — that is, the
+`.ext4.verity` artefact as one sequence. Writing the `.ext4` file and
+stopping at its end leaves the final block short by 3072 bytes, dm-verity
+reads a different byte sequence than was hashed, and the root hash does not
+match. On a bench without verity enforcement the device still boots, so
+this failure mode is invisible until verification is switched on.
+
+## Artefact names
+
+The class emits three files per image, suffixed onto the base type rather
+than replacing it:
+
+    <image>.ext4.verity          data area followed by the hash tree
+    <image>.ext4.verity-params   shell-sourceable KEY=value pairs
+    <image>.ext4.verity-info     the `veritysetup` header dump, human-readable
+
+`<image>.verity` does not exist. Anything consuming these — wks, the RAUC
+bundle, a signing step — must use the `.ext4.verity` form.
+
+## Still not established
+
+Nothing verifies this root hash. It is neither signed nor referenced by the
+kernel command line, and no boot stage consumes it. The wks source and the
+RAUC bundle still describe the plain ext4 image.
