@@ -5,10 +5,15 @@
 # SELinux policy management tooling, the audit daemon, TPM bring-up utilities
 # and build-time IMA/EVM signing with the in-tree development key.
 #
-# Everything added here is absent from production by construction, not by
-# removal. This profile is NOT suitable for deployment and is NEVER signed as
-# a release artifact; CI gates ensure tagged releases build from the
-# production recipe.
+# Nothing declared here reaches production through inheritance: the require
+# runs one way, dev -> production, and CI enforces that direction in both
+# senses. That guarantee covers inheritance and nothing else. A package named
+# above can still be present in production when something declared in the base
+# pulls it in as an RDEPENDS -- `audit` and `tpm2-tools` are both such cases
+# today. Whether a package ships in production is answered by the image
+# manifest, not by this file.
+#
+# This profile is for bring-up only and is not a deployment artifact.
 #
 # Build: MACHINE=tactiq-rock5a bitbake tactiq-image-dev
 # ============================================================================
