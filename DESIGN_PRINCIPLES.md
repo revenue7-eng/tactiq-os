@@ -173,7 +173,7 @@ recipe, so that a remote verifier can correlate a running system with
 a specific build artifact. The binary at
 `/opt/tactiq/bin/tactiq-agent` is the real agent, built from
 `tactiq-attest` at the revision pinned in
-`recipes-core/tactiq-agent/tactiq-agent_0.1.0.bb`. It produces the
+`recipes-core/tactiq-agent/tactiq-agent_0.1.1.bb`. It produces the
 canonical 61-byte attestation envelope — device_id(16) ||
 counter_be(8) || pcr_selection(5) || pcr_hash(32) — signed with an
 ECDSA P-256 key held inside the TPM, with freshness from a TPM NV

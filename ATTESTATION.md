@@ -15,7 +15,7 @@ Last reviewed: 2026-08-14.
 
 The attestation framework specified here is the architectural target.
 The agent that produces attestations is built and shipped in the
-image. `recipes-core/tactiq-agent/tactiq-agent_0.1.0.bb` builds it from
+image. `recipes-core/tactiq-agent/tactiq-agent_0.1.1.bb` builds it from
 `tactiq-attest` at a pinned revision and installs it at
 `/opt/tactiq/bin/tactiq-agent`.
 
