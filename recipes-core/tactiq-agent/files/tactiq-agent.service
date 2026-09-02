@@ -88,6 +88,8 @@ ProtectHostname=yes
 PrivateDevices=yes
 DeviceAllow=/dev/tpmrm0 rw
 DeviceAllow=/dev/tpm0 rw
+BindPaths=/dev/tpmrm0
+BindPaths=/dev/tpm0
 
 # ---------------------------------------------------------------------------
 # Process and namespace restrictions
