@@ -5,6 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 SRC_URI = "file://agent.yaml \
            file://data-tactiq-dirs.service \
            file://data.mount \
+           file://10-tactiq-watchdog.conf \
           "
 
 UNPACKDIR = "${WORKDIR}/sources"
@@ -23,6 +24,8 @@ do_install() {
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/data-tactiq-dirs.service ${D}${systemd_system_unitdir}/data-tactiq-dirs.service
     install -m 0644 ${UNPACKDIR}/data.mount ${D}${systemd_system_unitdir}/data.mount
+    install -d ${D}${systemd_unitdir}/system.conf.d
+    install -m 0644 ${UNPACKDIR}/10-tactiq-watchdog.conf ${D}${systemd_unitdir}/system.conf.d/10-tactiq-watchdog.conf
 
     # Mount point (empty)
     install -d ${D}/data
@@ -32,6 +35,7 @@ FILES:${PN} = " \
     /etc/tactiq \
     ${systemd_system_unitdir}/data-tactiq-dirs.service \
     ${systemd_system_unitdir}/data.mount \
+    ${systemd_unitdir}/system.conf.d/10-tactiq-watchdog.conf \
     /data \
 "
 CONFFILES:${PN} = "/etc/tactiq/agent.yaml"
