@@ -63,7 +63,10 @@ UBOOT_EXTLINUX_FDT = "${@'/' + os.path.basename((d.getVar('KERNEL_DEVICETREE') o
 
 # ---- Kernel command line (rc4: slot A only, rc5+ adds RAUC bootcount) ----
 UBOOT_EXTLINUX_ROOT ?= "root=PARTLABEL=__RAUC_PART__"
-UBOOT_EXTLINUX_KERNEL_ARGS ?= "rootwait rw rootfstype=ext4 earlycon kernel.panic=5"
+# panic=N sets panic_timeout so a failed root mount reboots into the next A/B attempt.
+# NOT kernel.panic=N: without the sysctl. prefix the kernel ignores it, panic hangs, and
+# BOOT_x_LEFT never reaches zero (measured on rock5a, 2026-09-03).
+UBOOT_EXTLINUX_KERNEL_ARGS ?= "rootwait rw rootfstype=ext4 earlycon panic=5"
 
 # Default console: framebuffer only. BSP layers override with serial.
 # rk3588.inc:   UBOOT_EXTLINUX_CONSOLE = "console=tty1 console=ttyS2,1500000n8"
