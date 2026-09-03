@@ -345,7 +345,7 @@ recipe lint, SELinux policy syntax, shellcheck, YAML and distro
 config validation) and build no image. Functional evidence is
 recorded per run under `measurements/`. The physical Rockchip-family
 machines (rock5a, rock5b, rock5t) are in active bring-up phase, with
-no TPM device exercised on the reference hardware and the secure boot
+a discrete TPM 2.0 exercised on the rock5a reference board and the secure boot
 anchor not yet activated. The generic-arm64 machine is a
 template configuration whose state depends on the target board.
 
