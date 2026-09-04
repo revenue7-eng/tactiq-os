@@ -112,11 +112,11 @@ boots with `ima_appraise=log`, so a failed appraisal is recorded and
 the access proceeds.
 
 The remaining step to `ima_appraise=enforce` is `/data/tactiq`. The
-policy appraises reads of `tactiq_vault_data_t`, and nothing on that
-partition is signed: enforcing today would block the model weights
-and the measurement artifacts. Signing the data partition, then the
-switch to enforce, is a Phase 3 item alongside the agent
-implementation.
+policy appraises reads of `tactiq_vault_data_t`, which after the label
+split covers delivered artifacts alone: device identity and the agent
+envelopes carry types of their own and are not appraised. What remains
+is that anything delivered onto the partition must arrive signed. That
+an enforcing boot passes has not been measured.
 
 A production image is unaffected by any of the above: it applies
 neither the signing class nor the policy.
