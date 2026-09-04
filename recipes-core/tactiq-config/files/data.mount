@@ -6,7 +6,7 @@ Before=tactiq-agent.service data-tactiq-dirs.service
 What=/dev/disk/by-partlabel/data
 Where=/data
 Type=ext4
-Options=noatime,nosuid,nodev,noexec,context=system_u:object_r:tactiq_vault_data_t:s0
+Options=noatime,nosuid,nodev,noexec,fscontext=system_u:object_r:tactiq_data_fs_t:s0
 
 [Install]
 WantedBy=multi-user.target
