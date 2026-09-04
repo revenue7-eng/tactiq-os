@@ -202,9 +202,10 @@ sha256sum -c SHA256SUMS
   as `/etc/ima/ima-policy`; the signing key is `pki/dev/ima-signer`,
   in-tree by the same design property as the RAUC development key.
   The image boots with `ima_appraise=log`: violations are recorded,
-  nothing is blocked. Enforcing is blocked on `/data/tactiq`, which
-  carries no signatures while the policy appraises reads of
-  `tactiq_vault_data_t`. A production image applies neither the
+  nothing is blocked. The policy appraises reads of
+  `tactiq_vault_data_t`, which after the label split covers delivered
+  artifacts alone; anything delivered onto `/data/tactiq` must arrive
+  signed. A production image applies neither the
   signing class nor the policy.
 
 The complete chain of trust from the silicon root to the running
