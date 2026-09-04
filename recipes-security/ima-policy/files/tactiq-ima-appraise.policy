@@ -39,3 +39,32 @@ appraise func=BPRM_CHECK
 # Type is defined in tactiq_vault.te, assigned to /data/tactiq by mount context.
 # Covers AI model weights, reference values, and measurement artifacts.
 appraise func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t
+
+# ---------------------------------------------------------------------------
+# TactiQ: measurement rules (2026-09-03, verified on rock5a slot B, counter 73).
+# Without these PCR 10 holds boot_aggregate only and the attestation carries
+# no runtime content. dont_measure mirrors the dont_appraise set above,
+# tmpfs (0x01021994) included -- revisit if /tmp binaries should be logged.
+# ---------------------------------------------------------------------------
+dont_measure fsmagic=0x9fa0
+dont_measure fsmagic=0x62656572
+dont_measure fsmagic=0x64626720
+dont_measure fsmagic=0x01021994
+dont_measure fsmagic=0x858458f6
+dont_measure fsmagic=0x1cd1
+dont_measure fsmagic=0x42494e4d
+dont_measure fsmagic=0x73636673
+dont_measure fsmagic=0xf97cff8c
+dont_measure fsmagic=0x6e736673
+dont_measure fsmagic=0xde5e81e4
+dont_measure fsmagic=0x27e0eb
+dont_measure fsmagic=0x63677270
+
+# What executed
+measure func=BPRM_CHECK
+measure func=MMAP_CHECK mask=MAY_EXEC
+measure func=MODULE_CHECK
+
+# What was consumed: vault data into its own PCR so the verifier checks
+# model/doctrine hashes independently of code-measurement churn in PCR 10.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t pcr=11
