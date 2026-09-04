@@ -177,3 +177,7 @@ IMAGE_INSTALL:append = " \
     tpm2-tools \
     libtss2-tcti-mssim \
 "
+
+# The ima-evm-rootfs class reads IMA_EVM_POLICY inside a shell function; without
+# this varflag bitbake does not see content changes and ships a stale policy.
+do_image[file-checksums] += "${IMA_EVM_POLICY}:True"
