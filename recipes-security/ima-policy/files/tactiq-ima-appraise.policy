@@ -35,9 +35,11 @@ appraise func=MMAP_CHECK mask=MAY_EXEC
 # Appraise executables
 appraise func=BPRM_CHECK
 
-# TactiQ: appraise reads of files labeled tactiq_vault_data_t (data partition).
-# Type is defined in tactiq_vault.te, assigned to /data/tactiq by mount context.
-# Covers AI model weights, reference values, and measurement artifacts.
+# TactiQ: appraise reads of files labeled tactiq_vault_data_t. The type is
+# defined in tactiq_vault.te and assigned by restorecon; the data partition is
+# mounted with fscontext=, so labels come from the xattr and more than one type
+# lives there. This one covers delivered artifacts only -- model weights,
+# reference values, update bundles -- everything that arrives signed.
 appraise func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t
 
 # ---------------------------------------------------------------------------
@@ -68,3 +70,12 @@ measure func=MODULE_CHECK
 # What was consumed: vault data into its own PCR so the verifier checks
 # model/doctrine hashes independently of code-measurement churn in PCR 10.
 measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t pcr=11
+
+# Device identity into a PCR of its own. keys and counter are produced on the
+# device, so nothing signs them and they are never appraised; each is a single
+# inode measured once per boot, so the aggregate is stable within a boot. It is
+# kept out of PCR 10 so the code aggregate stays comparable against a code-only
+# reference. The envelopes under audit/ are deliberately absent from this file:
+# a new inode every cycle would extend a PCR without bound against no reference
+# value, and an envelope quoting a PCR it just extended proves nothing.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_agent_state_t pcr=12
