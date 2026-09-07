@@ -6,6 +6,7 @@ SRC_URI = "file://agent.yaml \
            file://data-tactiq-dirs.service \
            file://data.mount \
            file://10-tactiq-watchdog.conf \
+           file://10-tactiq-printk.conf \
           "
 
 UNPACKDIR = "${WORKDIR}/sources"
@@ -27,6 +28,10 @@ do_install() {
     install -d ${D}${systemd_unitdir}/system.conf.d
     install -m 0644 ${UNPACKDIR}/10-tactiq-watchdog.conf ${D}${systemd_unitdir}/system.conf.d/10-tactiq-watchdog.conf
 
+    # Console log level (see the file for why)
+    install -d ${D}${sysconfdir}/sysctl.d
+    install -m 0644 ${UNPACKDIR}/10-tactiq-printk.conf ${D}${sysconfdir}/sysctl.d/10-tactiq-printk.conf
+
     # Mount point (empty)
     install -d ${D}/data
 }
@@ -36,6 +41,7 @@ FILES:${PN} = " \
     ${systemd_system_unitdir}/data-tactiq-dirs.service \
     ${systemd_system_unitdir}/data.mount \
     ${systemd_unitdir}/system.conf.d/10-tactiq-watchdog.conf \
+    ${sysconfdir}/sysctl.d/10-tactiq-printk.conf \
     /data \
 "
-CONFFILES:${PN} = "/etc/tactiq/agent.yaml"
+CONFFILES:${PN} = "/etc/tactiq/agent.yaml ${sysconfdir}/sysctl.d/10-tactiq-printk.conf"
