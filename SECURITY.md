@@ -173,8 +173,10 @@ The runtime posture of a TactiQ OS image includes, at minimum:
   (PCR 10), SELinux, lockdown groundwork.
 - Compiler hardening: `-fstack-protector-strong`, `_FORTIFY_SOURCE=2`,
   `relro`, `bind-now`, PIE.
-- TPM 2.0 distro feature for measured boot and hardware-rooted key
-  material.
+- TPM 2.0 distro feature for hardware-rooted key material and IMA
+  runtime measurements (PCR 10-12). Pre-kernel stages are not
+  measured; see [`BOOT_CHAIN.md`](BOOT_CHAIN.md) section Per-stage
+  status.
 - Attestation agent path provisioned at `/opt/tactiq/bin/tactiq-agent`.
   This is a stub in the current release: it produces no quote and signs
   nothing. See [`ATTESTATION.md`](ATTESTATION.md) for what exists and what

@@ -197,8 +197,10 @@ under `CONFIG_MODULE_SIG_ALL`. The signing key was an unpinned build
 input. The key that signed the published `rc6` artifacts was
 ephemeral and no longer exists, so no party can byte-reproduce the
 `rc6` kernel image or its modules. For `rc6`, kernel integrity rests
-on signed-artifact provenance (§1) and the measured boot chain, not
-on independent rebuild. The device tree lies outside the signing path
+on signed-artifact provenance (§1) and on IMA runtime measurement of
+the running system, not on independent rebuild and not on a measured
+pre-kernel chain, which is not present — see
+[`BOOT_CHAIN.md`](BOOT_CHAIN.md) section Per-stage status. The device tree lies outside the signing path
 and does reproduce, which is why it is target 2 above.
 
 This defect was found by executing this procedure against our own
