@@ -77,5 +77,8 @@ UBOOT_EXTLINUX_KERNEL_ARGS:append = " rauc.slot=__RAUC_SLOT__"
 # Gated on the tactiq-dev-policy override axis, which is set in local.conf
 # (OVERRIDES:append = ":tactiq-dev-policy") and is therefore not under version
 # control. Production (tactiq-image.bb) does not carry the override and gets no
-# IMA appraisal. ima_appraise=log logs violations without blocking.
-UBOOT_EXTLINUX_KERNEL_ARGS:append:tactiq-dev-policy = " ima_appraise=log ima_policy=appraise_tcb"
+# IMA appraisal. The mode is a variable so that an enforce boot can be
+# exercised without editing this file: set TACTIQ_IMA_APPRAISE = "enforce"
+# in local.conf. Default log records violations without blocking.
+TACTIQ_IMA_APPRAISE ?= "log"
+UBOOT_EXTLINUX_KERNEL_ARGS:append:tactiq-dev-policy = " ima_appraise=${TACTIQ_IMA_APPRAISE} ima_policy=appraise_tcb"
