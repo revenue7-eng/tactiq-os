@@ -18,12 +18,18 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 # of the protocol are the same code, not two implementations kept in step by
 # review.
 #
-# That claim is checkable, and it silently stopped being true once: this
-# recipe stayed on 84362d39 while Custinel moved to 8d77e2ac, and the
-# paragraph above went on asserting they matched. Verify with
-#   grep tactiq-attest Cargo.lock
-# in the Custinel workspace; the rev there must equal SRCREV below.
-SRCREV = "8d77e2acbe69cf0e8e73292a6bc4c90c223584ac"
+# Compatibility is defined by the attest-envelope crate VERSION (currently
+# 0.1.0), not by this git rev. The prover's rev moves on changes to the agent
+# (main.rs, tpm.rs, state.rs) that do not touch the wire format, so SRCREV here
+# and the attest-envelope rev pinned in Custinel's Cargo.lock need NOT match
+# commit-for-commit. They must agree only when the envelope format changes,
+# which bumps attest-envelope's version. Verify the crate version on both
+# sides, not the rev:
+#   grep -A1 'name = "attest-envelope"' Cargo.lock   # in the Custinel workspace
+# History note: these revs previously drifted (recipe on 84362d3, Custinel on
+# 8d77e2ac) and a "must match" comment masked it. Version-parity is the real
+# invariant; a rev mismatch under one envelope version is expected.
+SRCREV = "d1487af6892ea712454177e781295f256611f219"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
 SRC_URI += "file://tactiq-agent.service"
 
