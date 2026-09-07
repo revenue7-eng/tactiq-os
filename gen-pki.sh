@@ -15,6 +15,11 @@
 #
 set -euo pipefail
 
+# Private keys are created by this script and never re-chmod'ed afterwards,
+# so the mode they are born with is the mode they keep. 077 makes that mode
+# 0600 for every flavour, including prod on the offline host.
+umask 077
+
 FLAVOUR="${1:-}"
 case "$FLAVOUR" in
   dev)
@@ -72,11 +77,12 @@ if [ "$FLAVOUR" = "fit" ]; then
   #
   # Names are fixed by mkimage convention: <keyname>.key and <keyname>.crt,
   # with keyname = TACTIQ_FIT_KEY_NAME (default dev-fit).
+  KEYNAME="${TACTIQ_FIT_KEY_NAME:-dev-fit}"
   if [ ! -d "$OUT" ]; then
     echo "ERROR: $OUT not found. Run '$0 dev' first." >&2
     exit 1
   fi
-  for f in dev-fit.key dev-fit.crt; do
+  for f in "$KEYNAME.key" "$KEYNAME.crt"; do
     if [ -e "$OUT/$f" ]; then
       echo "ERROR: $OUT/$f already exists. Refusing to reissue in place:" >&2
       echo "       a new key does not match the modulus already in u-boot.itb." >&2
@@ -87,24 +93,24 @@ if [ "$FLAVOUR" = "fit" ]; then
 
   echo "[1/1] FIT signer (self-signed)"
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
-    $ENC -out dev-fit.key
+    $ENC -out "$KEYNAME.key"
   openssl req -x509 -new -sha256 \
-    -key dev-fit.key \
+    -key "$KEYNAME.key" \
     -days "$LEAF_DAYS" \
     -subj "/O=$ORG/CN=$LEAF_CN" \
-    -out dev-fit.crt
+    -out "$KEYNAME.crt"
 
   echo
   echo "---- verification ----------------------------------------------"
-  openssl x509 -in dev-fit.crt -noout -subject -enddate
+  openssl x509 -in "$KEYNAME.crt" -noout -subject -enddate
   echo "key bits:"
-  openssl rsa -in dev-fit.key -noout -text | head -n 1
+  openssl rsa -in "$KEYNAME.key" -noout -text | head -n 1
 
   cat <<EOF
 
 ---- files ------------------------------------------------------
-$OUT/dev-fit.crt   PUBLIC  -> modulus goes into the U-Boot control FDT
-$OUT/dev-fit.key   PRIVATE -> signs the kernel FIT
+$OUT/$KEYNAME.crt   PUBLIC  -> modulus goes into the U-Boot control FDT
+$OUT/$KEYNAME.key   PRIVATE -> signs the kernel FIT
 
 ---- next -------------------------------------------------------
 Nothing changes until TACTIQ_FIT_KEY_DIR points here. Until then the
