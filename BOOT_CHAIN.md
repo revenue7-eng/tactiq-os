@@ -67,7 +67,7 @@ separately.
          ▼
    FIT image: kernel + device tree + initramfs (composite, signed)
          │  kernel takes over; IMA begins measuring file accesses
-         │  extends PCR 10 with IMA runtime measurements
+         │  extends PCRs 10–12 with IMA runtime measurements
          ▼
    Kernel + initramfs (running)
          │  IMA appraisal verifies file signatures on access
@@ -88,12 +88,12 @@ describes the present state of each link.
 |-------|----------|----------|-------|
 | Boot ROM → vendor early-boot firmware | OFF | n/a (root) | Verification depends on OTP fuses being burned for the public key root. Fuses are not burned on the reference development hardware in current bring-up. |
 | Vendor early-boot firmware → U-Boot | OFF | OFF | Depends on the previous stage; until the chain is anchored at the SoC ROM, this transition is not cryptographically gated. |
-| U-Boot → FIT image (kernel + DTB + initramfs) | OFF | OFF | FIT image signing is not implemented in the current build pipeline. The U-Boot configuration does not enable FIT signature verification. Both halves of this stage are tracked in the supply-chain roadmap. |
-| Kernel measures itself and initramfs | n/a | PARTIAL | Kernel TPM drivers are compiled in (`CONFIG_TCG_*`); IMA is configured at PCR 10. Whether the early boot stages successfully extended PCRs 0–9 before kernel handoff depends on the bootloader path being measured-boot aware, which it is not in current state. |
-| Kernel runtime → file accesses | n/a | ON | IMA measures file accesses and extends PCR 10. This part of the measured-boot chain is functional in the present configuration. |
+| U-Boot → FIT image (kernel + DTB + initramfs) | OFF | OFF | U-Boot is built with FIT signature support (`CONFIG_FIT_SIGNATURE`, `CONFIG_FIT_FULL_CHECK`, merged from `files/fit-signature.cfg`), and the development signer's public key is injected into the control FDT as a required key. Neither is exercised: `TACTIQ_BOOT_METHOD` is `extlinux` and `TACTIQ_FIT_SIGN_KERNEL` is `0`, so U-Boot boots a raw kernel image and never loads a FIT whose signature could be checked. This is capability, not enforcement. Whether SPL verifies `u-boot.itb` itself is a separate question, not established here: SPL carries its own control FDT and this configuration sets no SPL symbols. |
+| Kernel measures itself and initramfs | n/a | PARTIAL | Kernel TPM drivers are compiled in (`CONFIG_TCG_*`); IMA is configured at PCRs 10, 11 and 12. Whether the early boot stages successfully extended PCRs 0–9 before kernel handoff depends on the bootloader path being measured-boot aware, which it is not in current state. |
+| Kernel runtime → file accesses | n/a | ON | IMA measures file accesses and extends PCR 10 with executed and mapped code, PCR 11 with delivered artifacts labelled `tactiq_vault_data_t`, and PCR 12 with device identity labelled `tactiq_agent_state_t`. This part of the measured-boot chain is functional in the present configuration. |
 | Kernel runtime → file access enforcement | LOG (dev) / OFF (production) | n/a | `tactiq-image-dev` signs its whole rootfs at build time (`IMAGE_CLASSES += "ima-evm-rootfs"`) and ships the appraisal policy as `/etc/ima/ima-policy`. It boots with `ima_appraise=log`, so violations are recorded and nothing is blocked: the policy appraises reads of `tactiq_vault_data_t`, which after the label split covers delivered artifacts alone. `tactiq-image.bb` does not apply the class — a production image has no signatures and no policy on disk. |
 | Kernel → userspace MAC | ON | n/a | SELinux is enforcing from boot, with the targeted reference policy plus the TactiQ-specific modules from `meta-tactiq-selinux`. This is the strongest enforced boundary in the current chain. |
-| Userspace → attestation payload | STUB | n/a | The agent at `/opt/tactiq/bin/tactiq-agent` is a stub. Full architectural specification in `ATTESTATION.md`, including the path from stub to TPM-quote-integrated implementation. |
+| Userspace → attestation payload | PARTIAL | n/a | The agent advances a monotonic TPM NV counter, reads the PCR bank, builds a fixed-size canonical envelope and signs it with a TPM-resident key; this has been exercised on the discrete SLB9670. The envelope carries no TPM quote: its final field is a digest over an empty payload, tracked as `tactiq-attest#1`. Architectural specification in `ATTESTATION.md`. |
 
 The single ON row in the Verified column at the kernel-to-userspace
 boundary, and the single ON row in the Measured column for IMA
