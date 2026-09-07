@@ -20,6 +20,7 @@ SRC_URI += "file://0001-pylibfdt-swig-4.3-compat.patch"
 SRC_URI += "file://0002-binman-drop-pkg-resources.patch"
 SRC_URI += "file://0003-arm64-dts-rk3588s-rock-5a-add-tpm-on-spi4-uboot.patch \
             file://0004-spi-rockchip-add-support-for-cs-gpios.patch"
+SRC_URI += "file://0005-configs-rock5a-declare-writeable-env-variables.patch"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
 SRC_URI += "file://env-lockdown.cfg"
