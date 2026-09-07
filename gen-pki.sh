@@ -5,6 +5,7 @@
 #   ./gen-pki.sh dev    -> pki/dev/    unencrypted keys, CI-usable
 #   ./gen-pki.sh prod   -> pki/prod/   encrypted keys, OFFLINE MACHINE ONLY
 #   ./gen-pki.sh ima    -> pki/dev/    IMA appraisal leaf, existing hierarchy
+#   ./gen-pki.sh fit    -> pki/dev/    U-Boot FIT signer, self-signed
 #
 # Hierarchy (both flavours):
 #   Root CA  ->  Signing CA  ->  Signer (leaf)
@@ -38,6 +39,13 @@ case "$FLAVOUR" in
     ICA_DAYS=1095
     LEAF_DAYS=730          # deliberately long: device clock may drift (see O-3)
     ;;
+  fit)
+    OUT="pki/dev"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS DEVELOPMENT FIT Signer - NOT FOR PRODUCTION"
+    ENC=""
+    LEAF_DAYS=730
+    ;;
   ima)
     OUT="pki/dev"
     ORG="TactiQ"
@@ -46,10 +54,64 @@ case "$FLAVOUR" in
     LEAF_DAYS=730
     ;;
   *)
-    echo "usage: $0 {dev|prod|ima}" >&2
+    echo "usage: $0 {dev|prod|ima|fit}" >&2
     exit 1
     ;;
 esac
+
+if [ "$FLAVOUR" = "fit" ]; then
+  # ------------------------------------------------------- U-Boot FIT signer
+  # Self-signed on purpose. U-Boot builds no chain when it verifies a FIT:
+  # fdt_add_pubkey extracts the RSA modulus from this certificate into the
+  # control FDT, and that modulus is the whole of what the board checks.
+  # Issuing this leaf from the dev Signing CA would suggest a chain that
+  # nothing verifies.
+  #
+  # RSA-2048 because the recipe invokes fdt_add_pubkey -a sha256,rsa2048;
+  # a different length yields a key U-Boot will not match.
+  #
+  # Names are fixed by mkimage convention: <keyname>.key and <keyname>.crt,
+  # with keyname = TACTIQ_FIT_KEY_NAME (default dev-fit).
+  if [ ! -d "$OUT" ]; then
+    echo "ERROR: $OUT not found. Run '$0 dev' first." >&2
+    exit 1
+  fi
+  for f in dev-fit.key dev-fit.crt; do
+    if [ -e "$OUT/$f" ]; then
+      echo "ERROR: $OUT/$f already exists. Refusing to reissue in place:" >&2
+      echo "       a new key does not match the modulus already in u-boot.itb." >&2
+      exit 1
+    fi
+  done
+  cd "$OUT"
+
+  echo "[1/1] FIT signer (self-signed)"
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+    $ENC -out dev-fit.key
+  openssl req -x509 -new -sha256 \
+    -key dev-fit.key \
+    -days "$LEAF_DAYS" \
+    -subj "/O=$ORG/CN=$LEAF_CN" \
+    -out dev-fit.crt
+
+  echo
+  echo "---- verification ----------------------------------------------"
+  openssl x509 -in dev-fit.crt -noout -subject -enddate
+  echo "key bits:"
+  openssl rsa -in dev-fit.key -noout -text | head -n 1
+
+  cat <<EOF
+
+---- files ------------------------------------------------------
+$OUT/dev-fit.crt   PUBLIC  -> modulus goes into the U-Boot control FDT
+$OUT/dev-fit.key   PRIVATE -> signs the kernel FIT
+
+---- next -------------------------------------------------------
+Nothing changes until TACTIQ_FIT_KEY_DIR points here. Until then the
+U-Boot recipe warns and leaves u-boot.itb without a verification key.
+EOF
+  exit 0
+fi
 
 if [ "$FLAVOUR" = "ima" ]; then
   for f in signing-ca.key.pem signing-ca.pem root-ca.pem; do
