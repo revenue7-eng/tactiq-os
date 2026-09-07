@@ -1,22 +1,27 @@
-From e9db2b8add794602a62aa367396ed42b76ec0d0f Mon Sep 17 00:00:00 2001
-From: a <a@b>
+From dd9bcec2fcd0cdc62345818566f28176462ee16d Mon Sep 17 00:00:00 2001
+From: Andrey Lazarev <revenue7@gmail.com>
 Date: Mon, 7 Sep 2026 20:08:24 +0000
-Subject: [PATCH] configs: rock5a-rk3588s: declare writeable env variables
+Subject: [PATCH] configs: rock5a-rk3588s: declare writeable environment
+ variables
 
-CONFIG_ENV_WRITEABLE_LIST is enabled for this board through
-env-lockdown.cfg, but the list of writeable variables was left empty.
-The .flags line in tactiq-boot.env does not supply it: env/flags.c reads
-ENV_FLAGS_LIST_STATIC, a compile-time constant, precisely so that the
-access list cannot be supplied by the environment it governs.
+CONFIG_ENV_WRITEABLE_LIST permits writes and imports only for variables
+carrying the 'w' flag, and takes that list from the compile-time constant
+ENV_FLAGS_LIST_STATIC (env/flags.c), not from the .flags variable in the
+environment - deliberately, so that the access list cannot be supplied by
+the environment it governs. CFG_ENV_FLAGS_LIST_STATIC defaults to an empty
+string, so with the option enabled and no board definition no variable is
+writeable and nothing is imported from the saved environment at all.
 
-With an empty list no variable is writeable and nothing is imported from
-the saved environment, so on the next bootloader flash BOOT_ORDER would
-revert to the built-in value and the A/B try counters would never
-decrement - both manual slot switching and automatic rollback would stop
-working, silently.
+Declare the three RAUC A/B state variables, as include/configs/hmibsc.h
+does upstream for the same scheme. Without them the boot_ab script cannot
+decrement the try counter, automatic rollback to the other slot never
+happens, and fw_setenv BOOT_ORDER has no effect after a reboot.
 
-Only the three RAUC state variables are declared. bootargs and bootcmd
-remain non-importable by design.
+bootargs and bootcmd are deliberately left out: keeping them
+non-importable is what prevents the kernel command line from being changed
+from a running system.
+
+Upstream-Status: Inappropriate [depends on the TactiQ default environment; the variable names come from tactiq-boot.env]
 ---
  include/configs/rock5a-rk3588s.h | 24 ++++++++++++++++++++++++
  1 file changed, 24 insertions(+)
