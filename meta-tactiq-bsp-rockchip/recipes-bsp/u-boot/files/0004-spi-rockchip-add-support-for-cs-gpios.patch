@@ -1,5 +1,5 @@
 From 26b6b539414fc1f2cdfad378ba6dd21ba8a0a36b Mon Sep 17 00:00:00 2001
-From: Andrey Lazarev <revenue7@gmail.com>
+From: Andrey Lazarev <lazarev@tactiqedge.com>
 Date: Wed, 26 Aug 2026 09:34:33 +0300
 Subject: [PATCH 4/4] spi: rockchip: add support for cs-gpios
 

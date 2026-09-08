@@ -1,5 +1,5 @@
 From dd9bcec2fcd0cdc62345818566f28176462ee16d Mon Sep 17 00:00:00 2001
-From: Andrey Lazarev <revenue7@gmail.com>
+From: Andrey Lazarev <lazarev@tactiqedge.com>
 Date: Mon, 7 Sep 2026 20:08:24 +0000
 Subject: [PATCH] configs: rock5a-rk3588s: declare writeable environment
  variables
