@@ -27,7 +27,7 @@ BUNDLE_ARGS += "--intermediate=${LAYERDIR_tactiq-os}/pki/dev/signing-ca.pem"
 # --- Slot: rootfs (ext4 image of tactiq-image, production) ---
 RAUC_BUNDLE_SLOTS = "rootfs boot"
 RAUC_SLOT_rootfs = "tactiq-image"
-RAUC_SLOT_rootfs[fstype] = "ext4"
+RAUC_SLOT_rootfs[fstype] = "ext4.verity"
 
 # --- Slot: boot (ext4 image of kernel + dtb + extlinux.conf) ---
 RAUC_SLOT_boot = "tactiq-boot-image"
