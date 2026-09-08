@@ -220,4 +220,4 @@ PACKAGE_EXCLUDE += "shared-mime-info libxml2"
 # building its own filesystem boots normally and hides the defect until
 # verity is switched on.
 IMAGE_FSTYPES += "verity"
-IMAGE_TYPEDEP:wic += "verity"
+addtask image_wic after image_verity
