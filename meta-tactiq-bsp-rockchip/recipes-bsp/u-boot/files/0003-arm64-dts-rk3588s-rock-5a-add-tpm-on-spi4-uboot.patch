@@ -1,5 +1,5 @@
 From fb718b793434b23b70f796b425b98a5aff4f871d Mon Sep 17 00:00:00 2001
-From: Andrey Lazarev <revenue7@gmail.com>
+From: Andrey Lazarev <lazarev@tactiqedge.com>
 Date: Wed, 26 Aug 2026 09:34:33 +0300
 Subject: [PATCH 3/4] arm64: dts: rk3588s-rock-5a: add TPM 2.0 on spi4 for
  U-Boot
