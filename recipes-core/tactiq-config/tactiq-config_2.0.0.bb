@@ -10,6 +10,7 @@ SRC_URI = "file://agent.yaml \
           "
 
 UNPACKDIR = "${WORKDIR}/sources"
+S = "${UNPACKDIR}"
 
 inherit systemd
 
