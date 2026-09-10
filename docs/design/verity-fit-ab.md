@@ -478,3 +478,89 @@ Step 3 (`CONFIG_FIT_SIGNATURE=y`, and the gate governing `KERNEL_CLASSES`) was
 implemented before step 2 (hash tree generation) and before step 1 was verified
 on hardware. Recorded as a fact about how the work went, not as a revision of
 the order. Steps 2 and 4-6 remain in the sequence §10 gives them.
+
+---
+
+## 12. State as of 2026-09-10
+
+Addendum, same convention as §11: sections 1-10 are left unedited, and every
+item below was established by executing a command in this tree, not by reading
+prose.
+
+### 12.1 §6.1 is superseded: the dependency it prescribes is a ring
+
+§6.1 requires that `tactiq-boot-image` acquire an explicitly declared
+dependency on `tactiq-image`. That dependency cannot be declared. It closes a
+ring, and the ring is structural rather than a matter of task granularity:
+
+    tactiq-image-dev:do_prepare_recipe_sysroot
+      -> tactiq-boot-image:do_populate_sysroot   (WKS_FILE_DEPENDS,
+                                                  tactiq-arm64-uboot-base.inc:96)
+    tactiq-boot-image:do_compile
+      -> anything produced by tactiq-image-dev
+
+While `WKS_FILE_DEPENDS` pulls the boot image into the image sysroot, any
+dependency of the boot recipe on an image artefact closes the circle. Setting
+`PACKAGES = ""` and noexec on the packaging tasks does not open it, because
+`populate_sysroot` remains.
+
+Resolved by removing the boot recipe from that path rather than by declaring
+the dependency. The boot partition is now an image type of the rootfs recipe,
+`classes-recipe/image_types_bootext4.bbclass`, ordered after `do_image_verity`
+through `IMAGE_TYPEDEP:bootext4 = "verity"`, and wic reaches it through
+`IMAGE_TYPEDEP:wic:append = " bootext4"`. `tactiq-boot-image.bb` stays in the
+tree only because `tactiq-bundle.bb` still names it; nothing in the image
+graph refers to it.
+
+Verified: the produced filesystem is identical in content, ownership and
+permissions to the one the old recipe produced, and no task of
+`tactiq-boot-image` appears in the image dependency graph.
+
+    bitbake -g tactiq-image-dev
+    grep -cE '"tactiq-boot-image\.' task-depends.dot          # 0
+    grep -E '"tactiq-image-dev\.do_image_bootext4" -> ' task-depends.dot
+
+Commit `3221ccf`.
+
+### 12.2 §4 Option C: a second, independent reason to stay closed
+
+§4 closes Option C because the signature blob's only path into the kernel is a
+userspace-populated `user` key, and records that the option is closed by the
+absence of a userspace stage rather than by anything intrinsic to verity, to be
+revisited should an initramfs appear.
+
+That revisit clause is narrower than it reads. An initramfs-free route does
+exist outside the kernel tree: an out-of-tree patch adds `root_hash_sig_hex`
+to dm-verity so that the PKCS#7 signature can be passed as a hex-encoded DER
+blob inside `dm-mod.create=`. It is used by the `meta-avb` layer and appears in
+public material as early as 2023, and it has not been merged upstream in the
+years since.
+
+Declined, and the reason is worth recording so it is not re-argued: the route
+trades our own `.its` generation, which is a text we author and whose breakage
+is loud, for an out-of-tree patch carried across every kernel version in the
+verity path itself, whose breakage is quiet. For a product whose claim is
+verifiability, that is the worse of the two costs. Option C therefore stays
+closed for stock kernels by §4 and for patched kernels by this paragraph.
+
+Source: layer documentation and public conference material, not verified
+against this tree. Nothing here is a property of any TactiQ artefact.
+
+### 12.3 §10 step 2 is done
+
+Hash tree generation at image stage is in place and the wks template is sized
+against the measured value rather than the estimate in §6.2. For the current
+image the tree adds 3403776 bytes to 431276032 bytes of data, computed from
+`.verity-params` (831 and 105292 blocks of 4096) and matching the artefact
+byte for byte at 434679808. Both slots are 2048M, so the measured overhead
+needs no size change.
+
+The B slot is no longer empty at first flash: both slots are populated from
+the same artefacts, so either can boot before the first bundle install. On the
+produced image the two boot partitions differ in 40 bytes out of 256 MiB, all
+of them the ext4 volume label and the superblock checksums that follow from
+it. Commit `fdb6a77`.
+
+Step 5 (moving `boot_a` from extlinux to `.itb`) is unchanged in the sequence
+and is now unblocked: the root hash is available inside the task that builds
+the boot partition, with no ring to route around.
