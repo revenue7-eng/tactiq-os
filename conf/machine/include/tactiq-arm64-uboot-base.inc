@@ -93,7 +93,7 @@ IMAGE_ROOTFS_EXTRA_SPACE ?= "524288"
 # stale artefacts happen to be in deploy from a previous build —
 # bitbake reports SUCCESS while the resulting wic is unbootable.
 # This append is vendor-agnostic: every BSP sets PREFERRED_PROVIDER_virtual/bootloader.
-WKS_FILE_DEPENDS:append = " virtual/bootloader tactiq-boot-image"
+WKS_FILE_DEPENDS:append = " virtual/bootloader"
 
 # wrynose: oe-core image_types_wic.bbclass now defaults
 # WKS_FILE_DEPENDS_BOOTLOADERS:aarch64 = "grub-efi systemd-boot".
