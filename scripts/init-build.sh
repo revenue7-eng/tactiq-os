@@ -26,7 +26,7 @@ BUILD_DIR="$2"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE_DIR="${SCRIPT_DIR}/../conf"
 
-# Required layer directories for rc6, as listed in bblayers.conf.in.
+# Required layer directories, as listed in conf/bblayers.conf.in.
 REQUIRED_LAYERS=(
   openembedded-core meta-openembedded meta-selinux meta-arm
   meta-rockchip meta-rauc meta-tensorflow-lite meta-security

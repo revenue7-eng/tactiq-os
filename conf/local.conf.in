@@ -1,4 +1,4 @@
-# local.conf — TactiQ OS build input for v2.1.0-rc6, rock5a target.
+# local.conf: TactiQ OS build input, rock5a target.
 #
 # Kept minimal: everything set here is what would NOT already be
 # established by conf/distro/tactiq.conf (activated via DISTRO below).

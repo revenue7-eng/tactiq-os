@@ -1,12 +1,14 @@
-# bblayers.conf — TactiQ OS build input for v2.1.0-rc6, rock5a target.
+# bblayers.conf: TactiQ OS build input, rock5a target.
 #
 # This file is a template. The layer-directory placeholder is
 # replaced by scripts/init-build.sh with the absolute path to the
 # layer set assembled by scripts/setup-layers.sh. Do not edit paths
 # by hand.
 #
-# The list of layers, and their order, mirrors what was recorded in the
-# published buildinfo-rock5a.json for v2.1.0-rc6.
+# The list originates in the published buildinfo-rock5a.json for v2.1.0-rc6.
+# It is no longer a mirror of it: layers were added after that tag. This
+# template, not any buildinfo, is what init-build.sh expands, and
+# scripts/check-build-input.sh compares a generated bblayers.conf against it.
 
 POKY_BBLAYERS_CONF_VERSION = "2"
 BBPATH = "${TOPDIR}"
