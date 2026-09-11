@@ -18,12 +18,13 @@ part --source rawcopy --sourceparams="file=idbloader.img" --no-table --offset ${
 part --source rawcopy --sourceparams="file=u-boot.itb" --no-table --offset ${RK3588_UBOOT_OFFSET_KIB}k
 
 # Partition A (active)
-part --source rawcopy --sourceparams="file=tactiq-boot-image.ext4" --fstype=ext4 --label boot_a --align 4096 --size 256M --active
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.bootext4" --fstype=ext4 --label boot_a --align 4096 --size 256M --active
 part / --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.ext4.verity" --fstype=none --label rootfs_a --align 4096 --size 2048M --no-fstab-update
 
-# Partition B (standby - empty initially, populated by RAUC on the first bundle install)
-part --fstype=ext4 --label boot_b --align 4096 --size 256M
-part --fstype=ext4 --label rootfs_b --align 4096 --size 2048M
+# Partition B (standby - same content as A after the initial flash, so that
+# either slot can boot before the first bundle install)
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.bootext4" --fstype=ext4 --label boot_b --align 4096 --size 256M
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.ext4.verity" --fstype=none --label rootfs_b --align 4096 --size 2048M --no-fstab-update
 
 # Persistent data partition (survives A/B updates)
 part /data --fstype=ext4 --label data --align 4096 --size 4096M

@@ -213,11 +213,14 @@ PACKAGE_EXCLUDE += "shared-mime-info libxml2"
 # IMAGE_TYPEDEP:verity pulls in ext4, which IMAGE_FSTYPES already carries, so
 # no extra filesystem is built.
 #
-# NOT ESTABLISHED: nothing consumes this artefact yet. The wks still writes
-# the rootfs from --source rootfs and the RAUC bundle still declares ext4, so
-# the generated tree is produced and ignored. Those two changes belong
-# together and must not be split: a tree that is generated while wic keeps
-# building its own filesystem boots normally and hides the defect until
-# verity is switched on.
+# The wks writes rootfs_a from the .ext4.verity artefact and the RAUC bundle
+# declares ext4.verity, so the generated tree is the one that reaches the
+# device.
 IMAGE_FSTYPES += "verity"
 addtask image_wic after image_verity
+
+# Boot partition image, built as a type of this recipe so that it can be
+# ordered after do_image_verity. See classes-recipe/image_types_bootext4.bbclass.
+inherit image_types_bootext4
+IMAGE_FSTYPES += "bootext4"
+IMAGE_TYPEDEP:wic:append = " bootext4"

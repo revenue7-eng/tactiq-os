@@ -7,6 +7,7 @@ SRC_URI = "file://agent.yaml \
            file://data.mount \
            file://10-tactiq-watchdog.conf \
            file://10-tactiq-printk.conf \
+           file://10-tactiq-hardening.conf \
           "
 
 UNPACKDIR = "${WORKDIR}/sources"
@@ -33,6 +34,9 @@ do_install() {
     install -d ${D}${sysconfdir}/sysctl.d
     install -m 0644 ${UNPACKDIR}/10-tactiq-printk.conf ${D}${sysconfdir}/sysctl.d/10-tactiq-printk.conf
 
+    # Runtime hardening sysctls (see the file for why)
+    install -m 0644 ${UNPACKDIR}/10-tactiq-hardening.conf ${D}${sysconfdir}/sysctl.d/10-tactiq-hardening.conf
+
     # Mount point (empty)
     install -d ${D}/data
 }
@@ -43,6 +47,7 @@ FILES:${PN} = " \
     ${systemd_system_unitdir}/data.mount \
     ${systemd_unitdir}/system.conf.d/10-tactiq-watchdog.conf \
     ${sysconfdir}/sysctl.d/10-tactiq-printk.conf \
+    ${sysconfdir}/sysctl.d/10-tactiq-hardening.conf \
     /data \
 "
-CONFFILES:${PN} = "/etc/tactiq/agent.yaml ${sysconfdir}/sysctl.d/10-tactiq-printk.conf"
+CONFFILES:${PN} = "/etc/tactiq/agent.yaml ${sysconfdir}/sysctl.d/10-tactiq-printk.conf ${sysconfdir}/sysctl.d/10-tactiq-hardening.conf"
