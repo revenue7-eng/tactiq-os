@@ -85,6 +85,24 @@ Short version:
 | Source archive         | Yocto `archiver` (original sources retained)           |
 | SLSA target            | L2 posture; L3 work in progress                        |
 
+### Addressing a release when verifying
+
+Every release published so far is a release candidate, and each one is
+marked as a pre-release. GitHub does not resolve `/releases/latest` to a
+pre-release, so that URL currently resolves to nothing. This is the
+intended state, not a packaging defect: a candidate is not a release, and
+pointing `latest` at one would present a candidate as a finished version
+to anyone arriving by the conventional path.
+
+Verification therefore addresses a named tag. Fetch the assets of the tag
+you intend to check (`v2.1.0-rc7`, for example), and verify the signature
+and the checksum file of that tag rather than of `latest`. The
+verification commands are written against a named tag for the same reason.
+
+This rule is lifted at general availability. Once a release is published
+that is not a candidate, `latest` becomes meaningful and this paragraph is
+removed.
+
 ## Build
 
 See `scripts/run-qemu.sh` for the reference local workflow.
