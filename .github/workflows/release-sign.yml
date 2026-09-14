@@ -73,10 +73,23 @@ jobs:
             --output-certificate SHA256SUMS.workflow.pem \
             --output-signature   SHA256SUMS.workflow.sig \
             SHA256SUMS
+          # cosign may write the certificate base64-encoded rather than as PEM.
+          # cosign reads its own output back either way, so the defect is
+          # invisible inside this workflow, but a consumer running plain openssl
+          # cannot parse the published asset. Normalise here rather than depend
+          # on the behaviour of a particular cosign release.
+          if ! head -n1 SHA256SUMS.workflow.pem | grep -q -- '-----BEGIN CERTIFICATE-----'; then
+            echo "certificate is not PEM, decoding base64"
+            base64 -d < SHA256SUMS.workflow.pem > SHA256SUMS.workflow.pem.dec
+            mv SHA256SUMS.workflow.pem.dec SHA256SUMS.workflow.pem
+          fi
           echo "--- signature file ---"
           ls -la SHA256SUMS.workflow.pem SHA256SUMS.workflow.sig
           echo "--- certificate SAN ---"
-          openssl x509 -in SHA256SUMS.workflow.pem -noout -ext subjectAltName || true
+          # No `|| true` here: a certificate that openssl cannot parse is
+          # exactly the defect this check exists to catch, and it must fail
+          # before the asset is uploaded.
+          openssl x509 -in SHA256SUMS.workflow.pem -noout -ext subjectAltName
 
       - name: Upload signature assets to release
         env:
