@@ -20,6 +20,7 @@ SRC_URI += "file://tactiq-ot-disable.cfg"
 SRC_URI += "file://tactiq-verity.cfg"
 SRC_URI += "file://tactiq-ima-keyring.cfg"
 SRC_URI += "file://tactiq-lockup.cfg"
+SRC_URI += "file://tactiq-pstore.cfg"
 
 # ===========================================================================
 # 2. Supply-chain pinning (SLSA L2 posture)
@@ -125,7 +126,11 @@ do_configure:append() {
 #
 #   - 0002-...tpm-on-spi4.patch : enables spi4 and adds a TPM 2.0 node
 #     (infineon,slb9670).
+#   - 0004-...add-ramoops.patch : reserves the pstore/ram area that
+#     CONFIG_PSTORE_RAM needs. Board-specific: the address is chosen
+#     against this board's memory map and U-Boot load addresses.
 SRC_URI:append:tactiq-rock5a = " file://0002-arm64-dts-rk3588s-rock-5a-add-tpm-on-spi4.patch"
+SRC_URI:append:tactiq-rock5a = " file://0004-arm64-dts-rk3588s-rock-5a-add-ramoops.patch"
 
 # =============================================================================
 # 7. Kernel driver fixes (machine-neutral)
