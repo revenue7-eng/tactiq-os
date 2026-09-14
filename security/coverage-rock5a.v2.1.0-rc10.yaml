@@ -147,7 +147,7 @@ manifest:
     - "measured boot: PCR 0-9 unmeasured, RK3588 OTP not fused, no FIT image signing"
     - "hardware root of trust: the board carries no TPM, so IMA runs without an anchor; a discrete SPI TPM 2.0 is on order"
     - "kernel pin bump: promised for rc7 in the rc6 manifest and NOT done. The layer set offers exactly one linux-yocto version, so the bump requires changing the openembedded-core base: a full rebuild, a fresh reproducibility measurement and a fresh CVE baseline. Recorded here as carried forward with its reason rather than moved quietly to rc8"
-    - "layer set not pinned: the seven Yocto layers are not git repositories and no set manifest fixes them"
+    - "layer set verification evidence not shipped: integration/LAYERS.lock fixes every Yocto layer by upstream revision and meta-rauc by tree hash, and scripts/check-layers.sh --check verifies an assembled set against it, but no release has yet carried the output of that run, so the layer set consumed by this build is asserted rather than proven"
     - "IMA enforce mode: correct form is CONFIG_IMA_ARCH_POLICY compiled in with CONFIG_IMA_WRITE_POLICY disabled"
     - "TACTIQ_IMAGE_NAME in /etc/tactiq-release is empty; TACTIQ_BUILD_DATE is the fixed SOURCE_DATE_EPOCH"
     - "no RTC on the board: a device with no time source rejects valid bundles with 'certificate is not yet valid'; use-bundle-signing-time and min-bundle-version not yet set"
