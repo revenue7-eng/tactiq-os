@@ -173,6 +173,7 @@ copy() {  # copy <src-relative-to-deploy> <dest>  — resolves symlinks, asserts
 echo "==> collecting artifacts"
 copy "${PREFIX}.wic.gz"                     "image-${BOARD}.wic.gz"
 copy "${PREFIX}.wic.bmap"                   "image-${BOARD}.wic.bmap"
+copy "${PREFIX}.ext4.verity-params"        "verity-${BOARD}.params"
 copy "Image-${MACHINE}.bin"                 "kernel-${BOARD}.bin"
 copy "rk3588s-rock-5a.dtb"                  "rk3588s-rock-5a.dtb"
 copy "${PREFIX}.manifest"                   "manifest-${BOARD}.txt"
