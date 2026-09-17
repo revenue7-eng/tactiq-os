@@ -1,0 +1,57 @@
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Thu, 17 Sep 2026 00:00:00 +0000
+Subject: [PATCH] arm64: dts: rk3588s-rock-5a: expose the TPM event log
+
+U-Boot measures the boot and extends PCR 0 and 1, but the kernel only
+publishes /sys/kernel/security/tpm0/binary_bios_measurements if it can
+find the event log area itself. Without it a PCR value is a number with
+no way to check what produced it, which is exactly what the measurement
+is supposed to make verifiable.
+
+drivers/char/tpm/eventlog/of.c:tpm_read_log_of() looks for linux,sml-base
+and linux,sml-size on the TPM node first; when neither is present it
+falls back to tpm_read_log_memory_region(), which takes the first
+memory-region phandle of that node. The phandle form is used here so the
+bootloader and the kernel name the same area the same way: U-Boot reads
+it through the identical mechanism (lib/tpm-v2.c), and the address stays
+in one place instead of being repeated as two magic numbers.
+
+The area is the one the bootloader writes: 0x18100000, 64 KiB, sitting
+directly above the ramoops reservation added in the previous patch and
+inside the same verified gap. The bootloader-side reservation lives in
+the U-Boot device tree, which the kernel never parses, so this node is
+required rather than duplicated.
+
+no-map is set, unlike ramoops. The kernel reaches this area through
+devm_memremap in tpm_read_log_memory_region, which does not need the
+linear map; ramoops needs it because pstore goes through memremap on a
+mapped region. The two nodes differ here on purpose.
+
+Upstream-Status: Inappropriate [TactiQ BSP integration - board-specific
+ memory reservation; not intended for mainline submission]
+Signed-off-by: TactiQ OS BSP <bsp@tactiqedge.com>
+---
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts b/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
+index 8fa6286..5383961 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
+@@ -869,6 +869,7 @@
+ 		reg = <0>;
+ 		/* Conservative initial bus clock; raise after bring-up. */
+ 		spi-max-frequency = <1000000>;
++		memory-region = <&tpm_event_log>;
+ 	};
+ };
+ 
+@@ -884,5 +885,11 @@
+ 			console-size = <0x00040000>;
+ 			record-size = <0x00020000>;
+ 		};
++
++		tpm_event_log: tpm-event-log@18100000 {
++			reg = <0x0 0x18100000 0x0 0x00010000>;
++			no-map;
++		};
++
+ 	};
+ };

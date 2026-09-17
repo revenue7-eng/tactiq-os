@@ -131,6 +131,7 @@ do_configure:append() {
 #     against this board's memory map and U-Boot load addresses.
 SRC_URI:append:tactiq-rock5a = " file://0002-arm64-dts-rk3588s-rock-5a-add-tpm-on-spi4.patch"
 SRC_URI:append:tactiq-rock5a = " file://0004-arm64-dts-rk3588s-rock-5a-add-ramoops.patch"
+SRC_URI:append:tactiq-rock5a = " file://0005-arm64-dts-rk3588s-rock-5a-expose-tpm-event-log.patch"
 
 # =============================================================================
 # 7. Kernel driver fixes (machine-neutral)
