@@ -1,0 +1,65 @@
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Wed, 17 Sep 2026 00:00:00 +0000
+Subject: [PATCH] arm64: dts: rk3588s-rock-5a: reserve a TPM event log area
+
+CONFIG_MEASURED_BOOT stores a log of the hashes it extends into the TPM
+in memory. lib/tpm-v2.c:tcg2_platform_get_log() looks for that area in
+three ways, in order: the tpm_event_log_addr/size properties on the TPM
+node, the linux,sml-base/sml-size pair, or a memory-region phandle whose
+target carries reg. Without any of them it returns -ENODEV: the PCRs are
+still extended but nothing records what went into them, which makes the
+measurement unverifiable. The phandle form is used here so the area is a
+normal reserved-memory node rather than two magic numbers on the device.
+
+Address chosen against the map already established for ramoops (see the
+kernel-side patch 0004): ramoops holds 0x18000000..0x180fffff, which sits
+above every address the bootloader writes to (highest is ramdisk_addr_r
+0x12180000) and below the first region the kernel reserves (0x03ea0000 is
+lower, the next are 0xe8ebf000 and CMA at 0xee000000). 0x18100000 is the
+next aligned address in that same verified gap.
+
+Size is 64 KiB, matching CONFIG_EFI_TCG2_PROTOCOL_EVENTLOG_SIZE already
+set in this build, so both log paths agree on capacity.
+
+no-map is set here, unlike ramoops: U-Boot reaches the area through
+map_physmem on a flat mapping, and nothing in U-Boot should allocate over
+it. Note this reservation covers the bootloader only. The kernel parses a
+different device tree and will treat this area as ordinary RAM until a
+matching reservation is added there; the log must be read before that
+matters.
+
+This applies on top of 0003, which adds the tpm@0 node.
+
+Upstream-Status: Inappropriate [TactiQ BSP integration - board-specific
+ memory reservation; not intended for mainline submission]
+Signed-off-by: TactiQ OS BSP <bsp@tactiqedge.com>
+---
+diff --git a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
+index 1f36bc2..c7c965c 100644
+--- a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
++++ b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
+@@ -74,6 +74,7 @@
+ 		compatible = "tcg,tpm_tis-spi", "infineon,slb9670";
+ 		reg = <0>;
+ 		spi-max-frequency = <500000>;
++		memory-region = <&tpm_event_log>;
+ 	};
+ };
+ 
+@@ -100,3 +101,16 @@
+ 	/delete-property/ regulator-always-on;
+ 	/delete-property/ regulator-boot-on;
+ };
++
++/ {
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		tpm_event_log: tpm-event-log@18100000 {
++			reg = <0x0 0x18100000 0x0 0x00010000>;
++			no-map;
++		};
++	};
++};

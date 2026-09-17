@@ -1,0 +1,31 @@
+# /var/log is volatile on this image, so the journal has to be bound in
+# from the data partition.
+#
+# Where= is the real path, not /var/log/journal. /var/log is a symlink to
+# volatile/log created by 00-create-volatile.conf in
+# systemd-tmpfiles-setup, which runs after this mount and after
+# systemd-journal-flush: at the moment systemd resolves the unit the
+# symlink does not exist, so a mount declared on /var/log/journal cannot
+# create its mount point. Measured on hardware across four boots.
+#
+# Ordering does not depend on the path: journal-flush is held behind this
+# unit by the explicit Before= below, not by its own
+# RequiresMountsFor=/var/log/journal.
+[Unit]
+Description=Persistent journal on the TactiQ data partition
+DefaultDependencies=no
+RequiresMountsFor=/data /var/volatile
+Requires=tactiq-log-setup.service
+After=tactiq-log-setup.service
+Before=systemd-journal-flush.service
+Conflicts=umount.target
+Before=umount.target
+
+[Mount]
+What=/data/log/journal
+Where=/var/volatile/log/journal
+Type=none
+Options=bind
+
+[Install]
+WantedBy=sysinit.target

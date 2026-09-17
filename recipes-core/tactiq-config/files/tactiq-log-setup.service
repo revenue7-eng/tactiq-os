@@ -1,0 +1,17 @@
+[Unit]
+Description=TactiQ Level 0 logging (data layout, crash-record recovery)
+DefaultDependencies=no
+RequiresMountsFor=/data
+After=data.mount
+Before=sysinit.target
+Conflicts=shutdown.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/tactiq-log-setup
+TimeoutStartSec=60
+
+[Install]
+WantedBy=sysinit.target

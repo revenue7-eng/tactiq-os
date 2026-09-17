@@ -1,0 +1,56 @@
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Mon, 15 Sep 2026 00:00:00 +0000
+Subject: [PATCH] arm64: dts: rk3588s-rock-5a: reserve a ramoops area
+
+pstore/ram needs a fixed physical area that a warm reset does not clear.
+Without it CONFIG_PSTORE_RAM has no backend and /sys/fs/pstore stays empty.
+
+Address chosen against the running board rather than by convention:
+
+  /proc/iomem      System RAM 0x00200000-0xefffffff, reserved regions at
+                   0x03ea0000-0x041affff, 0xe8ebf000-0xeced3fff (swiotlb,
+                   DTB) and 0xee000000-0xefffffff (CMA)
+  U-Boot env       kernel_addr_r 0x02000000, pxefile_addr_r 0x00e00000,
+                   fdt_addr_r 0x12000000, ramdisk_addr_r 0x12180000
+
+0x18000000 sits above every address the bootloader writes to and below
+every region the kernel reserves, so neither overwrites the records
+between the failing boot and the boot that reads them.
+
+Layout of the 1 MiB area: 256 KiB of console output and the remainder as
+128 KiB panic records. The console region is the larger consumer on
+purpose: the cause of a failed boot is in the lines before the panic, not
+in the panic itself.
+
+no-map is deliberately not set. The region must stay in the kernel linear
+map so pstore reaches it through memremap; marking it no-map forces an
+ioremap mapping whose unaligned accesses fault on arm64.
+
+This applies on top of 0002, which leaves the file at 873 lines.
+
+Upstream-Status: Inappropriate [TactiQ BSP integration - board-specific
+ memory reservation; not intended for mainline submission]
+Signed-off-by: TactiQ OS BSP <bsp@tactiqedge.com>
+---
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts b/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
+@@ -871,3 +871,18 @@
+ 		spi-max-frequency = <1000000>;
+ 	};
+ };
++
++/ {
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		ramoops@18000000 {
++			compatible = "ramoops";
++			reg = <0x0 0x18000000 0x0 0x00100000>;
++			console-size = <0x00040000>;
++			record-size = <0x00020000>;
++		};
++	};
++};
