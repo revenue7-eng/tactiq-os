@@ -50,6 +50,13 @@ FIT_KERNEL_SIGN_KEYDIR  ?= "${TACTIQ_FIT_KEY_DIR}"
 FIT_KERNEL_SIGN_KEYNAME ?= "${TACTIQ_FIT_KEY_NAME}"
 KERNEL_CLASSES:pn-linux-yocto ?= "${@'kernel-fit-extra-artifacts' if d.getVar('TACTIQ_FIT_SIGN_KERNEL') == '1' else ''}"
 
+# U-Boot measures a FIT kernel into PCR 8 before it decompresses it, so the
+# digest covers the bytes stored in the FIT. Stored uncompressed, those bytes
+# are the deployed Image, and the expected PCR 8 value can be computed from the
+# build output alone. With gzip it would also depend on the compressor output.
+FIT_KERNEL_COMP_ALG ?= "none"
+FIT_KERNEL_COMP_ALG_EXTENSION ?= ""
+
 # rc4: boot always from slot A. RAUC bootcount integration is a separate phase.
 TACTIQ_AB_ENABLED ?= "0"
 
