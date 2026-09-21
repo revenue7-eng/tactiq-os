@@ -26,21 +26,28 @@
 #   IMAGE                default tactiq-image      (production release recipe;
 #                        set IMAGE=tactiq-image-dev to test against a dev build)
 #   BOARD                default rock5a            (short name in artifact names)
+#   BOOT_ENV             default: the tactiq-boot.env of the rockchip BSP layer
 #   SKIP_BUILDINFO=1     skip the bitbake -e buildinfo capture (no build env)
 #   ALLOW_MIXED_BUILD=1  downgrade the single-build guard to a warning. For dev
 #                        mechanics testing ONLY — the output is NOT a valid
 #                        release (manifest / SBOM / image may be from different
 #                        builds).
+#   ALLOW_DEV_FIT_KEY=1  let IMAGE=tactiq-image ship a FIT signed with the
+#                        development key. The output is NOT a valid release.
 #
 # Produces in <output-dir>:
 #   image-${BOARD}.wic.gz, image-${BOARD}.wic.bmap   (compressed image + bmap;
 #       the raw .wic is ~9.8 GB and exceeds the GitHub 2 GB asset limit, so we
 #       publish the .gz + .bmap — flash with: bmaptool copy image.wic.gz /dev/sdX)
 #   kernel-${BOARD}.bin, rk3588s-rock-5a.dtb
+#   fitImage-${BOARD}, extlinux-${BOARD}.conf        (as found on the boot partition)
+#   u-boot-${BOARD}.itb, tactiq-boot-${BOARD}.env    (bootloader and its default env)
+#   pcr-reference-${BOARD}.json, mk-pcr-reference.py (expected boot PCRs and the
+#       script that recomputes them from the four files above)
 #   manifest-${BOARD}.txt, testdata-${BOARD}.json, buildinfo-${BOARD}.json
 #   sbom-${BOARD}.spdx.json                          (SPDX 3.0.1)
 #   cve-${BOARD}.sbom-cve-check.yocto.json
-#   bundle-${BOARD}.raucb                            (if a RAUC bundle exists)
+#   bundle-${BOARD}.raucb                            (required for IMAGE=tactiq-image)
 #   SHA256SUMS
 
 set -euo pipefail
@@ -58,6 +65,7 @@ IMAGE="${IMAGE:-tactiq-image}"
 BOARD="${BOARD:-rock5a}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VULNS_DIR="${VULNS_DIR:-$HOME/vulns-master}"
+BOOT_ENV="${BOOT_ENV:-${SCRIPT_DIR}/../meta-tactiq-bsp-rockchip/recipes-bsp/u-boot/files/tactiq-boot.env}"
 
 DEPLOY="${BUILDDIR}/tmp/deploy/images/${MACHINE}"
 PREFIX="${IMAGE}-${MACHINE}.rootfs"
@@ -73,7 +81,8 @@ PREFIX="${IMAGE}-${MACHINE}.rootfs"
 # manifest and SBOM that describe different rootfses is a silent integrity
 # defect. We pin the timestamp of the image being released and require every
 # rootfs-derived artifact to come from that same build, or abort.
-# (Kernel and DTB have a separate deploy lifecycle and are taken as-is.)
+# (Kernel and DTB have a separate deploy lifecycle and are taken as-is; the
+# PCR reference step below checks both against the FIT on the boot partition.)
 # ---------------------------------------------------------------------------
 ts_of() {  # echo the 14-digit build timestamp embedded in a resolved path
     local p; p="$(readlink -f "$1" 2>/dev/null || true)"
@@ -86,7 +95,7 @@ T="$(ts_of "$WIC_LINK")"
 [[ -n "$T" ]] || { echo "::error:: cannot read build timestamp from ${WIC_LINK}" >&2; exit 1; }
 echo "==> release build: ${T}  (IMAGE=${IMAGE}, MACHINE=${MACHINE})"
 
-ROOTFS_ARTIFACTS=( wic.gz wic.bmap spdx.json sbom-cve-check.yocto.json manifest testdata.json )
+ROOTFS_ARTIFACTS=( wic.gz wic.bmap bootext4 spdx.json sbom-cve-check.yocto.json manifest testdata.json )
 mixed=0
 for ext in "${ROOTFS_ARTIFACTS[@]}"; do
     got="$(ts_of "${DEPLOY}/${PREFIX}.${ext}")"
@@ -181,13 +190,86 @@ copy "${PREFIX}.testdata.json"              "testdata-${BOARD}.json"
 copy "${PREFIX}.spdx.json"                  "sbom-${BOARD}.spdx.json"
 copy "${PREFIX}.sbom-cve-check.yocto.json"  "cve-${BOARD}.sbom-cve-check.yocto.json"
 
-# RAUC OTA bundle — separate recipe, not in the image deploy by default.
-RAUCB="$(find "${BUILDDIR}/tmp/deploy" -maxdepth 3 -name '*.raucb' 2>/dev/null | head -1 || true)"
-if [[ -n "$RAUCB" ]]; then
+# RAUC OTA bundle. Taken through the per-machine "latest" link and held to the
+# same build as the image: a bundle from another build would install bytes the
+# rest of this release does not describe. Missing is an error for the release
+# image and a warning otherwise.
+RAUCB_LINK="${DEPLOY}/tactiq-bundle-${MACHINE}.raucb"
+if [[ -e "$RAUCB_LINK" ]]; then
+    RAUCB="$(readlink -f "$RAUCB_LINK")"
+    if [[ "$(basename "$RAUCB")" != "tactiq-bundle-${MACHINE}-${T}.raucb" ]]; then
+        echo "::error:: bundle $(basename "$RAUCB") is not from build ${T}." >&2
+        [[ "${ALLOW_MIXED_BUILD:-0}" == 1 ]] || exit 1
+        echo "::warning:: proceeding (ALLOW_MIXED_BUILD=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+    fi
     cp -L "$RAUCB" "bundle-${BOARD}.raucb"
-    echo "    + bundle-${BOARD}.raucb  (from ${RAUCB})"
+    echo "    + bundle-${BOARD}.raucb  (from $(basename "$RAUCB"))"
+elif [[ "$IMAGE" == "tactiq-image" ]]; then
+    echo "::error:: no RAUC bundle at ${RAUCB_LINK}; the release ships one." >&2
+    exit 1
 else
-    echo "::warning:: no RAUC .raucb found under ${BUILDDIR}/tmp/deploy — OTA bundle skipped." >&2
+    echo "::warning:: no RAUC bundle at ${RAUCB_LINK} — OTA bundle skipped." >&2
+fi
+
+# ---------------------------------------------------------------------------
+# Boot PCR reference.
+#
+# Two producers write the boot partition: the image class (.bootext4, which
+# ends up in the .wic a card is first flashed with) and the tactiq-boot-image
+# recipe (which the RAUC bundle installs into a slot). A reference derived from
+# one is only valid for a board prepared with the other if both carry the same
+# bytes, so both are opened and compared before anything is derived. The FIT
+# and extlinux.conf are published as found on the boot partition, next to the
+# bootloader and its default environment, so a reader can rerun the
+# computation from release assets alone.
+# ---------------------------------------------------------------------------
+echo "==> boot PCR reference"
+command -v debugfs >/dev/null 2>&1 || { echo "::error:: debugfs not on PATH (e2fsprogs) — needed to read the boot partition." >&2; exit 1; }
+BOOT_CLASS="${DEPLOY}/${PREFIX}.bootext4"
+BOOT_RECIPE="${DEPLOY}/tactiq-boot-image.ext4"
+[[ -e "$BOOT_CLASS" ]]  || { echo "::error:: missing artifact: $BOOT_CLASS" >&2; exit 1; }
+[[ -e "$BOOT_RECIPE" ]] || { echo "::error:: missing artifact: $BOOT_RECIPE" >&2; exit 1; }
+[[ -e "$BOOT_ENV" ]]    || { echo "::error:: boot environment not found: $BOOT_ENV" >&2; exit 1; }
+
+BOOTX="$(mktemp -d)"
+trap 'rm -rf "$BOOTX"' EXIT
+extract() {  # extract <ext4-image> <path-in-image> <dest>
+    debugfs -R "dump $2 $3" "$1" >/dev/null 2>&1 || true
+    [[ -s "$3" ]] || { echo "::error:: $2 not found in $(basename "$1")" >&2; exit 1; }
+}
+for f in fitImage boot/extlinux/extlinux.conf; do
+    n="$(basename "$f")"
+    extract "$BOOT_CLASS"  "/$f" "${BOOTX}/class-${n}"
+    extract "$BOOT_RECIPE" "/$f" "${BOOTX}/recipe-${n}"
+    if ! cmp -s "${BOOTX}/class-${n}" "${BOOTX}/recipe-${n}"; then
+        echo "::error:: /$f differs between $(basename "$BOOT_CLASS") and $(basename "$BOOT_RECIPE")." >&2
+        echo "::error:: a card flashed from the .wic and a slot installed from the bundle would boot different bytes." >&2
+        exit 1
+    fi
+done
+cp "${BOOTX}/recipe-fitImage"      "fitImage-${BOARD}";      echo "    + fitImage-${BOARD}"
+cp "${BOOTX}/recipe-extlinux.conf" "extlinux-${BOARD}.conf"; echo "    + extlinux-${BOARD}.conf"
+copy "u-boot.itb"                   "u-boot-${BOARD}.itb"
+cp -L "$BOOT_ENV" "tactiq-boot-${BOARD}.env";               echo "    + tactiq-boot-${BOARD}.env"
+cp -L "${SCRIPT_DIR}/mk-pcr-reference.py" "mk-pcr-reference.py"; echo "    + mk-pcr-reference.py"
+
+python3 mk-pcr-reference.py \
+    --fit "fitImage-${BOARD}" --extlinux "extlinux-${BOARD}.conf" \
+    --uboot "u-boot-${BOARD}.itb" --boot-env "tactiq-boot-${BOARD}.env" \
+    --image "kernel-${BOARD}.bin" --dtb "rk3588s-rock-5a.dtb" \
+    --out "pcr-reference-${BOARD}.json"
+echo "    + pcr-reference-${BOARD}.json"
+
+FIT_KEY="$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1]))["components"]["fit_key_name_hint"]))' "pcr-reference-${BOARD}.json")"
+echo "    FIT signed with: ${FIT_KEY}"
+if [[ "$IMAGE" == "tactiq-image" && "$FIT_KEY" == "dev-fit" ]]; then
+    if [[ "${ALLOW_DEV_FIT_KEY:-0}" == 1 ]]; then
+        echo "::warning:: release FIT is signed with the development key (ALLOW_DEV_FIT_KEY=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+    else
+        echo "::error:: release FIT is signed with the development key dev-fit, whose private half is public." >&2
+        echo "::error:: point TACTIQ_FIT_KEY_DIR at the release key, or set ALLOW_DEV_FIT_KEY=1 to test mechanics." >&2
+        exit 1
+    fi
 fi
 
 # buildinfo — full bitbake datastore snapshot (distro / layers / versions /
@@ -247,7 +329,11 @@ echo "    + coverage-${BOARD}.${TAG}.yaml"
 echo "==> SHA256SUMS"
 # SHA256SUMS does not exist yet, so the glob below cannot include it.
 shopt -s nullglob; files=( * ); shopt -u nullglob
+# Copies inherit the mode of their source, which on some hosts is 0777.
+# Normalise: data 0644, the one script 0755.
 [[ ${#files[@]} -gt 0 ]] || { echo "::error:: no artifacts to hash" >&2; exit 1; }
+chmod 0644 -- "${files[@]}"
+chmod 0755 -- mk-pcr-reference.py
 sha256sum -- "${files[@]}" | LC_ALL=C sort -k2 > SHA256SUMS
 
 echo "==> done: ${OUT}  (tag ${TAG})"
