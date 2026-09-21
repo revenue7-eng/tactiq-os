@@ -35,10 +35,10 @@ show up as a PCR mismatch at verification time.
 Upstream-Status: Inappropriate [TactiQ BSP integration]
 Signed-off-by: TactiQ OS BSP <bsp@tactiqedge.com>
 ---
- arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi |  25 ++++++
+ arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi |  25 ++++
  arch/arm/mach-rockchip/Makefile          |   4 +
- arch/arm/mach-rockchip/spl-measure.c     | 107 +++++++++++++++++++++++
- 3 files changed, 136 insertions(+)
+ arch/arm/mach-rockchip/spl-measure.c     | 153 +++++++++++++++++++++++
+ 3 files changed, 182 insertions(+)
  create mode 100644 arch/arm/mach-rockchip/spl-measure.c
 
 diff --git a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
@@ -88,10 +88,10 @@ index c07bdaee4c..e7a1151cf2 100644
 +endif
 diff --git a/arch/arm/mach-rockchip/spl-measure.c b/arch/arm/mach-rockchip/spl-measure.c
 new file mode 100644
-index 0000000000..784063c84d
+index 0000000000..9ba56f2947
 --- /dev/null
 +++ b/arch/arm/mach-rockchip/spl-measure.c
-@@ -0,0 +1,107 @@
+@@ -0,0 +1,153 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Measured boot from SPL.
@@ -117,6 +117,8 @@ index 0000000000..784063c84d
 + */
 +
 +#include <dm.h>
++#include <dm/device-internal.h>
++#include <dm/uclass-internal.h>
 +#include <image.h>
 +#include <log.h>
 +#include <tpm_api.h>
@@ -139,6 +141,46 @@ index 0000000000..784063c84d
 +static struct tcg2_event_log mb_log;
 +static int mb_state;	/* 0: not tried, 1: ready, -1: unavailable */
 +
++/*
++ * Bind and probe the TPM step by step, so a failure names the step: no TPM
++ * device in the SPL devicetree, the SPI bus (clock, pins, chip-select GPIO)
++ * not coming up, or the TPM itself not answering on the bus.
++ */
++static int mb_find_tpm(void)
++{
++	struct udevice *tpm, *bus;
++	int rc;
++
++	rc = uclass_find_first_device(UCLASS_TPM, &tpm);
++	if (rc || !tpm) {
++		rc = uclass_find_first_device(UCLASS_SPI, &bus);
++		printf("SPL measure: no TPM device bound; first SPI bus: %s\n",
++		       (!rc && bus) ? bus->name : "none");
++		return -ENODEV;
++	}
++
++	bus = dev_get_parent(tpm);
++	if (bus && device_get_uclass_id(bus) == UCLASS_SPI) {
++		rc = device_probe(bus);
++		if (rc) {
++			printf("SPL measure: SPI bus %s probe failed (%d)\n",
++			       bus->name, rc);
++			return rc;
++		}
++	}
++
++	rc = device_probe(tpm);
++	if (rc) {
++		printf("SPL measure: TPM %s probe failed (%d)\n", tpm->name, rc);
++		return rc;
++	}
++	if (tpm_get_version(tpm) != TPM_V2) {
++		printf("SPL measure: TPM %s is not TPM 2.0\n", tpm->name);
++		return -ENODEV;
++	}
++	return 0;
++}
++
 +static int mb_start(void)
 +{
 +	int rc;
@@ -146,6 +188,10 @@ index 0000000000..784063c84d
 +	if (mb_state)
 +		return mb_state > 0 ? 0 : -ENODEV;
 +	mb_state = -1;
++
++	rc = mb_find_tpm();
++	if (rc)
++		return rc;
 +
 +	memset(&mb_log, 0, sizeof(mb_log));
 +	/* Fresh log on every boot: whatever is left in the area is stale. */
