@@ -47,7 +47,7 @@
 #   manifest-${BOARD}.txt, testdata-${BOARD}.json, buildinfo-${BOARD}.json
 #   sbom-${BOARD}.spdx.json                          (SPDX 3.0.1)
 #   cve-${BOARD}.sbom-cve-check.yocto.json
-#   bundle-${BOARD}.raucb                            (if a RAUC bundle exists)
+#   bundle-${BOARD}.raucb                            (required for IMAGE=tactiq-image)
 #   SHA256SUMS
 
 set -euo pipefail
@@ -190,13 +190,25 @@ copy "${PREFIX}.testdata.json"              "testdata-${BOARD}.json"
 copy "${PREFIX}.spdx.json"                  "sbom-${BOARD}.spdx.json"
 copy "${PREFIX}.sbom-cve-check.yocto.json"  "cve-${BOARD}.sbom-cve-check.yocto.json"
 
-# RAUC OTA bundle — separate recipe, not in the image deploy by default.
-RAUCB="$(find "${BUILDDIR}/tmp/deploy" -maxdepth 3 -name '*.raucb' 2>/dev/null | head -1 || true)"
-if [[ -n "$RAUCB" ]]; then
+# RAUC OTA bundle. Taken through the per-machine "latest" link and held to the
+# same build as the image: a bundle from another build would install bytes the
+# rest of this release does not describe. Missing is an error for the release
+# image and a warning otherwise.
+RAUCB_LINK="${DEPLOY}/tactiq-bundle-${MACHINE}.raucb"
+if [[ -e "$RAUCB_LINK" ]]; then
+    RAUCB="$(readlink -f "$RAUCB_LINK")"
+    if [[ "$(basename "$RAUCB")" != "tactiq-bundle-${MACHINE}-${T}.raucb" ]]; then
+        echo "::error:: bundle $(basename "$RAUCB") is not from build ${T}." >&2
+        [[ "${ALLOW_MIXED_BUILD:-0}" == 1 ]] || exit 1
+        echo "::warning:: proceeding (ALLOW_MIXED_BUILD=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+    fi
     cp -L "$RAUCB" "bundle-${BOARD}.raucb"
-    echo "    + bundle-${BOARD}.raucb  (from ${RAUCB})"
+    echo "    + bundle-${BOARD}.raucb  (from $(basename "$RAUCB"))"
+elif [[ "$IMAGE" == "tactiq-image" ]]; then
+    echo "::error:: no RAUC bundle at ${RAUCB_LINK}; the release ships one." >&2
+    exit 1
 else
-    echo "::warning:: no RAUC .raucb found under ${BUILDDIR}/tmp/deploy — OTA bundle skipped." >&2
+    echo "::warning:: no RAUC bundle at ${RAUCB_LINK} — OTA bundle skipped." >&2
 fi
 
 # ---------------------------------------------------------------------------
@@ -317,7 +329,11 @@ echo "    + coverage-${BOARD}.${TAG}.yaml"
 echo "==> SHA256SUMS"
 # SHA256SUMS does not exist yet, so the glob below cannot include it.
 shopt -s nullglob; files=( * ); shopt -u nullglob
+# Copies inherit the mode of their source, which on some hosts is 0777.
+# Normalise: data 0644, the one script 0755.
 [[ ${#files[@]} -gt 0 ]] || { echo "::error:: no artifacts to hash" >&2; exit 1; }
+chmod 0644 -- "${files[@]}"
+chmod 0755 -- mk-pcr-reference.py
 sha256sum -- "${files[@]}" | LC_ALL=C sort -k2 > SHA256SUMS
 
 echo "==> done: ${OUT}  (tag ${TAG})"
