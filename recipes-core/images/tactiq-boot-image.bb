@@ -32,6 +32,7 @@ TACTIQ_BOOT_IMAGE_SIZE_KB ?= "262144"
 # Pseudo intercepts chown/xattr only for listed paths;
 # boot-root staging dir lives under ${B}, not ${D}.
 PSEUDO_INCLUDE_PATHS:append = ",${B}"
+do_compile[fakeroot] = "1"
 
 do_compile() {
     boot_root="${B}/boot-root"
