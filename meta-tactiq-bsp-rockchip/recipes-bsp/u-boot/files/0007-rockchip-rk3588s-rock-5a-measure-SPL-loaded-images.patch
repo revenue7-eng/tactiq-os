@@ -29,6 +29,11 @@ The devicetree nodes SPL needs (spi4 with its tpm@0 child, the spi4m2 pin
 group and its pin configuration, gpio1 for the chip select, and the event
 log reservation) are marked bootph-all so they reach the SPL devicetree.
 
+The TPM uclass binds a tpm-rng child in post_probe whenever TPM_RNG is
+set, a check that does not tell SPL from U-Boot proper. SPL has no RNG
+uclass, the bind returns -ENOENT and the whole TPM probe is rolled back.
+The child is now bound only where DM_RNG is enabled for the phase.
+
 A TPM failure in SPL is reported and SPL continues: the missing events
 show up as a PCR mismatch at verification time.
 
@@ -38,7 +43,8 @@ Signed-off-by: TactiQ OS BSP <bsp@tactiqedge.com>
  arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi |  25 ++++
  arch/arm/mach-rockchip/Makefile          |   4 +
  arch/arm/mach-rockchip/spl-measure.c     | 153 +++++++++++++++++++++++
- 3 files changed, 182 insertions(+)
+ drivers/tpm/tpm-uclass.c                 |   7 +-
+ 4 files changed, 188 insertions(+), 1 deletion(-)
  create mode 100644 arch/arm/mach-rockchip/spl-measure.c
 
 diff --git a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
@@ -245,3 +251,21 @@ index 0000000000..9ba56f2947
 +	else
 +		printf("SPL measure: %s -> PCR %d\n", name, pcr);
 +}
+diff --git a/drivers/tpm/tpm-uclass.c b/drivers/tpm/tpm-uclass.c
+index b2286f7e7e..4b247f023f 100644
+--- a/drivers/tpm/tpm-uclass.c
++++ b/drivers/tpm/tpm-uclass.c
+@@ -156,7 +156,12 @@ static int tpm_uclass_post_probe(struct udevice *dev)
+ 	const char *drv = TPM_RNG_DRV_NAME;
+ 	struct udevice *child;
+ 
+-	if (IS_ENABLED(CONFIG_TPM_RNG)) {
++	/*
++	 * Bind the RNG child only in a phase that has the RNG uclass: SPL
++	 * reaches the TPM for measured boot but carries no tpm-rng driver, and
++	 * a failed bind here fails the whole TPM probe.
++	 */
++	if (IS_ENABLED(CONFIG_TPM_RNG) && CONFIG_IS_ENABLED(DM_RNG)) {
+ 		ret = device_find_first_child_by_uclass(dev, UCLASS_RNG,
+ 							&child);
+ 
