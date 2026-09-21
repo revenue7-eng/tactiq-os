@@ -41,7 +41,9 @@
 #       publish the .gz + .bmap — flash with: bmaptool copy image.wic.gz /dev/sdX)
 #   kernel-${BOARD}.bin, rk3588s-rock-5a.dtb
 #   fitImage-${BOARD}, extlinux-${BOARD}.conf        (as found on the boot partition)
-#   u-boot-${BOARD}.itb, tactiq-boot-${BOARD}.env    (bootloader and its default env)
+#   idbloader-${BOARD}.img, u-boot-${BOARD}.itb      (SPL, the root of the measurement
+#       chain, and the images it measures)
+#   tactiq-boot-${BOARD}.env                         (U-Boot default environment)
 #   pcr-reference-${BOARD}.json, mk-pcr-reference.py (expected boot PCRs and the
 #       script that recomputes them from the four files above)
 #   manifest-${BOARD}.txt, testdata-${BOARD}.json, buildinfo-${BOARD}.json
@@ -249,13 +251,15 @@ for f in fitImage boot/extlinux/extlinux.conf; do
 done
 cp "${BOOTX}/recipe-fitImage"      "fitImage-${BOARD}";      echo "    + fitImage-${BOARD}"
 cp "${BOOTX}/recipe-extlinux.conf" "extlinux-${BOARD}.conf"; echo "    + extlinux-${BOARD}.conf"
+copy "idbloader.img"                "idbloader-${BOARD}.img"
 copy "u-boot.itb"                   "u-boot-${BOARD}.itb"
 cp -L "$BOOT_ENV" "tactiq-boot-${BOARD}.env";               echo "    + tactiq-boot-${BOARD}.env"
 cp -L "${SCRIPT_DIR}/mk-pcr-reference.py" "mk-pcr-reference.py"; echo "    + mk-pcr-reference.py"
 
 python3 mk-pcr-reference.py \
     --fit "fitImage-${BOARD}" --extlinux "extlinux-${BOARD}.conf" \
-    --uboot "u-boot-${BOARD}.itb" --boot-env "tactiq-boot-${BOARD}.env" \
+    --uboot "u-boot-${BOARD}.itb" --idbloader "idbloader-${BOARD}.img" \
+    --boot-env "tactiq-boot-${BOARD}.env" \
     --image "kernel-${BOARD}.bin" --dtb "rk3588s-rock-5a.dtb" \
     --out "pcr-reference-${BOARD}.json"
 echo "    + pcr-reference-${BOARD}.json"

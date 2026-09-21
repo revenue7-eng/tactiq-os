@@ -6,12 +6,21 @@ Inputs are the files the board boots from: fitImage and extlinux.conf from the
 boot partition, u-boot.itb, and the default U-Boot environment file that sets
 rauc_slot / rauc_part per slot (tactiq-boot.env).
 
-Formulas, E(p, d) = sha256(p || d), p0 = 32 zero bytes, s = sha256(ffffffff):
-  PCR 0     = E(E(E(p0, sha256(uboot_version NUL)), sha256(fdt)), s)
-  PCR 1     = E(E(p0, sha256(cmdline NUL)), s)          one value per slot
-  PCR 2..7  = E(p0, s)
-  PCR 8     = E(p0, sha256(kernel))
-  PCR 9     = E(p0, sha256("initrd" NUL))               no initrd
+Each PCR is extended in boot order, E(p, d) = sha256(p || d) from p0 = 32
+zero bytes, and closed with s = sha256(ffffffff) for PCR 0-7.
+
+SPL, the root of the chain, measures every image it loads from u-boot.itb
+after checking its hash, in the order SPL loads them (firmware, then each
+loadable, with the U-Boot devicetree right after U-Boot):
+  PCR 0  S-CRTM version, then each firmware image (TF-A, OP-TEE)
+  PCR 4  U-Boot proper
+  PCR 6  U-Boot control devicetree (carries the FIT verification key)
+U-Boot proper then measures:
+  PCR 0  S-CRTM version, then the kernel devicetree
+  PCR 1  kernel command line                            one value per slot
+  PCR 8  kernel
+  PCR 9  "initrd" NUL                                   no initrd
+--no-spl-measure computes the values for a loader whose SPL measures nothing.
 
 kernel and fdt are the payloads of the default configuration of the FIT. Their
 digests are checked against the hash nodes inside the FIT, and against loose
@@ -168,6 +177,76 @@ def read_fit(path):
     }
 
 
+# --- SPL measurements from u-boot.itb --------------------------------------
+
+def spl_pcr_for(img):
+    """PCR SPL extends for an image node, or None (see spl-measure.c)."""
+    typ = (pstr(img, "type") or "").lower()
+    osn = (pstr(img, "os") or "").lower()
+    if typ == "flat_dt":
+        return 6
+    if osn == "u-boot":
+        return 4
+    if osn in ("arm-trusted-firmware", "tee"):
+        return 0
+    return None
+
+
+def spl_events(path):
+    """Replay the load order of common/spl/spl_fit.c:spl_load_simple_fit."""
+    buf = read(path)
+    root, totalsize = parse_fdt(buf)
+    images = root["nodes"].get("images")
+    confs = root["nodes"].get("configurations")
+    if images is None or confs is None:
+        die("u-boot.itb has no /images or /configurations")
+    default = pstr(confs, "default")
+    if default is None or default not in confs["nodes"]:
+        die("u-boot.itb has no usable default configuration")
+    conf = confs["nodes"][default]
+
+    def names(prop):
+        raw = conf["props"].get(prop, b"")
+        return [x.decode() for x in raw.split(b"\0") if x]
+
+    firmware, loadables, fdts = names("firmware"), names("loadables"), names("fdt")
+    order, index = [], 0
+    if firmware:
+        first = firmware[0]
+    elif loadables:
+        first, index = loadables[0], 1
+    else:
+        die("u-boot.itb default configuration names no firmware or loadables")
+
+    def takes_dt(name):
+        return (pstr(images["nodes"][name], "os") or "").lower() == "u-boot"
+
+    def load(name):
+        order.append(name)
+        if takes_dt(name):
+            if not fdts:
+                die("U-Boot loaded but no fdt in the default configuration")
+            order.append(fdts[0])
+
+    load(first)
+    for name in loadables[index:]:
+        if name != first:
+            load(name)
+
+    events = []
+    for name in order:
+        img = images["nodes"].get(name)
+        if img is None:
+            die(f"u-boot.itb configuration names a missing image {name}")
+        pcr = spl_pcr_for(img)
+        if pcr is None:
+            die(f"u-boot.itb image {name} has no PCR assignment; SPL would "
+                "load it unmeasured")
+        _data, digest = fit_payload(buf, totalsize, img, name)
+        events.append({"image": name, "pcr": pcr, "sha256": digest})
+    return default, events
+
+
 # --- other inputs -----------------------------------------------------------
 
 VER_RE = re.compile(
@@ -232,6 +311,9 @@ def main():
     ap.add_argument("--image", help="loose kernel Image to cross-check")
     ap.add_argument("--dtb", help="loose DTB to cross-check")
     ap.add_argument("--require-key", help="fail unless the FIT is signed with this key-name-hint")
+    ap.add_argument("--idbloader", help="idbloader.img; its SPL version string must match u-boot.itb")
+    ap.add_argument("--no-spl-measure", action="store_true",
+                    help="loader whose SPL measures nothing (before SPL measured boot)")
     ap.add_argument("--check", action="append", default=[],
                     metavar="PCR[:SLOT]=HEX",
                     help="compare a computed value, e.g. 8=BAA2... or 1:B=BBE1...")
@@ -250,16 +332,41 @@ def main():
     kpath, append = read_extlinux(a.extlinux)
     slots = read_slots(a.boot_env)
 
-    pcr0 = ext(ext(ext(P0, sha(ver + b"\0")), fit["fdt_sha256"]), SEP)
+    if a.idbloader:
+        spl_ver = uboot_version(a.idbloader)
+        if spl_ver != ver:
+            die(f"SPL version {spl_ver!r} differs from U-Boot version {ver!r}")
+
+    crtm = sha(ver + b"\0")
+    chain = {i: [] for i in range(0, 10)}
+    spl_conf, spl = None, []
+    if not a.no_spl_measure:
+        spl_conf, spl = spl_events(a.uboot)
+        chain[0].append(crtm)
+        for e in spl:
+            chain[e["pcr"]].append(e["sha256"])
+    # U-Boot proper, boot/bootm.c: S-CRTM, kernel, initrd, devicetree,
+    # command line, then separators on PCR 0-7.
+    chain[0].append(crtm)
+    chain[8].append(fit["kernel_sha256"])
+    chain[9].append(sha(b"initrd\0"))
+    chain[0].append(fit["fdt_sha256"])
+
+    def value(digests):
+        v = P0
+        for d in digests:
+            v = ext(v, d)
+        return v
+
     cmdlines = {s: cmdline_for(append, s, p) for s, p in sorted(slots.items())}
-    pcr1 = {s: hx(ext(ext(P0, sha(c.encode() + b"\0")), SEP))
-            for s, c in cmdlines.items()}
-    empty = hx(ext(P0, SEP))
-    pcr = {"0": hx(pcr0), "1": pcr1}
-    for i in range(2, 8):
-        pcr[str(i)] = empty
-    pcr["8"] = hx(ext(P0, fit["kernel_sha256"]))
-    pcr["9"] = hx(ext(P0, sha(b"initrd\0")))
+    pcr = {}
+    for i in range(0, 10):
+        if i == 1:
+            continue
+        tail = [SEP] if i < 8 else []
+        pcr[str(i)] = hx(value(chain[i] + tail))
+    pcr["1"] = {s: hx(value([sha(c.encode() + b"\0"), SEP]))
+                for s, c in cmdlines.items()}
 
     base = os.path.basename
     doc = {
@@ -271,6 +378,11 @@ def main():
             "the boot partition of each slot carries the fitImage and "
             "extlinux.conf named under inputs",
             "no initrd is loaded",
+            "SPL measures the images of u-boot.itb and is itself unmeasured: "
+            "it is the root of the measurement chain"
+            if not a.no_spl_measure else
+            "SPL measures nothing (--no-spl-measure): U-Boot proper is the "
+            "root of the measurement chain",
         ],
         "inputs": {
             base(a.fit): sha(read(a.fit)).hex(),
@@ -288,11 +400,17 @@ def main():
             "kernel_load": None if fit["load"] is None else f"0x{fit['load']:08x}",
             "fdt_sha256": fit["fdt_sha256"].hex(),
             "cmdline": cmdlines,
+            "spl_configuration": spl_conf,
+            "spl_measurements": [
+                {"image": e["image"], "pcr": e["pcr"], "sha256": e["sha256"].hex()}
+                for e in spl],
         },
         "pcr": pcr,
         "recompute": "python3 mk-pcr-reference.py --fit {} --extlinux {} "
-                     "--uboot {} --boot-env {}".format(
-                         base(a.fit), base(a.extlinux), base(a.uboot), base(a.boot_env)),
+                     "--uboot {} --boot-env {}{}{}".format(
+                         base(a.fit), base(a.extlinux), base(a.uboot), base(a.boot_env),
+                         f" --idbloader {base(a.idbloader)}" if a.idbloader else "",
+                         " --no-spl-measure" if a.no_spl_measure else ""),
     }
 
     text = json.dumps(doc, indent=2, sort_keys=True) + "\n"

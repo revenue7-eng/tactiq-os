@@ -1,0 +1,201 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Mon, 21 Sep 2026 00:00:00 +0000
+Subject: [PATCH] rockchip: rk3588s-rock-5a: measure the images SPL loads into
+ the TPM
+
+U-Boot proper records its own version string as the S-CRTM and measures
+only what it boots, so nothing before it is measured: TF-A and the U-Boot
+binary itself leave no trace in the PCRs, and a modified U-Boot that keeps
+the version string produces the same PCR 0.
+
+SPL is the first stage that can reach the TPM. With SPL_TPM, SPL_GPIO
+(for the chip-select GPIO on spi4) and SPL_FIT_IMAGE_POST_PROCESS, the
+board hook board_fit_image_post_process() runs for every image SPL loads
+from u-boot.itb, right after SPL has checked that image's hash against the
+FIT, and extends the TPM with those bytes:
+
+  PCR 0  S-CRTM version, then TF-A (and OP-TEE if present)
+  PCR 4  U-Boot proper
+  PCR 6  U-Boot control devicetree, which carries the FIT verification key
+
+SPL starts a fresh TCG2 event log on every boot in the area named by the
+TPM node's memory-region, and writes no separators. U-Boot proper must
+then parse that log instead of discarding it (MEASURE_IGNORE_LOG off):
+it checks the log against the PCRs, appends its own events and closes
+PCR 0-7. SPL itself stays unmeasured and becomes the root of the chain.
+
+The devicetree nodes SPL needs (spi4 with its tpm@0 child, the spi4m2 pin
+group and its pin configuration, gpio1 for the chip select, and the event
+log reservation) are marked bootph-all so they reach the SPL devicetree.
+
+A TPM failure in SPL is reported and SPL continues: the missing events
+show up as a PCR mismatch at verification time.
+
+Upstream-Status: Inappropriate [TactiQ BSP integration]
+Signed-off-by: TactiQ OS BSP <bsp@tactiqedge.com>
+---
+ arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi |  25 ++++++
+ arch/arm/mach-rockchip/Makefile          |   4 +
+ arch/arm/mach-rockchip/spl-measure.c     | 107 +++++++++++++++++++++++
+ 3 files changed, 136 insertions(+)
+ create mode 100644 arch/arm/mach-rockchip/spl-measure.c
+
+diff --git a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
+index c7c965c62d..239418d793 100644
+--- a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
++++ b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
+@@ -114,3 +114,28 @@
+ 		};
+ 	};
+ };
++
++/* SPL measured boot: SPL reaches the TPM and the event log area. */
++&spi4 {
++	bootph-all;
++
++	tpm@0 {
++		bootph-all;
++	};
++};
++
++&spi4m2_pins {
++	bootph-all;
++};
++
++&pcfg_pull_up_drv_level_1 {
++	bootph-all;
++};
++
++&gpio1 {
++	bootph-all;
++};
++
++&tpm_event_log {
++	bootph-all;
++};
+diff --git a/arch/arm/mach-rockchip/Makefile b/arch/arm/mach-rockchip/Makefile
+index c07bdaee4c..e7a1151cf2 100644
+--- a/arch/arm/mach-rockchip/Makefile
++++ b/arch/arm/mach-rockchip/Makefile
+@@ -53,3 +53,7 @@ obj-spl-$(CONFIG_TPL_BUILD) =
+ # Now add SPL/TPL objects back into the main build
+ obj-$(CONFIG_SPL_BUILD) += $(obj-spl-y)
+ obj-$(CONFIG_TPL_BUILD) += $(obj-tpl-y)
++
++ifdef CONFIG_SPL_BUILD
++obj-$(CONFIG_SPL_FIT_IMAGE_POST_PROCESS) += spl-measure.o
++endif
+diff --git a/arch/arm/mach-rockchip/spl-measure.c b/arch/arm/mach-rockchip/spl-measure.c
+new file mode 100644
+index 0000000000..784063c84d
+--- /dev/null
++++ b/arch/arm/mach-rockchip/spl-measure.c
+@@ -0,0 +1,107 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Measured boot from SPL.
++ *
++ * SPL is the first stage that can reach the TPM, so it is the root of the
++ * measurement chain: it starts a fresh TCG2 event log in the area the TPM
++ * node names through memory-region, records its own version as the S-CRTM
++ * and then extends each image it loads from u-boot.itb. The hook runs after
++ * SPL has checked the image hash against the FIT, so the bytes measured are
++ * the bytes that were verified and are about to run.
++ *
++ * PCR assignment:
++ *   0  firmware loaded by SPL (TF-A BL31, OP-TEE)
++ *   4  U-Boot proper
++ *   6  U-Boot control devicetree (carries the FIT verification key)
++ *
++ * No separators are written here. U-Boot proper parses this log, checks it
++ * against the PCRs, appends its own events and closes PCR 0-7 with
++ * separators, so MEASURE_IGNORE_LOG must be off in U-Boot proper.
++ *
++ * A failure is reported and SPL continues: the missing events surface as a
++ * PCR mismatch at verification time, which is the intended failure mode.
++ */
++
++#include <dm.h>
++#include <image.h>
++#include <log.h>
++#include <tpm_api.h>
++#include <tpm-v2.h>
++#include <timestamp.h>
++#include <version.h>
++#include <version_string.h>
++#include <linux/string.h>
++
++/*
++ * common/version.o is not built into SPL; the definition below is the one
++ * in common/version.c. lib/tpm-v2.c records this string
++ * as the S-CRTM version, and it is the same string U-Boot proper reports,
++ * since both come from one build.
++ */
++const char version_string[] = U_BOOT_VERSION " (" U_BOOT_DATE " - " \
++	U_BOOT_TIME " " U_BOOT_TZ ")" CONFIG_IDENT_STRING;
++
++static struct udevice *mb_dev;
++static struct tcg2_event_log mb_log;
++static int mb_state;	/* 0: not tried, 1: ready, -1: unavailable */
++
++static int mb_start(void)
++{
++	int rc;
++
++	if (mb_state)
++		return mb_state > 0 ? 0 : -ENODEV;
++	mb_state = -1;
++
++	memset(&mb_log, 0, sizeof(mb_log));
++	/* Fresh log on every boot: whatever is left in the area is stale. */
++	rc = tcg2_measurement_init(&mb_dev, &mb_log, true);
++	if (rc) {
++		printf("SPL measure: TPM unavailable (%d), images not measured\n", rc);
++		return rc;
++	}
++	mb_state = 1;
++	printf("SPL measure: event log started\n");
++	return 0;
++}
++
++static int mb_pcr_for(const void *fit, int node)
++{
++	u8 type, os;
++
++	if (!fit_image_get_type(fit, node, &type) && type == IH_TYPE_FLATDT)
++		return 6;
++	if (fit_image_get_os(fit, node, &os))
++		return -1;
++	switch (os) {
++	case IH_OS_U_BOOT:
++		return 4;
++	case IH_OS_ARM_TRUSTED_FIRMWARE:
++	case IH_OS_TEE:
++		return 0;
++	default:
++		return -1;
++	}
++}
++
++void board_fit_image_post_process(const void *fit, int node, void **p_image,
++				  size_t *p_size)
++{
++	const char *name = fit_get_name(fit, node, NULL);
++	int pcr = mb_pcr_for(fit, node);
++	int rc;
++
++	if (pcr < 0) {
++		printf("SPL measure: %s has no PCR assignment, not measured\n", name);
++		return;
++	}
++	if (mb_start())
++		return;
++
++	rc = tcg2_measure_data(mb_dev, &mb_log, pcr, *p_size, *p_image,
++			       EV_POST_CODE, strlen(name) + 1, (const u8 *)name);
++	if (rc)
++		printf("SPL measure: %s into PCR %d failed (%d)\n", name, pcr, rc);
++	else
++		printf("SPL measure: %s -> PCR %d\n", name, pcr);
++}
