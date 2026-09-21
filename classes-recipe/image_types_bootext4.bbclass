@@ -43,6 +43,7 @@ inherit image-artifact-names
 do_image_bootext4[depends] += "e2fsprogs-native:do_populate_sysroot"
 do_image_bootext4[depends] += "policycoreutils-native:do_populate_sysroot"
 do_image_bootext4[depends] += "virtual/kernel:do_deploy"
+do_image_bootext4[depends] += "${TACTIQ_BOOT_KERNEL_DEPENDS_${TACTIQ_BOOT_METHOD}}"
 
 # Ordering only: the boot image must be built after the verity artefact,
 # because a later step puts the verity root hash into the boot payload.
@@ -68,7 +69,7 @@ IMAGE_CMD:bootext4 () {
 	rm -rf "$boot_root"
 	install -d "$boot_root/boot/extlinux"
 
-	install -m 0644 "${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}" "$boot_root/"
+	install -m 0644 "${DEPLOY_DIR_IMAGE}/${TACTIQ_BOOT_KERNEL_FILE}" "$boot_root/"
 
 	for dtb_path in ${KERNEL_DEVICETREE}; do
 		install -m 0644 "${DEPLOY_DIR_IMAGE}/$(basename $dtb_path)" "$boot_root/"

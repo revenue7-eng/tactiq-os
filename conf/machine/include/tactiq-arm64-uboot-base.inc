@@ -30,9 +30,14 @@ KERNEL_CLASSES   ?= ""
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
 
 # ---- Extension points ----
-# extlinux boots Image+DTB directly. "fit" is accepted by the gate below but
-# has no boot path yet: setting it does not change how the board boots.
+# extlinux boots Image+DTB directly. "fit" (accepted by the gate below) boots
+# the signed fitImage: extlinux KERNEL and FDT both name it, so U-Boot runs bootm.
 TACTIQ_BOOT_METHOD ?= "extlinux"
+TACTIQ_BOOT_KERNEL_FILE_extlinux ?= "${KERNEL_IMAGETYPE}"
+TACTIQ_BOOT_KERNEL_FILE_fit ?= "fitImage"
+TACTIQ_BOOT_KERNEL_FILE = "${TACTIQ_BOOT_KERNEL_FILE_${TACTIQ_BOOT_METHOD}}"
+TACTIQ_BOOT_KERNEL_DEPENDS_extlinux ?= ""
+TACTIQ_BOOT_KERNEL_DEPENDS_fit ?= "linux-yocto-fitimage:do_deploy"
 
 # ---- FIT verification key: single source of truth ----
 # The key embedded in the U-Boot control FDT and the key signing the kernel
