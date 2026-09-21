@@ -22,12 +22,14 @@ SRC_URI += "file://0003-arm64-dts-rk3588s-rock-5a-add-tpm-on-spi4-uboot.patch \
             file://0004-spi-rockchip-add-support-for-cs-gpios.patch"
 SRC_URI += "file://0005-configs-rock5a-declare-writeable-env-variables.patch"
 SRC_URI += "file://0006-arm64-dts-rk3588s-rock-5a-reserve-tpm-event-log.patch"
+SRC_URI += "file://0007-rockchip-rk3588s-rock-5a-measure-SPL-loaded-images.patch"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
 SRC_URI += "file://env-lockdown.cfg"
 SRC_URI += "file://fit-signature.cfg"
 SRC_URI += "file://tpm-spi.cfg"
 SRC_URI += "file://measured-boot.cfg"
+SRC_URI += "file://spl-measured-boot.cfg"
 SRC_URI += "file://tactiq-boot.env"
 
 TACTIQ_MIRROR ?= "https://github.com/revenue7-eng/tactiq-os/releases/download/bsp-mirror-2024.10/"
@@ -60,7 +62,7 @@ python () {
 
 do_configure() {
     oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
-    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/spl-measured-boot.cfg
     cp ${UNPACKDIR}/tactiq-boot.env ${S}/tactiq-boot.env
     oe_runmake -C ${S} O=${B} olddefconfig
 }
