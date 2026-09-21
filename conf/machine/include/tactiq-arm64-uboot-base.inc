@@ -32,7 +32,7 @@ PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
 # ---- Extension points ----
 # extlinux boots Image+DTB directly. "fit" (accepted by the gate below) boots
 # the signed fitImage: extlinux KERNEL and FDT both name it, so U-Boot runs bootm.
-TACTIQ_BOOT_METHOD ?= "extlinux"
+TACTIQ_BOOT_METHOD ?= "fit"
 TACTIQ_BOOT_KERNEL_FILE_extlinux ?= "${KERNEL_IMAGETYPE}"
 TACTIQ_BOOT_KERNEL_FILE_fit ?= "fitImage"
 TACTIQ_BOOT_KERNEL_FILE = "${TACTIQ_BOOT_KERNEL_FILE_${TACTIQ_BOOT_METHOD}}"
@@ -48,7 +48,9 @@ TACTIQ_FIT_KEY_NAME ?= "dev-fit"
 
 # Master switch for the kernel FIT signing track. Default off: a clean clone
 # with no key must build a reproducible unsigned image.
-TACTIQ_FIT_SIGN_KERNEL ?= "0"
+TACTIQ_FIT_SIGN_KERNEL ?= "${TACTIQ_FIT_SIGN_KERNEL_${TACTIQ_BOOT_METHOD}}"
+TACTIQ_FIT_SIGN_KERNEL_extlinux ?= "0"
+TACTIQ_FIT_SIGN_KERNEL_fit ?= "1"
 
 FIT_KERNEL_SIGN_ENABLE  ?= "${TACTIQ_FIT_SIGN_KERNEL}"
 FIT_KERNEL_SIGN_KEYDIR  ?= "${TACTIQ_FIT_KEY_DIR}"
