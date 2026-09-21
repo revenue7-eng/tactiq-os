@@ -70,10 +70,10 @@ UBOOT_EXTLINUX_CONSOLE = "console=tty1 console=ttyS2,1500000n8"
 
 # ---- Kernel load address for a FIT kernel ----
 # oe-core defaults UBOOT_ENTRYPOINT to 0x20008000, which is not 2 MiB aligned
-# as the arm64 boot protocol requires. 0x02000000 is kernel_addr_r in
-# recipes-bsp/u-boot/files/tactiq-boot.env, where booti already places the
-# Image on this family.
-UBOOT_ENTRYPOINT = "0x02000000"
+# as the arm64 boot protocol requires. It must not be kernel_addr_r: sysboot
+# loads the whole FIT there (tactiq-boot.env, 0x02000000) and bootm would copy
+# the kernel over the FIT itself. 0x08000000 is free up to fdt_addr_r 0x12000000.
+UBOOT_ENTRYPOINT = "0x08000000"
 UBOOT_LOADADDRESS = "${UBOOT_ENTRYPOINT}"
 
 # ---- RAUC: identify booted slot to userspace ----

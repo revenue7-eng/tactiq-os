@@ -22,6 +22,7 @@ S = "${UNPACKDIR}"
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 do_compile[depends] += "virtual/kernel:do_deploy"
+do_compile[depends] += "${TACTIQ_BOOT_KERNEL_DEPENDS_${TACTIQ_BOOT_METHOD}}"
 
 # Match wks.in boot_a / boot_b partition size (256 MiB).
 # RAUC dd's the ext4 image onto the partition — filesystem size must
@@ -31,6 +32,7 @@ TACTIQ_BOOT_IMAGE_SIZE_KB ?= "262144"
 # Pseudo intercepts chown/xattr only for listed paths;
 # boot-root staging dir lives under ${B}, not ${D}.
 PSEUDO_INCLUDE_PATHS:append = ",${B}"
+do_compile[fakeroot] = "1"
 
 do_compile() {
     boot_root="${B}/boot-root"
@@ -38,7 +40,7 @@ do_compile() {
     install -d "$boot_root/boot/extlinux"
 
     # Kernel
-    install -m 0644 "${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}" "$boot_root/"
+    install -m 0644 "${DEPLOY_DIR_IMAGE}/${TACTIQ_BOOT_KERNEL_FILE}" "$boot_root/"
 
     # Device tree blob(s)
     for dtb_path in ${KERNEL_DEVICETREE}; do
