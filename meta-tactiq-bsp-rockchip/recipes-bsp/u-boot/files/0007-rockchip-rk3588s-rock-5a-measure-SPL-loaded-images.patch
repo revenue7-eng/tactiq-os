@@ -44,22 +44,31 @@ it as DDR training left it.
 A TPM failure in SPL is reported and SPL continues: the missing events
 show up as a PCR mismatch at verification time.
 
+Before the first access SPL pulses the TPM reset line described by
+tactiq,tpm-reset-gpios on the tpm@0 node, so a warm reboot starts the TPM
+from _TPM_Init like a cold one; without it the PCRs keep the chain of the
+previous boot. No driver reads the property, so U-Boot proper and Linux
+do not repeat the pulse over the measurements SPL has made. Software on
+the running system can still drive the GPIO and replay a chosen PCR
+state: this is a development measure, and a release board ties TPM reset
+to platform reset instead. Without the property SPL boots as before.
+
 Upstream-Status: Inappropriate [TactiQ BSP integration]
 Signed-off-by: TactiQ OS BSP <bsp@tactiqedge.com>
 ---
- arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi |  25 ++++
+ arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi |  26 +++
  arch/arm/mach-rockchip/Makefile          |   4 +
- arch/arm/mach-rockchip/spl-measure.c     | 161 +++++++++++++++++++++++
+ arch/arm/mach-rockchip/spl-measure.c     | 191 +++++++++++++++++++++++
  drivers/tpm/tpm-uclass.c                 |   7 +-
  lib/tpm-v2.c                             |   8 +-
- 5 files changed, 203 insertions(+), 2 deletions(-)
+ 5 files changed, 234 insertions(+), 2 deletions(-)
  create mode 100644 arch/arm/mach-rockchip/spl-measure.c
 
 diff --git a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
-index c7c965c62d..239418d793 100644
+index c7c965c62d..2db30be084 100644
 --- a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
 +++ b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
-@@ -114,3 +114,28 @@
+@@ -114,3 +114,29 @@
  		};
  	};
  };
@@ -70,6 +79,7 @@ index c7c965c62d..239418d793 100644
 +
 +	tpm@0 {
 +		bootph-all;
++		tactiq,tpm-reset-gpios = <&gpio1 RK_PB5 GPIO_ACTIVE_LOW>;
 +	};
 +};
 +
@@ -102,10 +112,10 @@ index c07bdaee4c..e7a1151cf2 100644
 +endif
 diff --git a/arch/arm/mach-rockchip/spl-measure.c b/arch/arm/mach-rockchip/spl-measure.c
 new file mode 100644
-index 0000000000..ea56928349
+index 0000000000..55a2d822ad
 --- /dev/null
 +++ b/arch/arm/mach-rockchip/spl-measure.c
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,191 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Measured boot from SPL.
@@ -130,6 +140,7 @@ index 0000000000..ea56928349
 + * PCR mismatch at verification time, which is the intended failure mode.
 + */
 +
++#include <asm-generic/gpio.h>
 +#include <dm.h>
 +#include <dm/device-internal.h>
 +#include <dm/uclass-internal.h>
@@ -140,6 +151,7 @@ index 0000000000..ea56928349
 +#include <timestamp.h>
 +#include <version.h>
 +#include <version_string.h>
++#include <linux/delay.h>
 +#include <linux/string.h>
 +
 +/*
@@ -154,6 +166,32 @@ index 0000000000..ea56928349
 +static struct udevice *mb_dev;
 +static struct tcg2_event_log mb_log;
 +static int mb_state;	/* 0: not tried, 1: ready, -1: unavailable */
++
++/*
++ * Pulse the TPM reset line once, before the first access, so every boot
++ * (warm reboot included) starts the TPM from _TPM_Init with empty PCRs.
++ * The line is described only by tactiq,tpm-reset-gpios, which no driver
++ * reads, so U-Boot proper and Linux do not repeat the pulse. Software on
++ * the running system can still drive the pin: a development measure, not
++ * a release design. A board without the property boots as before.
++ */
++static void mb_reset_tpm(struct udevice *tpm)
++{
++	struct gpio_desc rst;
++	int rc;
++
++	rc = gpio_request_by_name(tpm, "tactiq,tpm-reset-gpios", 0, &rst,
++				  GPIOD_IS_OUT);
++	if (rc) {
++		printf("SPL measure: no TPM reset line (%d)\n", rc);
++		return;
++	}
++	dm_gpio_set_value(&rst, 1);
++	mdelay(1);
++	dm_gpio_set_value(&rst, 0);
++	dm_gpio_free(tpm, &rst);
++	printf("SPL measure: TPM reset\n");
++}
 +
 +/*
 + * Bind and probe the TPM step by step, so a failure names the step: no TPM
@@ -172,6 +210,8 @@ index 0000000000..ea56928349
 +		       (!rc && bus) ? bus->name : "none");
 +		return -ENODEV;
 +	}
++
++	mb_reset_tpm(tpm);
 +
 +	bus = dev_get_parent(tpm);
 +	if (bus && device_get_uclass_id(bus) == UCLASS_SPI) {
