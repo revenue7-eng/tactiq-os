@@ -19,9 +19,16 @@ signing-ca.pem rather than by the root directly, the intermediate is
 embedded in the CMS signature through --intermediate. A leaf-only
 signature does not verify against the root.
 
-Production images do not carry this root: it is installed only when
-TACTIQ_KEYRING = "dev", and any other value halts the build until a keyring
-is supplied through RAUC_KEYRING_FILE_EXTERNAL.
+A production build cannot take any signing anchor from pki/dev/.
+TACTIQ_KEYRING = "dev" builds with this tree; any other value declares a
+production build, and classes-global/tactiq-keygate.bbclass halts parsing
+unless every anchor is set outside the repository: the RAUC keyring
+(RAUC_KEYRING_FILE_EXTERNAL), the bundle signer (RAUC_KEY_FILE,
+RAUC_CERT_FILE, RAUC_INTERMEDIATE_FILE), the IMA signer and its chain
+(IMA_EVM_PRIVKEY, IMA_EVM_X509, IMA_EVM_ROOT_CA, or IMA_EVM_KEY_DIR for
+all three), the FIT key (TACTIQ_FIT_KEY_DIR) and the kernel module signing
+key (TACTIQ_MODULE_SIG_KEY). The error names every anchor that is unset
+or still points into pki/dev/.
 
 ## pki/prod/ — production
 

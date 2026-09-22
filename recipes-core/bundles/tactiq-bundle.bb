@@ -22,7 +22,8 @@ RAUC_BUNDLE_VERSION ?= "${DISTRO_VERSION}"
 
 RAUC_KEY_FILE  ?= "${LAYERDIR_tactiq-os}/pki/dev/signer.key.pem"
 RAUC_CERT_FILE ?= "${LAYERDIR_tactiq-os}/pki/dev/signer.pem"
-BUNDLE_ARGS += "--intermediate=${LAYERDIR_tactiq-os}/pki/dev/signing-ca.pem"
+RAUC_INTERMEDIATE_FILE ?= "${LAYERDIR_tactiq-os}/pki/dev/signing-ca.pem"
+BUNDLE_ARGS += "--intermediate=${RAUC_INTERMEDIATE_FILE}"
 
 # --- Slot: rootfs (ext4 image of tactiq-image, production) ---
 RAUC_BUNDLE_SLOTS = "rootfs boot"
