@@ -28,6 +28,10 @@
 #   BOARD                default rock5a            (short name in artifact names)
 #   BOOT_ENV             default: the tactiq-boot.env of the rockchip BSP layer
 #   SKIP_BUILDINFO=1     skip the bitbake -e buildinfo capture (no build env)
+#   BUILDINFO_CONF       extra config file passed to bitbake -e as -R, the same
+#                        file the image was built with (release keys). Required
+#                        when the FIT is not signed with dev-fit, so buildinfo
+#                        describes the configuration that produced the release
 #   ALLOW_MIXED_BUILD=1  downgrade the single-build guard to a warning. For dev
 #                        mechanics testing ONLY — the output is NOT a valid
 #                        release (manifest / SBOM / image may be from different
@@ -278,11 +282,16 @@ fi
 
 # buildinfo — full bitbake datastore snapshot (distro / layers / versions /
 # SRCREVs). Provenance and reproducibility input; needs the build env sourced.
+if [[ "${SKIP_BUILDINFO:-0}" != 1 && "$FIT_KEY" != "dev-fit" && -z "${BUILDINFO_CONF:-}" ]]; then
+    echo "::error:: FIT signed with ${FIT_KEY}, but BUILDINFO_CONF is not set." >&2
+    echo "::error:: bitbake -e without the -R file the image was built with would record the development configuration." >&2
+    exit 1
+fi
 if [[ "${SKIP_BUILDINFO:-0}" == 1 ]]; then
     echo "::warning:: SKIP_BUILDINFO=1 — buildinfo-${BOARD}.json omitted." >&2
 elif command -v bitbake >/dev/null 2>&1; then
     echo "==> buildinfo (bitbake -e ${IMAGE})"
-    TMPENV="$(mktemp)"; bitbake -e "$IMAGE" > "$TMPENV"
+    TMPENV="$(mktemp)"; bitbake ${BUILDINFO_CONF:+-R "$BUILDINFO_CONF"} -e "$IMAGE" > "$TMPENV"
     python3 - "$TMPENV" "buildinfo-${BOARD}.json" <<'PYEOF'
 import json, re, sys
 env, out = sys.argv[1], sys.argv[2]
