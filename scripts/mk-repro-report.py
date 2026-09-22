@@ -239,6 +239,14 @@ def main():
              "named in the report so the reader sees what was not compared",
     )
     ap.add_argument(
+        "--artifact-expected-diff",
+        action="append",
+        metavar="NAME=REASON",
+        help="artifact whose hashes differ for a stated structural reason "
+             "(repeatable); the row is marked and the reason printed, so a "
+             "bare 'no' is not read as build divergence",
+    )
+    ap.add_argument(
         "--caveat",
         action="append",
         metavar="TEXT",
@@ -379,16 +387,37 @@ def main():
     w(f"| Files listed without SHA-256 | {len(unc_a)} | {len(unc_b)} |")
     w("")
 
+    expected = {}
+    for e in args.artifact_expected_diff or []:
+        n, _, why = e.partition("=")
+        expected[n] = why
+
     if art_names:
         w("## Top-level artifacts")
         w("")
         w("| Artifact | Build A | Build B | Match |")
         w("| --- | --- | --- | --- |")
+        noted = []
         for n in art_names:
             ha, hb = art_a.get(n, "-"), art_b.get(n, "-")
-            mark = "yes" if (ha == hb and ha != "-") else "no"
+            if ha == hb and ha != "-":
+                mark = "yes"
+            elif n in expected:
+                # A stated structural reason, not a measured result. The row
+                # still reads "no": the reason explains the difference, it
+                # does not turn it into a match.
+                mark = "no (expected)"
+                noted.append(n)
+            else:
+                mark = "no"
             w(f"| `{n}` | `{ha[:16]}…` | `{hb[:16]}…` | {mark} |")
         w("")
+        if noted:
+            w("Marked expected:")
+            w("")
+            for n in noted:
+                w(f"- `{n}`" + (f": {expected[n]}" if expected[n] else ""))
+            w("")
         if args.artifact_excluded:
             w("Left out of this table:")
             w("")

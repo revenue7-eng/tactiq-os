@@ -190,6 +190,17 @@ if [[ "$ID_A" == "$ID_B" ]]; then
     fi
 fi
 
+# buildinfo carries the build id, which the report itself prints as different
+# for A and B. Its row differing is arithmetic, not a finding; left unmarked it
+# reads as build divergence. Nothing else goes in this list without the same
+# kind of proof: cve-rock5a.enriched.json, for instance, depends on an external
+# CVE snapshot and its differences are real until its own provenance says
+# otherwise.
+EXPECTED_ARGS=(
+    --artifact-expected-diff \
+        "buildinfo-${BOARD}.json=records the build id, which differs between any two builds by definition"
+)
+
 echo "==> comparing ${DIR_A} against ${DIR_B}  (tag ${TAG})"
 echo "    build A: ${ID_A}"
 echo "    build B: ${ID_B}"
@@ -207,6 +218,7 @@ python3 "$GEN" \
     --outdir  "$OUTDIR" \
     --date    "$DATE" \
     "${ART_A[@]}" "${ART_B[@]}" ${EXCLUDED_ARGS[@]+"${EXCLUDED_ARGS[@]}"} \
+    "${EXPECTED_ARGS[@]}" \
     ${CAVEAT_ARGS[@]+"${CAVEAT_ARGS[@]}"}
 
 echo
