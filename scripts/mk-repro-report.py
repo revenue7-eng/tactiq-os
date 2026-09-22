@@ -231,6 +231,20 @@ def main():
         metavar="NAME=SHA256",
         help="top-level artifact hash from build B (repeatable)",
     )
+    ap.add_argument(
+        "--artifact-excluded",
+        action="append",
+        metavar="NAME=REASON",
+        help="artifact deliberately left out of the artifact table (repeatable); "
+             "named in the report so the reader sees what was not compared",
+    )
+    ap.add_argument(
+        "--caveat",
+        action="append",
+        metavar="TEXT",
+        help="condition limiting what this run measured (repeatable); printed "
+             "at the top of the report, not only on the terminal",
+    )
     ap.add_argument("--outdir", default="docs/reproducibility")
     ap.add_argument(
         "--date",
@@ -344,6 +358,16 @@ def main():
     w("independent builds of the same tag. Raw per-file differences:")
     w(f"`{os.path.basename(diff_path)}` (same directory).")
     w("")
+
+    # Anything known to limit the measurement belongs in the artifact that is
+    # read later, not in the terminal output of whoever produced it.
+    if args.caveat:
+        w("> **Measurement caveats**")
+        w(">")
+        for c in args.caveat:
+            w(f"> - {c}")
+        w("")
+
     w("## Inputs")
     w("")
     w("| | Build A | Build B |")
@@ -365,6 +389,13 @@ def main():
             mark = "yes" if (ha == hb and ha != "-") else "no"
             w(f"| `{n}` | `{ha[:16]}…` | `{hb[:16]}…` | {mark} |")
         w("")
+        if args.artifact_excluded:
+            w("Left out of this table:")
+            w("")
+            for e in args.artifact_excluded:
+                n, _, why = e.partition("=")
+                w(f"- `{n}`" + (f": {why}" if why else ""))
+            w("")
 
     w("## Per-file result")
     w("")

@@ -34,6 +34,10 @@
 #   DISTRO     default wrynose  (Yocto series; names the report file)
 #   OUTDIR     default <repo>/docs/reproducibility
 #   DATE       default today    (YYYY-MM-DD; set to re-date a report)
+#   ALLOW_SAME_BUILD_ID=1
+#              proceed when both inputs report the same build id. The run then
+#              does not establish reproducibility across independent builds,
+#              so the report says so in a caveat block.
 
 set -euo pipefail
 
@@ -81,22 +85,58 @@ fi
 # them through so the report states them explicitly rather than leaving the
 # reader to diff two SHA256SUMS by eye.
 #
-# The coverage manifest is copied from the repo tree into both release sets,
-# so it is identical by construction and carries no information about build
-# reproducibility. Excluded to keep the artifact table honest.
+# Two files in the set are copied from the repository tree by mk-release.sh
+# rather than produced by the build: mk-pcr-reference.py and the coverage
+# manifest. They are identical by construction, so a match for them measures
+# cp and not the build. They are excluded from the table AND named in the
+# report, so the reader sees what was left out instead of it just being
+# absent. Keep this list in step with the cp calls in mk-release.sh.
 # ---------------------------------------------------------------------------
+REPO_COPIED=( "mk-pcr-reference.py" "coverage-${BOARD}.${TAG}.yaml" )
+
+# Name in the report only what this release set actually contained. Listing a
+# file as left out when the set never held it is the same kind of false record
+# the exclusion exists to prevent: older sets predate mk-pcr-reference.py.
+EXCLUDED_ARGS=()
+for entry in "${REPO_COPIED[@]}"; do
+    if awk '{print $2}' "${DIR_A}/SHA256SUMS" | grep -Fxq -- "$entry"; then
+        EXCLUDED_ARGS+=( --artifact-excluded \
+            "${entry}=copied from the repo tree into both release sets by mk-release.sh, identical by construction" )
+    fi
+done
+
 artifact_args() {
-    local dir="$1" flag="$2" name hash
-    while read -r hash name; do
-        case "$name" in
-            SHA256SUMS|coverage-*) continue ;;
-        esac
+    local dir="$1" flag="$2" name hash entry
+    # `|| [[ -n ... ]]` keeps the last record when the file has no trailing
+    # newline; without it read returns non-zero and the entry is dropped
+    # silently, understating what was compared.
+    while read -r hash name || [[ -n "${hash}${name}" ]]; do
+        [[ -n "$name" ]] || continue
+        if [[ "$name" == "SHA256SUMS" ]]; then
+            continue
+        fi
+        for entry in "${REPO_COPIED[@]}"; do
+            if [[ "$name" == "$entry" ]]; then
+                name=""
+                break
+            fi
+        done
+        [[ -n "$name" ]] || continue
         printf '%s\n%s=%s\n' "$flag" "$name" "$hash"
     done < "${dir}/SHA256SUMS"
 }
 
 mapfile -t ART_A < <(artifact_args "$DIR_A" --artifact-a)
 mapfile -t ART_B < <(artifact_args "$DIR_B" --artifact-b)
+
+# An empty artifact table is indistinguishable, in the finished report, from
+# one that was checked and matched. Refuse rather than emit that report.
+if [[ ${#ART_A[@]} -eq 0 || ${#ART_B[@]} -eq 0 ]]; then
+    echo "::error:: no build-produced artifacts read from SHA256SUMS" \
+         "(A: ${#ART_A[@]}, B: ${#ART_B[@]}) — refusing to write a report with" \
+         "an empty artifact table" >&2
+    exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Build identity. buildinfo-<board>.json is produced by mk-release.sh from
@@ -136,9 +176,18 @@ PY
 ID_A="$(build_id "$DIR_A")"
 ID_B="$(build_id "$DIR_B")"
 
+CAVEAT_ARGS=()
 if [[ "$ID_A" == "$ID_B" ]]; then
-    echo "::warning:: both builds report the same build id (${ID_A}) — are these" \
-         "really two independent builds?" >&2
+    if [[ "${ALLOW_SAME_BUILD_ID:-0}" == "1" ]]; then
+        echo "::warning:: both builds report the same build id (${ID_A});" \
+             "proceeding because ALLOW_SAME_BUILD_ID=1. The report will say so." >&2
+        CAVEAT_ARGS=( --caveat "Both inputs report build id ${ID_A}. The run was forced with ALLOW_SAME_BUILD_ID=1 and does not establish reproducibility across independent builds." )
+    else
+        echo "::error:: both builds report the same build id (${ID_A}) — these are" \
+             "not two independent builds. Set ALLOW_SAME_BUILD_ID=1 to force;" \
+             "the report will then carry that fact as a caveat." >&2
+        exit 1
+    fi
 fi
 
 echo "==> comparing ${DIR_A} against ${DIR_B}  (tag ${TAG})"
@@ -157,7 +206,8 @@ python3 "$GEN" \
     --build-id-b "$ID_B" \
     --outdir  "$OUTDIR" \
     --date    "$DATE" \
-    "${ART_A[@]}" "${ART_B[@]}"
+    "${ART_A[@]}" "${ART_B[@]}" ${EXCLUDED_ARGS[@]+"${EXCLUDED_ARGS[@]}"} \
+    ${CAVEAT_ARGS[@]+"${CAVEAT_ARGS[@]}"}
 
 echo
 echo "==> commit the two files above; reference the .md from the release notes."
