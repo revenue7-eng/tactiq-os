@@ -45,6 +45,45 @@ python3 "$IMPROVE" \
   --old-cve-report "$RAW" --kernel-version "$KVER" \
   --new-cve-report "$OUT"
 
+# The snapshot this enrichment was computed against now travels inside the
+# artifact, not only in the terminal output above. Two enriched reports for
+# the same tag can differ because the snapshot moved or because behaviour
+# changed, and without this field the two cannot be told apart afterwards:
+# see regression_cause in the rc11 coverage manifest, where exactly that
+# separation was no longer possible after the fact.
+VULNS_REV="$(git -C "$VULNS_DIR" rev-parse HEAD 2>/dev/null || echo "not-a-git-checkout")"
+VULNS_COUNT="$(find "$VULNS_DIR" -name 'CVE-*.json' | wc -l)"
+python3 - "$OUT" "$VULNS_REV" "$VULNS_COUNT" "$KVER" "$RAW" "$SPDX" <<'PY'
+import hashlib, json, sys
+
+out, rev, count, kver, raw, spdx = sys.argv[1:7]
+
+
+def digest(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+with open(out) as fh:
+    doc = json.load(fh)
+# Inputs only. No timestamp and no host: a field that changes on every run
+# would make the artifact differ by construction, which is the property this
+# report is supposed to let a reader check.
+doc["provenance"] = {
+    "kernel_version": kver,
+    "raw_report_sha256": digest(raw),
+    "spdx_sha256": digest(spdx),
+    "vulns_cve_files": int(count),
+    "vulns_snapshot": rev,
+}
+with open(out, "w") as fh:
+    json.dump(doc, fh, indent=2, sort_keys=True)
+PY
+echo "    provenance: vulns@${VULNS_REV}, ${VULNS_COUNT} CVE files"
+
 # Record hash in SHA256SUMS (bare filename, matching mk-release format); idempotent.
 # Only when a SHA256SUMS already exists (standalone post-mk-release use). When
 # invoked from inside mk-release before its SHA256SUMS pass, skip and let
