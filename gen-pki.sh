@@ -5,11 +5,15 @@
 #   ./gen-pki.sh dev    -> pki/dev/    unencrypted keys, CI-usable
 #   ./gen-pki.sh ima    -> pki/dev/    IMA appraisal leaf, existing hierarchy
 #   ./gen-pki.sh fit    -> pki/dev/    U-Boot FIT signer, self-signed
+#   ./gen-pki.sh rim    -> pki/dev/    RIM signer leaf, existing hierarchy
 #
 #   ./gen-pki.sh prod DIR          release RAUC hierarchy, encrypted keys
 #   ./gen-pki.sh ima-prod DIR      release IMA leaf from the release Signing CA
 #   ./gen-pki.sh fit-prod DIR      release U-Boot FIT signer, self-signed
 #   ./gen-pki.sh modsign-prod DIR  release kernel module signing key
+#   ./gen-pki.sh rim-prod CA_DIR DIR
+#                                  release RIM signer leaf from the release
+#                                  Signing CA in CA_DIR, written to DIR
 #
 # DIR is required for every release flavour and must lie outside this
 # repository: release keys live on encrypted removable media, attached only
@@ -17,7 +21,8 @@
 # modsign-prod write their keys without a passphrase, because mkimage,
 # evmctl and the kernel build read them unattended inside bitbake; their
 # protection is the encrypted medium. Only prod (the RAUC hierarchy, used
-# offline by rauc resign) keeps passphrase-encrypted keys.
+# offline by rauc resign) keeps passphrase-encrypted keys, and rim-prod,
+# whose key signs the RIM in mk-release.sh outside bitbake.
 #
 # Hierarchy (both flavours):
 #   Root CA  ->  Signing CA  ->  Signer (leaf)
@@ -98,9 +103,30 @@ case "$FLAVOUR" in
     ENC=""
     LEAF_DAYS=36500        # as the dev key and the kernel default genkey
     ;;
+  rim)
+    CA_DIR="pki/dev"
+    OUT="pki/dev"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS DEVELOPMENT RIM Signer - NOT FOR PRODUCTION"
+    ENC=""
+    LEAF_DAYS=730
+    ;;
+  rim-prod)
+    CA_DIR="${2:-}"
+    OUT="${3:-}"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS Release RIM Signer"
+    ENC="-aes-256-cbc"     # passphrase required: read by mk-release.sh, not bitbake
+    # A verifier validates the whole path at verification time, so a RIM
+    # stops verifying when the Signing CA expires, whatever this value is.
+    # Matching the Signing CA lifetime states that bound instead of hiding it.
+    LEAF_DAYS=1095
+    ;;
   *)
     echo "usage: $0 {dev|ima|fit|signer}" >&2
     echo "       $0 {prod|ima-prod|fit-prod|modsign-prod} DIR" >&2
+    echo "       $0 rim" >&2
+    echo "       $0 rim-prod CA_DIR DIR" >&2
     exit 1
     ;;
 esac
@@ -123,7 +149,121 @@ case "$FLAVOUR" in
     esac
     OUT="$ABS"
     ;;
+  rim-prod)
+    if [ -z "$CA_DIR" ] || [ -z "$OUT" ]; then
+      echo "ERROR: rim-prod needs the Signing CA directory and an output directory:" >&2
+      echo "       $0 rim-prod CA_DIR DIR" >&2
+      exit 1
+    fi
+    REPO="$(cd "$(dirname "$0")" && pwd -P)"
+    for d in "$CA_DIR" "$OUT"; do
+      case "$(realpath -m "$d")/" in
+        "$REPO"/*)
+          echo "ERROR: $d is inside the repository ($REPO)." >&2
+          echo "       Release keys must live outside it, on encrypted media." >&2
+          exit 1
+          ;;
+      esac
+    done
+    CA_DIR="$(realpath -m "$CA_DIR")"
+    OUT="$(realpath -m "$OUT")"
+    ;;
 esac
+
+if [ "$FLAVOUR" = "rim" ] || [ "$FLAVOUR" = "rim-prod" ]; then
+  # ------------------------------------------------------------ RIM signer
+  # Signs the Reference Integrity Manifest (RELEASE_INTEGRITY.md §5): the
+  # file that binds the published PCR reference to the release Root CA.
+  # Issued from the Signing CA, so an operator verifies a RIM against the
+  # same Root CA as a bundle and needs nothing else.
+  #
+  # Its only extended key usage is the private OID below, marked critical.
+  # No codeSigning: RAUC (check-purpose=codesign-rauc in system.conf) must
+  # refuse this key as a bundle signer, and no other consumer that checks
+  # purposes should accept it for anything but a RIM. The OID is a UUID
+  # arc (ITU-T X.667, 2.25.<uuid as integer>), which needs no registration;
+  # it is fixed here once and a verifier checks for exactly this value.
+  #
+  # RSA-3072 like the other leaves: the chain above it is RSA, so anything
+  # that validates the chain, a browser included, already verifies RSA.
+  #
+  # In rim-prod the Signing CA stays in CA_DIR and only the leaf is written
+  # to DIR: the CA keys and the build keys live in separate containers.
+  # CA_DIR must be writable, because -CAcreateserial updates the serial
+  # file next to the Signing CA certificate.
+  RIM_EKU_OID="2.25.209288284150790823604684143005475146259"
+  CA_DIR="$(realpath -m "$CA_DIR")"
+
+  for f in signing-ca.key.pem signing-ca.pem root-ca.pem; do
+    if [ ! -e "$CA_DIR/$f" ]; then
+      echo "ERROR: $CA_DIR/$f not found. Create the hierarchy first ($0 dev, or $0 prod DIR)." >&2
+      exit 1
+    fi
+  done
+  mkdir -p "$OUT"
+  for f in rim-signer.key.pem rim-signer.pem; do
+    if [ -e "$OUT/$f" ]; then
+      echo "ERROR: $OUT/$f already exists. Refusing to reissue in place:" >&2
+      echo "       published RIMs name the certificate that signed them." >&2
+      exit 1
+    fi
+  done
+  cd "$OUT"
+
+  cat > rim-signer.cnf <<EOF
+[v3_signer]
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature
+extendedKeyUsage       = critical, $RIM_EKU_OID
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+EOF
+
+  echo "[1/1] RIM signer (leaf)"
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
+    $ENC -out rim-signer.key.pem
+  openssl req -new -sha256 \
+    -key rim-signer.key.pem \
+    -subj "/O=$ORG/CN=$LEAF_CN" \
+    -out rim-signer.csr
+  openssl x509 -req -sha256 \
+    -in rim-signer.csr \
+    -CA "$CA_DIR/signing-ca.pem" -CAkey "$CA_DIR/signing-ca.key.pem" \
+    -CAcreateserial \
+    -days "$LEAF_DAYS" \
+    -extfile rim-signer.cnf -extensions v3_signer \
+    -out rim-signer.pem
+  rm -f rim-signer.csr
+
+  echo
+  echo "---- verification ----------------------------------------------"
+  openssl verify -CAfile "$CA_DIR/root-ca.pem" \
+    -untrusted "$CA_DIR/signing-ca.pem" rim-signer.pem
+  echo
+  echo "leaf key usage:"
+  openssl x509 -in rim-signer.pem -noout -text \
+    | grep -A1 -E 'X509v3 (Key Usage|Extended Key Usage)'
+  if openssl x509 -in rim-signer.pem -noout -text | grep -q 'Code Signing'; then
+    echo "ERROR: rim-signer.pem carries codeSigning; RAUC would accept it." >&2
+    exit 1
+  fi
+  echo
+  openssl x509 -in rim-signer.pem -noout -subject -issuer -enddate
+
+  cat <<EOF
+
+---- files ------------------------------------------------------
+$OUT/rim-signer.pem       PUBLIC  -> RIM signer certificate
+$OUT/rim-signer.key.pem   PRIVATE -> signs rim-<machine>.json
+$OUT/rim-signer.cnf       extensions used, kept for the record
+
+---- next -------------------------------------------------------
+Nothing uses this key until mk-release.sh signs a RIM with it.
+Before relying on it: a bundle signed with this key must be rejected by
+rauc with the system.conf from recipes-core/rauc/files.
+EOF
+  exit 0
+fi
 
 if [ "$FLAVOUR" = "fit" ] || [ "$FLAVOUR" = "fit-prod" ]; then
   # ------------------------------------------------------- U-Boot FIT signer
