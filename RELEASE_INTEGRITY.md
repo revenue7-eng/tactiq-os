@@ -9,10 +9,13 @@ Manifest consumed by attestation verifiers. It sits alongside
 (kernel hardening posture), and `ATTESTATION.md` (attestation framework
 specification).
 
-This is a v0.2 design document. v0.1 received external security review;
-v0.2 responds to that review. Changes from v0.1 are summarized in
-Appendix A. Where the current implementation differs from the
-mechanisms described here, the difference is named explicitly.
+This is a v0.3 design document. v0.1 received external security review;
+v0.2 responded to that review, and its changes are summarized in
+Appendix A. v0.3 rewrites §5 after measured boot was checked on
+hardware and records the current implementation of the FIT signing key
+in §2.3; its changes are summarized in Appendix B. Where the current
+implementation differs from the mechanisms described here, the
+difference is named explicitly.
 
 Last reviewed: TODO.
 
@@ -93,7 +96,7 @@ materialization rules, and defined revocation procedure.
 |-------------------|---------------------------------|--------------|----------------------------------------------------|---------------------------------------------|
 | Release root      | Air-gapped material under TactiQ Engineering control. **Never enters any CI runner under any condition.** | Years (rotated on incident or scheduled audit) | Air-gapped signing host; signature artifacts committed to repository | Per-product key certificates; revocation list entries |
 | Per-product key   | GitHub Actions encrypted secret per repository                | Annual rotation, on-incident replacement | Materialized into CI runner memory at start of tag-triggered workflow; removed at end | Release artifacts of that product (FIT images) |
-| Per-build identity| Ephemeral Sigstore Fulcio cert (keyless OIDC)               | Per-tag (~minutes)                       | Issued by Fulcio at signing time; private key never persists | `SHA256SUMS`, SBOM, RIM of one specific release |
+| Per-build identity| Ephemeral Sigstore Fulcio cert (keyless OIDC)               | Per-tag (~minutes)                       | Issued by Fulcio at signing time; private key never persists | `SHA256SUMS` of one specific release, and through it the SBOM and RIM (§5.5) |
 
 **Critical clarification over v0.1:** the release root is **air-gapped
 without exception**. It is not "usually offline" or "stored as a
@@ -128,6 +131,27 @@ signature embedded in the FIT image. Both signatures cover the same
 artifacts, by different mechanisms, for different audiences.
 
 ### 2.3 Materialization in CI
+
+**Current implementation (v2.1.0-rc11).** The mechanism below is the
+design. The first release under production keys used a different one,
+named here so that the design is not read as a description of it:
+
+- The FIT signing key (`release-fit`) is self-signed, not a certificate
+  issued by the release root: U-Boot checks a raw RSA public key
+  compiled into its control devicetree and builds no chain
+  (`gen-pki.sh`, flavour `fit-prod`). It is tied to the release root
+  through the signed RIM (§5.4).
+- The key is not a CI secret. It is held offline on encrypted
+  removable media together with the other build-time release keys, and
+  the FIT image is signed by a release build run on a workstation
+  disconnected from the network. Bundles are re-signed offline with
+  `rauc resign`.
+- The RAUC and IMA signers are leaves of a separate hierarchy (release
+  Root CA, release Signing CA) generated with `gen-pki.sh`. The CA
+  private keys are held apart from the build-time keys and are used
+  only to issue certificates.
+
+Custody procedure for these keys is documented outside this repository.
 
 The per-product RSA private key is stored as a GitHub Actions
 encrypted secret with restricted access scope:
@@ -447,125 +471,206 @@ tactiq-agent context.
 ## 5. Reference Integrity Manifest (RIM)
 
 `ATTESTATION.md` § "Implementation roadmap" step 4 names RIM
-generation as a deliverable. This section specifies the format,
-publication, lifecycle, and — critically over v0.1 — the matching
-semantics for PCR values, which are not "exact byte equality" for all
-PCRs.
+generation as a deliverable. This section specifies what a RIM is, who
+is responsible for which part of the comparison it enables, what it
+contains, how it is signed and published, and what it does not claim.
 
-### 5.1 PCR matching policy
+v0.2 of this section was written before measured boot worked on
+hardware. Its PCR table did not match what the boot chain measures, and
+it placed matching policy inside the RIM. v0.3 replaces it; Appendix B
+lists the changes.
 
-PCR values are not all reproducible to byte identity even on
-correctly-built identical systems. Firmware drift, vendor blob
-versions, measurement ordering inside TF-A and OP-TEE, and per-boot
-timing variations all produce small differences in PCR 0–7 between
-otherwise-equivalent boots. Exact-equality PCR matching, as implied
-by v0.1, would produce false positives in operation and make the
-attestation system unusable.
+### 5.1 Roles
 
-The RIM specifies per-PCR matching semantics:
+The section follows the role model of RFC 9334 (RATS architecture):
 
-| PCR range | What it measures                                    | RIM matching semantics                                    |
-|-----------|-----------------------------------------------------|-----------------------------------------------------------|
-| 0–3       | SoC ROM, vendor early-boot firmware (TF-A, OP-TEE)  | Set of allowed values per platform configuration (allow-list). Values vary with vendor firmware version; allow-list is updated when an audited new vendor firmware is qualified. |
-| 4–5       | U-Boot binary, U-Boot environment                   | Exact match. U-Boot binary is reproducible from the source tree under our control. |
-| 6–7       | U-Boot configuration, SecureBoot policy             | Exact match where the inputs are reproducible; allow-list with documented values where they reflect platform variability not under our control. |
-| 8         | Kernel image                                        | Exact match. Kernel binary is built reproducibly under our control. |
-| 9         | DTB and any kernel-command-line measurement          | Exact match. Both are signed into the FIT image (§3.4) and reproducible. |
-| 10        | IMA runtime measurements                            | Event-log replay against a reference IMA template, not PCR equality. The verifier replays the device's reported IMA event log; the resulting PCR 10 value must match the reported value (proves log integrity); the events themselves must subset the reference template (proves no unexpected measured files). |
+- **TactiQ is the Reference Value Provider.** For each release and
+  machine it publishes the values a correctly booted device of that
+  build reports, and endorses the keys that build trusts.
+- **The operator owns the verifier and its appraisal policy.** Which
+  builds are acceptable, whether a previous release stays acceptable
+  during a rollout, and what a mismatch triggers (quarantine, alert,
+  grace period) are decisions of the operator, not of the RIM.
+- **The device is the attester.** It reports evidence (a TPM quote over
+  the PCRs, with the event log where one exists). Producing evidence is
+  the task of the attestation agent (`ATTESTATION.md`), outside this
+  section.
 
-**Why this works.** The RIM does not need to predict every byte the
-TPM will report. It needs to allow the verifier to decide, given the
-attestation, whether the platform is in an expected state. For PCRs
-we control end-to-end (kernel, DTB, command line), exact match is the
-strongest possible check. For PCRs we don't control (vendor firmware,
-some bootloader stages), the allow-list approach matches a known set
-of qualified configurations and rejects everything else — including
-attacker-modified firmware that produces a PCR value the allow-list
-has never seen. For PCR 10, the event log replay approach is the
-industry-standard mechanism for runtime measurement verification; it
-is what Keylime does and what TCG specifications recommend.
+A RIM therefore states facts about one build. It does not say how
+strictly those facts are to be enforced.
 
-**Updating the allow-list.** When a new vendor firmware version is to
-be qualified (e.g. an updated TF-A release from Rockchip), the
-process is: build TactiQ OS against the new firmware in a controlled
-environment, boot a reference device, record the PCR 0–3 values, add
-them to the allow-list in the RIM schema for that platform, sign the
-new RIM as part of the release that adopts the new firmware. The
-qualification step is the trust anchor; the allow-list is the
-machine-readable expression of that trust. (Addresses review pt. 6.)
+### 5.2 What is measured
 
-### 5.2 What a RIM contains
+The boot chain of TactiQ OS on Rock 5A (FIT boot, `BOOT_CHAIN.md`)
+extends the SHA-256 bank as follows. Every PCR starts from 32 zero
+bytes; PCR 0 to 7 are closed by a separator event whose digest is
+SHA-256 of the four bytes `ff ff ff ff`.
 
-A RIM is a per-build, per-machine manifest of the expected platform
-state. It contains:
+| PCR | Extended by | Content |
+|-----|-------------|---------|
+| 0   | SPL, then U-Boot | S-CRTM version string; each firmware image SPL loads from `u-boot.itb` (TF-A, OP-TEE); then, from U-Boot proper, the S-CRTM version string again and the kernel devicetree |
+| 1   | U-Boot | kernel command line; one value per A/B slot |
+| 2, 3, 5, 7 | U-Boot | separator only |
+| 4   | SPL | U-Boot proper |
+| 6   | SPL | U-Boot control devicetree, which carries the FIT verification key |
+| 8   | U-Boot | kernel image |
+| 9   | U-Boot | the string `initrd` with its NUL; no initrd is loaded (§4) |
 
-- **Build identity.** Same fields as `/etc/tactiq-release`: version,
-  codename, UTC build date, machine target, **full meta-layer git
-  commit SHA** (not short), image basename. Full SHA addresses the
-  collision-risk concern with short hashes.
-- **Per-PCR matching specification.** For each TPM PCR in the range
-  0–10: matching semantics (exact / allow-list / event-log-replay)
-  and the values that constitute the match, per §5.1.
-- **IMA reference template.** The set of IMA measurement entries
-  the kernel will produce for the protected paths
-  (`/opt/tactiq/`, `tactiq-*` systemd units) during a clean boot,
-  expressed as a partial-order specification (the runtime log is
-  not byte-identical run-to-run because of file access ordering,
-  but the set of measured files and their hashes is).
-- **Kernel command line.** The exact command-line string signed
-  into the FIT image (§3.4).
-- **U-Boot version and configuration fingerprint.**
-- **Per-product key fingerprint.** Which per-product key signed
-  the FIT image this RIM describes.
-- **Release root fingerprint.** Which release root certified the
-  per-product key. Allows the verifier to validate the full chain.
+SPL measures the images it loads and is itself unmeasured. It is the
+root of the measurement chain. Until the SoC's OTP fuses hold the
+release root hash (§2.5), nothing authenticates SPL itself, and a RIM
+match proves only that the measured stages match the build.
 
-### 5.3 Format
+PCR 10 carries nothing in production images of v2.1.0-rc11: the
+production image ships with IMA off. When IMA appraisal is enabled in
+a production image, the RIM gains an IMA reference (§5.7).
 
-JSON-Lines, signed per-entry, with a final block-level signature over
-the canonical hash of all entries. Schema reference:
-`schemas/rim-v1.json` in this repository (to be added with the first
-RIM-producing release).
+`scripts/mk-pcr-reference.py` computes every value in this table from
+five published release files, without the device. It is the normative
+description of the model: where the table and the script differ, the
+script is right and the table is a documentation bug.
 
-### 5.4 Publication
+### 5.3 Reference values and appraisal policy
 
-A RIM is a release artifact, published alongside `SHA256SUMS`, the
-SBOM bundle, and the CVE reports for the same release. It is:
+For each PCR the RIM carries a **set** of reference values. For a
+single build the set has exactly one element, or one per slot for
+PCR 1. The RIM does not carry matching semantics ("exact",
+"allow-list"): whether a verifier accepts only the current build, or
+also RIMs of earlier builds, is its appraisal policy (§5.1). A fleet
+running several builds is appraised against several RIMs, one per
+build.
 
-- Listed in `SHA256SUMS` with its SHA-256
-- Signed by the per-build Fulcio identity (the same signature that
-  covers `SHA256SUMS` transitively covers the RIM)
-- Distributable as a single file for offline use, provided the
-  verifier has the Sigstore trust bundle (per §1 air-gap
-  clarification)
+v0.2 proposed allow-lists for PCR 0 to 3 on the grounds that vendor
+firmware varies. On this platform the vendor firmware is a pinned build
+input inside `u-boot.itb`, and PCR 0 also carries the kernel
+devicetree, which changes with every build. PCR 0 is therefore a
+property of one build like every other PCR, and a new firmware version
+arrives only with a new release and its own RIM.
 
-A verifier validating an attestation against a RIM performs:
+**The comparison fails closed.** The RIM enumerates every PCR a device
+of that build reports, including those that carry only the separator.
+A PCR the verifier finds in the evidence but not in the RIM is a
+mismatch; so is a value outside the PCR's set. A verifier must not
+compare only the PCRs it has entries for. A comparison that passes on
+the entries it knows would produce a complete-looking, signed result
+with a gap in it.
 
-1. Fetch the RIM for the build identity claimed by the attestation
-2. Verify the RIM's Sigstore signature against the expected workflow
-   identity for that release tag (per `VERIFY.md` § 4.1)
-3. Verify the RIM's `SHA256SUMS` line matches the file's actual hash
-4. For each PCR, apply the matching semantics from §5.1 against the
-   attestation-reported value
-5. Replay the attestation's IMA event log; verify it produces the
-   reported PCR 10; verify the log entries subset the reference
-   template
-6. Accept or reject based on the combined result
+### 5.4 What a RIM contains
 
-### 5.5 What a RIM does not encode
+- **Format identifier and version.**
+- **Build identity.** Release tag; machine; build label; the **full**
+  commit SHA of the meta-layer (not short); the image basename. These
+  are the fields of `/etc/tactiq-release`, so a verifier can select the
+  RIM from what the device reports.
+- **Reference values.** The hash bank and, for every PCR of §5.2, its
+  set of values, with PCR 1 keyed by slot. The kernel command line of
+  each slot, in clear, so that PCR 1 can be checked by recomputation
+  rather than trusted.
+- **Link to the derivation.** The SHA-256 of
+  `pcr-reference-<machine>.json` of the same release, the file from
+  which the reference values are taken. Anyone can recompute that file
+  from the five published inputs and compare it byte for byte.
+- **Key endorsements.** SHA-256 fingerprints of: the FIT verification
+  key compiled into U-Boot; the root certificate of the RAUC keyring
+  the image installs; the IMA certificate, where one is installed; and
+  the release root certificate.
+- **Disclosures.** The assumptions under which the values hold, stated
+  in the file rather than left to the reader: SPL is unmeasured; the
+  default U-Boot environment of this release is in use (a saved
+  environment from an earlier release with a different `boot_ab`
+  changes PCR 1); no initrd; OTP fuse state of the reference platform.
 
-- **Workload-specific state.** The RIM describes the platform; what
-  runs on the platform (AI models, application data, configuration
-  beyond `/etc/tactiq-release`) is outside its scope. Workload
-  attestation is an application-layer concern, restated from
-  `THREAT_MODEL.md` § TCB.
-- **Acceptable variation across deployments.** A RIM describes one
-  build. A device fleet running the same build matches the same
-  RIM; cross-build attestation verification requires the verifier to
-  hold the RIMs for all builds in the fleet.
-- **Policy decisions.** The RIM tells the verifier what to expect.
-  Whether a mismatch triggers QUARANTINE, alert, or grace period is
-  a verifier-side policy, not a RIM-side specification.
+The FIT verification key is self-signed (§2.3, current
+implementation): U-Boot checks a raw public key and builds no
+certificate chain. The RIM is where that key is tied to the release
+root. A verifier that trusts the release root and checks the RIM
+signature learns which FIT key the build trusts from a statement the
+release root's hierarchy signed, not from TactiQ's word.
+
+### 5.5 Format and signature
+
+A RIM is one JSON file per release and machine,
+`rim-<machine>.json`, serialized canonically (UTF-8, sorted keys, no
+insignificant whitespace), with a detached signature over its exact
+bytes. The schema is published as `schemas/rim-v1.json` with the first
+release that produces a RIM.
+
+The signature is made by a **RIM signer**: a leaf certificate issued
+by the release Signing CA for this purpose only. Its extended key usage
+differs from that of the bundle signer, so RAUC does not accept it as
+a bundle signer, and the bundle signer does not sign RIMs. The signing
+key is held and used offline like the other release keys. A verifier
+checks the signature against the release root it has pinned, offline,
+with no dependency on any online service. The exact signature
+container (CMS detached signature or a raw signature over the file) is
+fixed with the first RIM-producing release and recorded here; the
+requirement is that it verifies with the release root certificate alone
+and in a browser.
+
+The RIM is also listed in `SHA256SUMS`, so the per-build Sigstore
+signature covers it transitively. That signature gives transparency
+(the Rekor entry) and is kept. It is not the trust anchor of the RIM:
+by §7.3 it attests only that a workflow on a tag of this repository
+produced the file, and an adversary with GitHub organization access
+(A3) can obtain it. A RIM decides which platform state a verifier
+accepts, the same class of input as the revocation list, which §7.2
+keeps under the air-gapped release root for this reason.
+
+**Relation to CoRIM.** The IETF RATS working group is standardizing
+reference values as CoRIM (`draft-ietf-rats-corim`, not yet an RFC).
+The fields of §5.4 map onto its model: build identity onto the
+environment, PCR sets onto reference-value triples, key fingerprints
+onto endorsements, the RIM signer onto the manifest signer. TactiQ
+publishes CoRIM in addition to the JSON RIM once the specification is
+an RFC or a consumer's verifier requires it. Until then the JSON RIM is
+normative.
+
+### 5.6 Publication and verification
+
+A RIM is a release artifact, published with `SHA256SUMS`,
+`pcr-reference-<machine>.json`, the SBOM and the CVE reports of the
+same release, and distributable as a single file for offline use.
+
+A verifier appraising a device against a RIM:
+
+1. Selects the RIM for the build identity the device reports.
+2. Verifies the RIM signature to the release root it has pinned.
+3. Optionally, recomputes `pcr-reference-<machine>.json` from the five
+   published inputs with `mk-pcr-reference.py`, and checks its SHA-256
+   against the RIM.
+4. Verifies the quote itself: signature by the device's attestation
+   key and freshness of the nonce (`ATTESTATION.md`). This is not a
+   RIM function.
+5. Compares every reported PCR with the RIM under §5.3, failing
+   closed.
+6. Applies its own appraisal policy to the result.
+
+### 5.7 What a RIM does not encode
+
+- **Appraisal policy.** Restated from §5.1: what a mismatch triggers,
+  and which builds are acceptable, belongs to the operator.
+- **Workload state.** The RIM describes the platform; what runs on it
+  (AI models, application data, configuration beyond
+  `/etc/tactiq-release`) is outside its scope. Workload attestation is
+  an application-layer concern, restated from `THREAT_MODEL.md` § TCB.
+- **Device identity.** Which physical device holds which attestation
+  key is an endorsement of the device, not of the build.
+- **Runtime measurements.** No IMA reference while production images
+  ship with IMA off (§5.2). When IMA is enabled, the RIM gains a
+  reference for PCR 10 and the verifier replays the event log against
+  it; the form of that reference is specified then.
+
+### 5.8 Current state (v2.1.0-rc11)
+
+- Published: `pcr-reference-rock5a.json`, recomputable by a reader from
+  the five inputs named in the file.
+- Checked on hardware: with the rc11 loader, after a cold start, PCR 0,
+  4 and 6 read at the U-Boot console matched the values computed for
+  the SPL stage. The final values of all PCRs (after U-Boot proper,
+  with separators) have not been observed on hardware; they are read
+  only through a quote, which requires the attestation agent.
+- Not yet produced: the RIM itself and its schema. The RIM signer has
+  not yet been issued.
 
 ## 6. TPM class disclosure
 
@@ -890,8 +995,9 @@ The areas in §2–§6 have dependencies. In dependency order:
    sign FIT, and remove the key from the runner. First release tag
    under production keyring.
 4. **§5** — RIM generation in the release pipeline. Schema published.
-   First release with attached RIM. PCR matching semantics (exact /
-   allow-list / event-log-replay) implemented in the verifier.
+   First release with attached RIM, signed by a RIM signer issued from
+   the release Signing CA (§5.5). Fail-closed comparison (§5.3)
+   implemented in the reference verifier.
 5. **§2.4** — Revocation list publication mechanism, even if no
    revocations have occurred. Needed before OTP burn becomes safe.
 6. **§8.1 Part 2** — Recovery root generation and OTP layout decision.
@@ -1018,3 +1124,37 @@ key hash, not the per-product key hash. v0.1 stated the latter, which
 would have locked the platform to a single per-product key for life.
 v0.2 corrects this; §2.5 specifies the OTP → release root → per-product
 key validation chain.
+
+## Appendix B: Changes from v0.2
+
+**§5 rewritten after measured boot was checked on hardware.** The v0.2
+PCR table did not describe the boot chain: it had no PCR 1 (kernel
+command line, per slot), assigned PCR 5 to the U-Boot environment and
+PCR 9 to the devicetree and command line, and expected IMA in PCR 10,
+which production images of v2.1.0-rc11 do not have. §5.2 now states
+what is measured, with `mk-pcr-reference.py` as the normative model.
+
+**Matching semantics moved out of the RIM.** v0.2 put exact and
+allow-list semantics into the RIM. Following RFC 9334, v0.3 separates
+reference values (published by TactiQ) from appraisal policy (owned by
+the operator's verifier), and makes the comparison fail closed (§5.3).
+
+**Signature.** v0.2 relied on the per-build Sigstore signature alone.
+By §7.3 that signature does not survive adversary A3, and a RIM decides
+which platform state is accepted. v0.3 signs the RIM with a dedicated
+leaf of the release hierarchy and keeps Sigstore for transparency
+(§5.5).
+
+**Format.** v0.2 specified JSON-Lines with per-entry signatures and a
+block signature. A RIM describes one build and is replaced as a whole,
+so v0.3 specifies one canonical JSON file with one detached signature,
+mapped onto the CoRIM model (§5.5).
+
+**Derivation link and disclosures.** The RIM references the
+recomputable `pcr-reference-<machine>.json` by hash and states its
+assumptions (unmeasured SPL, default U-Boot environment, no initrd,
+OTP state) in the file (§5.4).
+
+**§2.3 current implementation.** Records that the FIT signing key of
+v2.1.0-rc11 is self-signed and held offline, not a CI secret certified
+by the release root.
