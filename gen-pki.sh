@@ -3,9 +3,21 @@
 # gen-pki.sh — generate signing hierarchies for TactiQ OS RAUC bundles.
 #
 #   ./gen-pki.sh dev    -> pki/dev/    unencrypted keys, CI-usable
-#   ./gen-pki.sh prod   -> pki/prod/   encrypted keys, OFFLINE MACHINE ONLY
 #   ./gen-pki.sh ima    -> pki/dev/    IMA appraisal leaf, existing hierarchy
 #   ./gen-pki.sh fit    -> pki/dev/    U-Boot FIT signer, self-signed
+#
+#   ./gen-pki.sh prod DIR          release RAUC hierarchy, encrypted keys
+#   ./gen-pki.sh ima-prod DIR      release IMA leaf from the release Signing CA
+#   ./gen-pki.sh fit-prod DIR      release U-Boot FIT signer, self-signed
+#   ./gen-pki.sh modsign-prod DIR  release kernel module signing key
+#
+# DIR is required for every release flavour and must lie outside this
+# repository: release keys live on encrypted removable media, attached only
+# while the machine is offline (pki/README.md). ima-prod, fit-prod and
+# modsign-prod write their keys without a passphrase, because mkimage,
+# evmctl and the kernel build read them unattended inside bitbake; their
+# protection is the encrypted medium. Only prod (the RAUC hierarchy, used
+# offline by rauc resign) keeps passphrase-encrypted keys.
 #
 # Hierarchy (both flavours):
 #   Root CA  ->  Signing CA  ->  Signer (leaf)
@@ -34,7 +46,7 @@ case "$FLAVOUR" in
     LEAF_DAYS=90
     ;;
   prod)
-    OUT="pki/prod"
+    OUT="${2:-}"
     ORG="TactiQ"
     ROOT_CN="TactiQ Release Root CA"
     ICA_CN="TactiQ Release Signing CA"
@@ -58,13 +70,55 @@ case "$FLAVOUR" in
     ENC=""
     LEAF_DAYS=730
     ;;
+  fit-prod)
+    OUT="${2:-}"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS Release FIT Signer"
+    ENC=""
+    LEAF_DAYS=3650         # U-Boot checks only the modulus, not the dates
+    ;;
+  ima-prod)
+    OUT="${2:-}"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS Release IMA Signer"
+    ENC=""
+    LEAF_DAYS=730
+    ;;
+  modsign-prod)
+    OUT="${2:-}"
+    ORG="TactiQ OS"
+    LEAF_CN="TactiQ OS release module signing key"
+    ENC=""
+    LEAF_DAYS=36500        # as the dev key and the kernel default genkey
+    ;;
   *)
-    echo "usage: $0 {dev|prod|ima|fit}" >&2
+    echo "usage: $0 {dev|ima|fit}" >&2
+    echo "       $0 {prod|ima-prod|fit-prod|modsign-prod} DIR" >&2
     exit 1
     ;;
 esac
 
-if [ "$FLAVOUR" = "fit" ]; then
+# Release flavours: DIR is mandatory and must be outside the repository.
+case "$FLAVOUR" in
+  prod|ima-prod|fit-prod|modsign-prod)
+    if [ -z "$OUT" ]; then
+      echo "ERROR: $FLAVOUR needs an output directory: $0 $FLAVOUR DIR" >&2
+      exit 1
+    fi
+    REPO="$(cd "$(dirname "$0")" && pwd -P)"
+    ABS="$(realpath -m "$OUT")"
+    case "$ABS/" in
+      "$REPO"/*)
+        echo "ERROR: $OUT is inside the repository ($REPO)." >&2
+        echo "       Release keys must live outside it, on encrypted media." >&2
+        exit 1
+        ;;
+    esac
+    OUT="$ABS"
+    ;;
+esac
+
+if [ "$FLAVOUR" = "fit" ] || [ "$FLAVOUR" = "fit-prod" ]; then
   # ------------------------------------------------------- U-Boot FIT signer
   # Self-signed on purpose. U-Boot builds no chain when it verifies a FIT:
   # fdt_add_pubkey extracts the RSA modulus from this certificate into the
@@ -77,8 +131,14 @@ if [ "$FLAVOUR" = "fit" ]; then
   #
   # Names are fixed by mkimage convention: <keyname>.key and <keyname>.crt,
   # with keyname = TACTIQ_FIT_KEY_NAME (default dev-fit).
-  KEYNAME="${TACTIQ_FIT_KEY_NAME:-dev-fit}"
-  if [ ! -d "$OUT" ]; then
+  if [ "$FLAVOUR" = "fit-prod" ]; then
+    KEYNAME="${TACTIQ_FIT_KEY_NAME:-release-fit}"
+  else
+    KEYNAME="${TACTIQ_FIT_KEY_NAME:-dev-fit}"
+  fi
+  if [ "$FLAVOUR" = "fit-prod" ]; then
+    mkdir -p "$OUT"
+  elif [ ! -d "$OUT" ]; then
     echo "ERROR: $OUT not found. Run '$0 dev' first." >&2
     exit 1
   fi
@@ -113,16 +173,72 @@ $OUT/$KEYNAME.crt   PUBLIC  -> modulus goes into the U-Boot control FDT
 $OUT/$KEYNAME.key   PRIVATE -> signs the kernel FIT
 
 ---- next -------------------------------------------------------
-Nothing changes until TACTIQ_FIT_KEY_DIR points here. Until then the
+Nothing changes until TACTIQ_FIT_KEY_DIR points here (and, for a key
+not named dev-fit, TACTIQ_FIT_KEY_NAME=$KEYNAME). Until then the
 U-Boot recipe warns and leaves u-boot.itb without a verification key.
 EOF
   exit 0
 fi
 
-if [ "$FLAVOUR" = "ima" ]; then
+if [ "$FLAVOUR" = "modsign-prod" ]; then
+  # --------------------------------------------- kernel module signing key
+  # Mirrors pki/dev/module-signing/module-signing-dev.pem, which matches the
+  # kernel's own default genkey: RSA-4096, self-signed, CA:FALSE,
+  # digitalSignature, subjectKeyIdentifier, 100 years. The kernel reads the
+  # private key and the certificate from one PEM (TACTIQ_MODULE_SIG_KEY),
+  # compiles the certificate into its builtin keyring and signs every module
+  # with the key. No chain: the kernel trusts the certificate itself.
+  mkdir -p "$OUT"
+  if [ -e "$OUT/module-signing.pem" ]; then
+    echo "ERROR: $OUT/module-signing.pem already exists. Refusing to reissue in place:" >&2
+    echo "       a new key does not match the certificate in a built kernel." >&2
+    exit 1
+  fi
+  cd "$OUT"
+
+  cat > module-signing.cnf <<'EOF'
+[req]
+distinguished_name = dn
+x509_extensions    = v3_modsign
+prompt             = no
+[dn]
+[v3_modsign]
+basicConstraints     = critical, CA:FALSE
+keyUsage             = digitalSignature
+subjectKeyIdentifier = hash
+EOF
+
+  echo "[1/1] Kernel module signing key (self-signed)"
+  openssl req -x509 -new -newkey rsa:4096 -nodes -sha256 \
+    -config module-signing.cnf \
+    -days "$LEAF_DAYS" \
+    -subj "/O=$ORG/CN=$LEAF_CN" \
+    -keyout module-signing.key.tmp \
+    -out module-signing.crt.tmp
+  cat module-signing.key.tmp module-signing.crt.tmp > module-signing.pem
+  rm -f module-signing.key.tmp module-signing.crt.tmp module-signing.cnf
+
+  echo
+  echo "---- verification ----------------------------------------------"
+  openssl x509 -in module-signing.pem -noout -subject -enddate \
+    -ext basicConstraints,keyUsage,subjectKeyIdentifier
+  openssl pkey -in module-signing.pem -noout -text | head -n 1
+
+  cat <<EOF
+
+---- files ------------------------------------------------------
+$OUT/module-signing.pem   PRIVATE key + certificate -> TACTIQ_MODULE_SIG_KEY
+
+---- next -------------------------------------------------------
+Set TACTIQ_MODULE_SIG_KEY to this file in the release build's local.conf.
+EOF
+  exit 0
+fi
+
+if [ "$FLAVOUR" = "ima" ] || [ "$FLAVOUR" = "ima-prod" ]; then
   for f in signing-ca.key.pem signing-ca.pem root-ca.pem; do
     if [ ! -e "$OUT/$f" ]; then
-      echo "ERROR: $OUT/$f not found. Run '$0 dev' first." >&2
+      echo "ERROR: $OUT/$f not found. Create the hierarchy first ($0 dev, or $0 prod DIR)." >&2
       exit 1
     fi
   done
@@ -139,7 +255,7 @@ elif [ -e "$OUT" ]; then
   exit 1
 fi
 
-if [ "$FLAVOUR" = "ima" ]; then
+if [ "$FLAVOUR" = "ima" ] || [ "$FLAVOUR" = "ima-prod" ]; then
   # ------------------------------------------------------------ IMA leaf
   # Issued from the existing dev Signing CA. No codeSigning EKU: the key
   # signs file hashes through evmctl, not code objects, and RAUC must not
@@ -196,9 +312,9 @@ $OUT/system-trusted-bundle.pem   PUBLIC  -> IMA_EVM_ROOT_CA, into the kernel
 $OUT/ima-signer.key.pem          PRIVATE -> IMA_EVM_PRIVKEY
 
 ---- next -------------------------------------------------------
-The variables above are set in conf/distro/tactiq.conf. Rebuilding
-tactiq-image-dev signs the rootfs with this key; every previously
-built image carries signatures from the old one.
+For dev the variables above are set in conf/distro/tactiq.conf; for a
+release build set IMA_EVM_KEY_DIR to this directory in local.conf.
+Every previously built image carries signatures from the old key.
 EOF
   exit 0
 fi

@@ -39,7 +39,10 @@ Generated on an offline host. Only the certificates
 The private keys never touch a networked machine and never
 enter CI. Release bundles are signed offline via `rauc resign`.
 
-Regenerate either tree with ./gen-pki.sh {dev|prod}.
+Regenerate the dev tree with ./gen-pki.sh dev. Release material is
+generated into a directory outside the repository, on encrypted media:
+./gen-pki.sh prod DIR first, then ima-prod, fit-prod and modsign-prod into
+the same DIR (see the header of gen-pki.sh).
 
 ## pki/dev/ima-* — IMA appraisal signing
 
