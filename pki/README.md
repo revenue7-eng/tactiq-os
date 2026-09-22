@@ -44,6 +44,12 @@ generated into a directory outside the repository, on encrypted media:
 ./gen-pki.sh prod DIR first, then ima-prod, fit-prod and modsign-prod into
 the same DIR (see the header of gen-pki.sh).
 
+The dev bundle signer leaf (signer.pem) is valid for 90 days. Renew it with
+./gen-pki.sh signer: it reissues signer.pem and signer.key.pem from the
+existing dev Signing CA and leaves root-ca.pem and signing-ca.pem untouched,
+so boards need no change. Do not recreate the dev tree for this: a new
+Root CA no longer matches the keyring on the boards.
+
 ## pki/dev/ima-* — IMA appraisal signing
 
 `ima-signer.key.pem` signs every file in the `tactiq-image-dev` rootfs at

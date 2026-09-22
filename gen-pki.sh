@@ -70,6 +70,13 @@ case "$FLAVOUR" in
     ENC=""
     LEAF_DAYS=730
     ;;
+  signer)
+    OUT="pki/dev"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS DEVELOPMENT Signer (CI) - NOT FOR PRODUCTION"
+    ENC=""                 # as dev: this key lives in CI
+    LEAF_DAYS=90           # as dev
+    ;;
   fit-prod)
     OUT="${2:-}"
     ORG="TactiQ"
@@ -92,7 +99,7 @@ case "$FLAVOUR" in
     LEAF_DAYS=36500        # as the dev key and the kernel default genkey
     ;;
   *)
-    echo "usage: $0 {dev|ima|fit}" >&2
+    echo "usage: $0 {dev|ima|fit|signer}" >&2
     echo "       $0 {prod|ima-prod|fit-prod|modsign-prod} DIR" >&2
     exit 1
     ;;
@@ -250,6 +257,14 @@ if [ "$FLAVOUR" = "ima" ] || [ "$FLAVOUR" = "ima-prod" ]; then
     fi
   done
   cd "$OUT"
+elif [ "$FLAVOUR" = "signer" ]; then
+  for f in signing-ca.key.pem signing-ca.pem root-ca.pem; do
+    if [ ! -e "$OUT/$f" ]; then
+      echo "ERROR: $OUT/$f not found. Create the hierarchy first ($0 dev)." >&2
+      exit 1
+    fi
+  done
+  cd "$OUT"
 elif [ -e "$OUT" ]; then
   echo "ERROR: $OUT already exists. Refusing to overwrite an existing hierarchy." >&2
   exit 1
@@ -315,6 +330,63 @@ $OUT/ima-signer.key.pem          PRIVATE -> IMA_EVM_PRIVKEY
 For dev the variables above are set in conf/distro/tactiq.conf; for a
 release build set IMA_EVM_KEY_DIR to this directory in local.conf.
 Every previously built image carries signatures from the old key.
+EOF
+  exit 0
+fi
+
+if [ "$FLAVOUR" = "signer" ]; then
+  # ---------------------------------------------------- RAUC signer leaf
+  # Reissues only the bundle signer, from the existing dev Signing CA.
+  # The device keyring holds the Root CA alone, so boards accept bundles
+  # signed by the new leaf with no change on the board. The old key and
+  # certificate are replaced in place (git history keeps them); the new
+  # ones are written under temporary names and moved into place only
+  # after the chain verifies.
+  cat > signer.cnf <<'EOF'
+[v3_signer]
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature
+extendedKeyUsage       = critical, codeSigning
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+EOF
+
+  echo "[1/1] RAUC bundle signer (leaf)"
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
+    $ENC -out signer.key.pem.new
+  openssl req -new -sha256 \
+    -key signer.key.pem.new \
+    -subj "/O=$ORG/CN=$LEAF_CN" \
+    -out signer.csr
+  openssl x509 -req -sha256 \
+    -in signer.csr \
+    -CA signing-ca.pem -CAkey signing-ca.key.pem -CAcreateserial \
+    -days "$LEAF_DAYS" \
+    -extfile signer.cnf -extensions v3_signer \
+    -out signer.pem.new
+  rm -f signer.csr
+
+  echo
+  echo "---- verification ----------------------------------------------"
+  openssl verify -CAfile root-ca.pem -untrusted signing-ca.pem signer.pem.new
+  mv signer.key.pem.new signer.key.pem
+  mv signer.pem.new signer.pem
+  echo
+  echo "leaf key usage:"
+  openssl x509 -in signer.pem -noout -text \
+    | grep -A1 -E 'X509v3 (Key Usage|Extended Key Usage)'
+  echo
+  openssl x509 -in signer.pem -noout -subject -issuer -enddate
+
+  cat <<EOF
+
+---- files ------------------------------------------------------
+$OUT/signer.pem       PUBLIC  -> bundle signer certificate
+$OUT/signer.key.pem   PRIVATE -> bundle signer key
+
+---- next -------------------------------------------------------
+Root CA and Signing CA are unchanged: nothing to do on the board.
+Bundles built before this carry the old leaf.
 EOF
   exit 0
 fi
