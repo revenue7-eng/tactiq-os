@@ -1,0 +1,398 @@
+# coverage-rock5a.v2.1.0-rc11.yaml: TactiQ OS threat-coverage manifest (PINNED)
+# ---------------------------------------------------------------------------
+# Generated instance for v2.1.0-rc11. Values verified against the release
+# artifact set of build 20260922161055, measurements on hardware, and the
+# repository tree at the tagged commit. Rows not re-examined for rc11 say so.
+#
+# Integration: place this file into the release artifact set BEFORE generating
+# SHA256SUMS. Its sha256 lands in SHA256SUMS -> covered by the existing cosign
+# workflow signature and Rekor entry. No separate signature required.
+#
+# Honesty rule: `covered` only with confirmed evidence. Where docs say PARTIAL
+# / do not confirm -> partial/planned, tagged INFERENCE/ASSUMPTION.
+#
+# rc11 is the first release built with release keys and the first with a
+# hardware root of measurement on the board. One row moved up (PER-0004), with
+# the measurement that justifies it. rc10 was produced by copying the rc7
+# instance, and several rc7 statements survived into it unchanged although the
+# tree had moved on; each one corrected here is marked "correction to rc10".
+# ---------------------------------------------------------------------------
+
+schema_version: "0.2"
+
+manifest:
+  os_release: "v2.1.0-rc11"
+  source_commit: "0b354fe8619a0a42e35b5c0bc2e130ff54983638"
+  distro_version: "2.1.0"          # unchanged since rc6
+  build_id: "20260922161055"
+  platform: "Radxa Rock 5A (RK3588S)"
+  toolchain: "Yocto wrynose (6.0), kernel 6.18.24+git"
+  sbom:
+    format: "SPDX-3.0.1"
+    artifact: "sbom-rock5a.spdx.json"
+  cve:
+    tool: "sbom-cve-check + improve_kernel_cve_report.py; posture by scripts/cve-posture.py"
+    artifact: "cve-rock5a.enriched.json"
+    vulns_snapshot: "linux-vulns @ ffaa1b4ec1ea8813a90a5a6f9f577958c848a33c (committed 2026-09-21, 16838 CVE files as counted by enrich-cve.sh)"
+    posture: >-
+      483 image-scoped, CVSS v3 base >=7.0, status Unpatched
+      (396 kernel, 87 userspace). rc10 was 267 (206 kernel, 61 userspace);
+      rc7 was 274; rc6 was 134; rc5 was 35. Honest disclosure, not a patched
+      count; drive-to-zero is a GA gate.
+    posture_definition: >-
+      Reproduce from the release alone, without a build tree, with
+      `scripts/cve-posture.py <release-dir>`. Take the installed package list
+      from manifest-rock5a.txt (294 packages); map each package to its recipe
+      using software_packageUrl on the install-purpose software_Package
+      entries in sbom-rock5a.spdx.json (the middle segment of
+      pkg:yocto/<layer>/<recipe>@<version>; a Rust package described as
+      pkg:cargo/<name>@<version> maps to the recipe of the same name); then
+      count issues in cve-rock5a.enriched.json whose status is "Unpatched"
+      and whose scorev3 is >= 7.0, keeping only recipes in that mapped set.
+      294 packages map to 80 recipes with no unmapped package; two of them,
+      agentgateway and tactiq-agent, map through pkg:cargo. 498 high-severity
+      Unpatched entries reduce to 483 after the scope filter. Excluded as not
+      installed: libxml2 (8), python3 (5), sqlite3 (2). Breakdown by detail:
+      version-in-range 458, no-version-ranges 22, version-maybe-in-range 3.
+      Package names and recipe names differ (libc6 -> glibc): comparing the
+      two lists by string equality silently drops most of the image and is
+      wrong. The raw sbom-cve-check.yocto.json gives a larger number over a
+      wider scope and must not be quoted as the posture.
+    method_change_since_rc10: >-
+      Two changes, both found while producing this release. First, the rc10
+      definition covered pkg:yocto URLs only; the two Rust packages added
+      since are described as pkg:cargo, so under the old wording they were
+      unmapped and their CVE records would have been left out without a
+      trace. The definition now names the cargo rule, and the script prints
+      which packages were mapped through it. Second, scripts/enrich-cve.sh
+      located improve_kernel_cve_report.py through a path on one build
+      machine, so enrichment failed on any other host; it now takes the path
+      from the sourced build environment, overridable with IMPROVE. Before
+      this release the posture definition existed only as prose; the script
+      that implements it is added with this tag.
+    regression_cause: >-
+      The kernel pin did not move (6.18.24+git in rc10 and rc11). The rise
+      from 267 to 483 has two causes that cannot be separated after the fact:
+      the kernel CNA snapshot is eight days newer, and the raw sbom-cve-check
+      pass ran with BB_NO_NETWORK against the build host's local CVE
+      database, whose date was not recorded. The second is a new gap and is
+      recorded as such: from the next release the date of the local database
+      belongs in this field next to the snapshot commit.
+    scope_limit_rust: >-
+      agentgateway and tactiq-agent enter the count as recipes. Whether the
+      Rust crates compiled into those two binaries are checked by
+      sbom-cve-check was not established for this release, and no RustSec
+      check was run. Their dependency trees are therefore outside the stated
+      posture.
+    triage: "SUPPLY_CHAIN.md"
+  attestation:
+    artifact_integrity: "SHA256SUMS"
+    signature: "SHA256SUMS.workflow.{pem,sig} (cosign keyless, workflow OIDC)"
+    rekor_lookup: >-
+      The Rekor entry covering this release is found by searching for the
+      sha256 of SHA256SUMS at https://search.sigstore.dev. No index is
+      recorded in this file: it is hashed into SHA256SUMS before the entry
+      exists, so a forward reference could not be verified. The index is
+      pinned in the release notes after signing, per the rc5 procedure.
+    slsa_provenance: "attest.yml: SLSA build-provenance over the source archive"
+    slsa_scope: >-
+      Correction to rc10. The rc10 instance still described the attested
+      archive as four of twenty-seven top-level entries, text carried from
+      rc7. At this commit attest.yml builds the archive with git archive over
+      the whole tracked tree at HEAD, so the archive for this tag contains
+      every tracked file, this manifest and the intentionally public pki/dev
+      keys included. The entry count of the archive produced for this tag is
+      not recorded here; it is measured from the attestation after the tag
+      is pushed.
+    boot_measurements: >-
+      pcr-reference-rock5a.json: expected SHA-256 PCR values of the boot
+      chain, computed by mk-pcr-reference.py from the published fitImage,
+      extlinux.conf, u-boot.itb, idbloader.img and tactiq-boot.env. All
+      inputs and the script are in the release set, so anyone holding the
+      release can recompute the reference. mk-release.sh refuses to build the
+      reference when the FIT and extlinux.conf on the boot partition of the
+      .wic and of the bundle differ, and refuses a release FIT signed with
+      the development key.
+  reproducibility:
+    status: "cross-host verified (rc7, 2026-08-05); not re-measured for rc11"
+    detail: >-
+      rootfs.tar.gz bit-identical across two independent cold builds on
+      different CPU-generation cloud machines, sha256
+      1516d31e68f84ca756c1080d492e5f06b00f90687ec30c3881a9353542d73a43.
+      That measurement describes the rc7 tree. It is carried here as the last
+      reproducibility result on record, not as a property of this build.
+    scope_limit: >-
+      What was demonstrated is determinism under fixed inputs, not fixation
+      of the inputs. integration/LAYERS.lock fixes every Yocto layer by
+      upstream revision and scripts/check-layers.sh --check verifies an
+      assembled set against it; no release has yet carried the output of that
+      run, so the layer set consumed by this build is asserted rather than
+      proven.
+  resolved_since_rc10:
+    - "hardware root of measurement: a discrete SPI TPM 2.0 is fitted and bound in the SPL devicetree (spi@fecb0000); SPL measures the images of u-boot.itb and resets the TPM at start, so a warm reboot no longer accumulates two boot chains (verified on hardware with the development loader: identical PCR values after cold start and after warm reboot; the TPM reset lives in SPL, and idbloader.img is byte-identical in the development and release loaders, sha256 61539588e385c95362fce1469b857bfa817efa90905d6a234efba98d9d20f75b)"
+    - "FIT kernel image signing: U-Boot verifies the kernel FIT against the key in its control devicetree; the release loader accepts only the release key (verified on hardware: `sha256,rsa2048:release-fit+ OK`)"
+    - "production signing PKI: release build keys (FIT, IMA, module signing, RAUC) come from a release hierarchy kept offline; the release build runs with BB_NO_NETWORK; the release bundle is signed by the Release Signer and verifies against the Release Root CA"
+    - "boot PCR reference published with the release and recomputable from release assets alone"
+    - "CVE posture reproducible by a script shipped in the tree, and enrichment no longer bound to one machine's paths"
+  deferred_in_rc11:
+    - "Root CA and Signing CA private keys sit on the same offline medium as the build-time keys; moving them to a separate container, so only the build-time files travel to the build, is pending"
+    - "SPL is the unmeasured root of the measurement chain and RK3588 OTP is not fused, so the BootROM does not authenticate SPL; a replaced SPL could extend the expected values. The reference describes the chain from SPL on, not from the BootROM"
+    - "the final PCR values of the release chain are computed, not observed: the SPL stage of the release loader was read on hardware, the complete chain was read on hardware for the development loader only, and the production image has no console by design. Confirmation on a production device awaits a signed quote"
+    - "no signed attestation envelope is produced by the device yet; a TPM quote through tactiq-agent is the next step"
+    - "IMA is off in the production image (tactiq-image does not apply ima-evm-rootfs, BOOT_CHAIN.md); IMA appraisal exists only in the development image"
+    - "the running rootfs is not verity-protected; dm-verity covers the update bundle only (EX-0005)"
+    - "kernel pin bump: still 6.18.24+git; the layer set offers one linux-yocto version, a bump means a new openembedded-core base, a full rebuild and a fresh CVE baseline. Carried forward with its reason"
+    - "date of the local CVE database used by sbom-cve-check not recorded (see cve.regression_cause); Rust crate dependencies not checked (see cve.scope_limit_rust)"
+    - "no RTC on the board: a device without a time source rejects a bundle whose signer certificate is newer than the device clock; use-bundle-signing-time and min-bundle-version not set. Not re-examined for rc11"
+  generated_utc: "2026-09-22T17:00:45Z"
+
+reference_frameworks:
+  - "SPARTA v3.2 (Aerospace Corp)"
+  - "ESA SPACE-SHIELD"
+  - "NIST 800-53 r5 (mapping indicative, verify via SPARTA Control Mapper)"
+
+# ---------------------------------------------------------------------------
+# coverage: covered | partial | planned
+# ---------------------------------------------------------------------------
+techniques:
+
+  - id: "IA-0001"
+    xref: ["T1195"]
+    name: "Supply Chain Compromise (Software + Hardware)"
+    tactic: "Initial Access"
+    coverage: partial
+    coverage_detail:
+      integrity_binding: covered
+      provenance_binding_binaries: planned
+    mechanism: ["SBOM (SPDX 3.0.1)", "cosign keyless over SHA256SUMS", "Rekor", "SLSA provenance over the source archive (whole tracked tree)"]
+    evidence:
+      - { type: "sbom", ref: "sbom-rock5a.spdx.json" }
+      - { type: "rekor_entry", ref: "found by sha256 of SHA256SUMS" }
+      - { type: "signature", ref: "SHA256SUMS.workflow.sig" }
+      - { type: "slsa_provenance", ref: "attest.yml" }
+    note: >-
+      Covered: artifacts cannot be altered after publication without
+      detection, the publisher is the release-sign workflow on this tag, and
+      the event is in a public append-only transparency log. NOT covered: any
+      binding between the published binaries and commit
+      0b354fe8619a0a42e35b5c0bc2e130ff54983638. The image is built on one
+      offline host and SLSA provenance covers the source archive, not the
+      binaries. A compromise of the build host would still yield artifacts
+      that pass every consumer-side check. Correction to rc10: the rc10 note
+      named the rc7 commit and the rc7 archive scope; both are replaced here,
+      and the archive now spans the whole tracked tree (manifest.attestation
+      .slsa_scope). Reproducibility was last measured on rc7 and is not
+      claimed for this build.
+    nist: ["SR-3", "SR-4", "SP 800-161", "SSDF"]
+    sentinel: { signal: "sbom_runtime_drift", meaning: "runtime component != SBOM" }
+    provenance: FACT
+
+  - id: "EX-0009"
+    name: "Exploit Code Flaws (OS / Known Vuln COTS-FOSS)"
+    tactic: "Execution"
+    coverage: partial
+    mechanism: ["SBOM", "sbom-cve-check", "kernel-CVE enrichment", "VEX (pending)"]
+    evidence:
+      - { type: "cve_scan", ref: "cve-rock5a.enriched.json" }
+      - { type: "tool", ref: "scripts/cve-posture.py" }
+      - { type: "triage", ref: "SUPPLY_CHAIN.md" }
+    note: >-
+      483 image-scoped high-severity Unpatched (396 kernel, 87 userspace), up
+      from 267 in rc10 on an unchanged kernel pin. The causes cannot be
+      separated (manifest.cve.regression_cause), and one of them, the
+      undated local database of the raw pass, is a gap in this release's own
+      procedure. The same three recipes fall outside scope as not installed as
+      in rc7 and rc10, reproduced here rather than carried over. The two Rust
+      packages are counted as recipes; their crate dependencies are not
+      (manifest.cve.scope_limit_rust). VEX still pending. CVE->0 is a GA gate,
+      not an rc.
+    nist: ["SR-3", "RA-5"]
+    sentinel: { signal: "known_vuln_component_present", meaning: "SBOM component with open CVE is active" }
+    provenance: FACT
+
+  - id: "EX-0010"
+    name: "Malicious Code (Wiper / Rootkit / Bootkit)"
+    tactic: "Execution"
+    coverage: partial
+    mechanism: ["SELinux enforcing", "LSM: lockdown,capability,selinux,integrity"]
+    evidence:
+      - { type: "measurement", ref: "measurements/selinux-enforcing-boot-prod-20260717.log" }
+      - { type: "doc", ref: "BOOT_CHAIN.md: IMA LOG (dev) / OFF (production)" }
+    note: >-
+      Correction to rc10, which listed "IMA in log mode" as a mechanism of
+      this row. The production image does not apply ima-evm-rootfs: it has no
+      IMA signatures and no policy on disk, so IMA contributes nothing here.
+      IMA appraisal in log mode exists in the development image only. The
+      SELinux side rests on the rc6 hardware measurement of the production
+      image (enforcing, zero AVC denials on the boot path to the login
+      prompt). It was not re-measured on the rc11 production image, which has
+      no console by design; the rc11 development image boots enforcing on the
+      same hardware. The bootkit side depends on measured boot, see EX-0004.
+    nist: ["SI-7", "SI-3"]
+    sentinel: { signal: "unexpected_ima_entry", meaning: "execution outside expected IMA set" }
+    provenance: FACT
+
+  - id: "EX-0004"
+    xref: ["T1542", "T2041"]
+    name: "Compromise Boot Memory / Pre-OS Boot"
+    tactic: "Execution / Defense Evasion"
+    coverage: partial
+    mechanism: ["measured boot into a discrete SPI TPM 2.0 (SPL: PCR 0, 4, 6; U-Boot: PCR 0, 1, 8, 9)", "FIT kernel image signed with the release key and verified by U-Boot", "published boot PCR reference", "RAUC A/B with U-Boot boot-count rollback"]
+    evidence:
+      - { type: "reference", ref: "pcr-reference-rock5a.json + inputs + mk-pcr-reference.py in the release set" }
+      - { type: "doc", ref: "BOOT_CHAIN.md" }
+      - { type: "measurement", ref: "release loader on hardware, cold start, U-Boot console: PCR 0, 4, 6 of the SPL stage equal the values derived from the reference events" }
+      - { type: "measurement", ref: "development loader on hardware: PCR 0, 4, 6, 8 equal its computed reference after cold start and after warm reboot" }
+      - { type: "measurement", ref: "release loader on hardware: `sha256,rsa2048:release-fit+ OK` on the release kernel FIT" }
+    note: >-
+      Rewritten for rc11; the rc10 text still described a board without a
+      TPM. The board now carries a discrete SPI TPM 2.0. SPL resets it and
+      measures the images of u-boot.itb (TF-A into PCR 0, U-Boot proper into
+      PCR 4, the control devicetree with the FIT key into PCR 6); U-Boot adds
+      the S-CRTM version and the kernel devicetree to PCR 0, the kernel
+      command line to PCR 1 (one value per slot), the kernel to PCR 8 and the
+      initrd marker to PCR 9. The expected values are computed from the
+      release artifacts and published with them. What was observed on
+      hardware: with the release loader, the SPL-stage values of PCR 0, 4
+      and 6 read from the U-Boot console after a cold start; with the
+      development loader, the complete chain after cold start and after warm
+      reboot. What was not: the final values of the release chain, including
+      PCR 1 and 8, since the production image has no console. Stays partial:
+      SPL is the unmeasured root and RK3588 OTP is not fused, so the BootROM
+      does not authenticate SPL, and no signed quote is produced yet
+      (DE-0007/DE-0008).
+    nist: ["SI-7", "SP 800-193"]
+    sentinel: { signal: "boot_measurement_mismatch", meaning: "boot-chain != expected" }
+    provenance: FACT
+
+  - id: "DE-0007/DE-0008"
+    name: "Evasion via Rootkit / Bootkit"
+    tactic: "Defense Evasion"
+    coverage: planned
+    mechanism: ["(remote attestation over measured boot: quote not yet produced)"]
+    evidence: []
+    note: >-
+      This row is defined by its sentinel, a divergence between a TPM quote
+      and an expected PCR profile. rc10 called the sentinel unreachable
+      because the board had no TPM. In rc11 both halves exist separately: the
+      TPM is fitted and measured (EX-0004), and the expected profile is
+      published with the release. What is missing is the quote itself, a
+      signed attestation envelope produced by the device through
+      tactiq-agent. Until one is produced and checked against the published
+      reference, the row stays planned; it moves by measurement, not by the
+      presence of the parts.
+    nist: ["SI-7", "CM-6"]
+    sentinel: { signal: "attestation_quote_divergence", meaning: "quote != PCR profile" }
+    provenance: INFERENCE
+
+  - id: "EX-0005"
+    name: "Exploit Hardware/Firmware Corruption"
+    tactic: "Execution"
+    coverage: partial
+    mechanism: ["dm-verity over the RAUC update bundle", "CMS signature verified before mount"]
+    evidence:
+      - { type: "policy", ref: "tactiq_rauc.te: dedicated fs type, mount/read confined to the update domain" }
+      - { type: "verification", ref: "bundle-rock5a.raucb signed by the Release Signer, verified against the Release Root CA with the image's system.conf (check-purpose=codesign-rauc); verity format; build 20260922161055" }
+    note: >-
+      dm-verity protects the update bundle, verified at every read, with the
+      CMS signature checked before mount. New in rc11: the bundle is signed by
+      the release hierarchy, not the development one. The running rootfs is
+      ext4 A/B and is NOT verity-protected, so rootfs_hash_mismatch is not
+      detectable at runtime and IPE is not in use. Do not read this row as
+      rootfs integrity. The published boot reference covers the chain up to
+      the kernel and does not cover the root filesystem.
+    nist: ["SI-7"]
+    sentinel: { signal: "rootfs_hash_mismatch", meaning: "rootfs hash != expected" }
+    provenance: INFERENCE
+
+  - id: "PER-0004/PER-0002"
+    xref: ["T2014"]
+    name: "Replace Cryptographic Keys / Backdoor Installation"
+    tactic: "Persistence"
+    coverage: partial
+    mechanism: ["release signing hierarchy (Release Root CA -> Release Signing CA -> leaf keys), kept offline", "TACTIQ_KEYRING build gate", "U-Boot FIT key check", "mk-release.sh refusal of a development-signed FIT"]
+    evidence:
+      - { type: "verification", ref: "bundle chain: TactiQ Release Signer -> Release Signing CA -> Release Root CA" }
+      - { type: "measurement", ref: "release loader on hardware: kernel FIT accepted with release-fit" }
+      - { type: "measurement", ref: "release kernel on hardware: release module signing key, Release Root CA, Release Signing CA and Release IMA Signer loaded" }
+    note: >-
+      Moved up from planned, the one upward move in this release, on the
+      measurements listed as evidence. Through rc10 every signature in the
+      image came from the pki/dev hierarchy, whose private keys are published
+      on purpose. rc11 is built with TACTIQ_KEYRING=prod from a release
+      hierarchy whose keys never enter the repository: the build runs with
+      the network disabled and the keys on an encrypted medium attached only
+      for the build, and the bundle is re-signed with the release key after a
+      temporary development signature. Why not covered: the Root CA and
+      Signing CA private keys are on the same medium as the build-time keys,
+      there is no hardware token for any key, and without fused OTP there is
+      no secure boot, so a party able to write the eMMC can replace the
+      loader and with it the key the loader trusts.
+    nist: ["IA-5", "SC-12"]
+    sentinel: { signal: "key_or_signer_change", meaning: "signer/key != pinned" }
+    provenance: FACT
+
+  - id: "DE-0010"
+    xref: ["T1070"]
+    name: "Overflow Audit Log / Indicator Removal"
+    tactic: "Defense Evasion"
+    coverage: planned
+    mechanism: ["(append-only audit log: not confirmed in the tree)"]
+    evidence: []
+    note: "mechanism not confirmed in the tree. Implement OR drop the claim. Unchanged from rc5 through rc10."
+    nist: ["AU-9"]
+    sentinel: { signal: "audit_chain_break", meaning: "break in the append-only chain" }
+    provenance: ASSUMPTION
+
+  - id: "T1611/T2017"
+    name: "Escape to Host / Partition-Hypervisor Compromise"
+    tactic: "Privilege Escalation / Lateral Movement"
+    coverage: planned
+    mechanism: ["(isolation layer: outside rc11)"]
+    evidence: []
+    nist: ["SC-39", "SC-7"]
+    sentinel: { signal: "cross_partition_access", meaning: "access across isolation boundary, off-policy" }
+    provenance: ASSUMPTION
+
+  - id: "EX-0012.13"
+    xref: ["DE-0003.12"]
+    name: "Poison AI/ML Training Data"
+    tactic: "Execution / Defense Evasion"
+    coverage: planned
+    mechanism: ["(air-gap topology + training-data provenance: ahead)"]
+    evidence: []
+    note: >-
+      Implementation ahead. Boundary worth stating in a file that claims
+      reproducibility: what this release demonstrates is reproducibility of
+      the OS image. Model weights are not covered by any measurement here.
+    nist: ["SI-7", "SR-3"]
+    sentinel: { signal: "training_data_provenance_gap", meaning: "training set without verifiable provenance" }
+    provenance: ASSUMPTION
+
+# ---------------------------------------------------------------------------
+# rc11 summary (honest):
+#   covered : none. IA-0001 is split, and only its integrity_binding half is
+#             covered.
+#   partial : IA-0001 (integrity binding only), EX-0009 (honest CVE),
+#             EX-0010 (SELinux enforcing; no IMA in production),
+#             EX-0004 (measured boot with a published reference; SPL root
+#             unauthenticated, final release values not observed),
+#             EX-0005 (bundle-level dm-verity only),
+#             PER-0004/PER-0002 (release hierarchy, offline, no hardware token)
+#   planned : DE-0007/DE-0008, DE-0010, T1611/T2017, EX-0012.13
+#
+# Change vs rc10. Up: PER-0004/PER-0002, on hardware evidence. Substantially
+# stronger without a status change: EX-0004 (TPM fitted, measured boot,
+# FIT signing, published reference). Corrected: IA-0001, EX-0010, EX-0004 and
+# the manifest block carried rc7 statements the tree no longer supports.
+# Down in number, not in method: the CVE posture, 267 -> 483, causes not
+# separable, one of them a gap in this release's procedure.
+#
+# OPEN ISSUE: rekor_index self-reference:
+# This file's sha256 goes into SHA256SUMS, which is what cosign signs and what
+# produces the Rekor entry. The Rekor index of THIS release therefore cannot
+# be known when the file is written. The index is pinned in the release notes
+# after signing, per the rc5 procedure.
+#
+# BEFORE mk-release.sh RUNS: replace generated_utc with the actual generation
+# time.
