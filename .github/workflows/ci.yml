@@ -174,3 +174,20 @@ jobs:
                          pki/dev/signer.pem \
             || { echo "::error::pki/dev/signer.pem does not chain to root-ca.pem"; exit 1; }
           echo "rauc keyring posture: OK"
+
+  repro-report-tests:
+    name: Reproducibility report tests
+    runs-on: ubuntu-24.04
+    # scripts/mk-repro-report.py writes a published document that is read as
+    # evidence. Its failure modes are quiet ones: a comparison over nothing,
+    # two absent hashes matching each other, a file dropped because its SBOM
+    # entry carried no SHA-256. Nothing else in CI executes the Python under
+    # scripts/, so this job is what turns red when they come back.
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run generator tests
+        run: python3 tests/repro/test_mk_repro_report.py
