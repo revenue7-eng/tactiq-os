@@ -21,7 +21,7 @@ BUILD_DIR="${2:-$HOME/build-rock5a-wrynose}"
 VULNS_DIR="${3:-$HOME/vulns-master}"
 KVER="6.18.24"
 
-IMPROVE="$HOME/tactiq-build-wrynose/layers/openembedded-core/scripts/contrib/improve_kernel_cve_report.py"
+IMPROVE="${IMPROVE:-$(dirname "$(command -v oe-pkgdata-util)")/contrib/improve_kernel_cve_report.py}"
 RAW="$REL_DIR/cve-rock5a.sbom-cve-check.yocto.json"
 # Kernel compiled-sources come from the release SBOM when present: the aggregate
 # image SPDX carries them, so enrichment stays reproducible by anyone holding the
