@@ -105,43 +105,76 @@ def load_file_hashes(path):
         die(f"cannot read SBOM {path}: {exc}")
 
     out = {}
+    unchecked = []  # files the SBOM lists but gives no SHA-256 for
 
     # --- SPDX 3.x (Yocto wrynose and later): JSON-LD graph ---------------
     graph = doc.get("@graph")
     if isinstance(graph, list):
+        seen = 0
         for el in graph:
             if not isinstance(el, dict):
                 continue
             if el.get("type") != "software_File":
                 continue
+            seen += 1
             name = el.get("name")
             if not name:
+                unchecked.append(f"<unnamed {el.get('spdxId', 'element')}>")
                 continue
+            found, digest = False, None
             for h in el.get("verifiedUsing", []) or []:
                 if not isinstance(h, dict):
                     continue
                 algo = str(h.get("algorithm", "")).lower()
                 if algo in ("sha256", "sha_256"):
-                    out[normalise(name)] = h.get("hashValue", "").lower()
+                    found, digest = True, h.get("hashValue")
                     break
-        return out, "SPDX 3.x"
+            if not found:
+                unchecked.append(normalise(name))
+                continue
+            out[normalise(name)] = checked_sha256(path, name, digest)
+        if not seen:
+            die(f"{path}: SPDX 3.x graph has no software_File elements")
+        return out, "SPDX 3.x", unchecked
 
     # --- SPDX 2.x: flat files[] list -------------------------------------
     files = doc.get("files")
     if isinstance(files, list):
+        if not files:
+            die(f"{path}: SPDX 2.x files[] list is empty")
         for f in files:
             if not isinstance(f, dict):
                 continue
             name = f.get("fileName")
             if not name:
+                unchecked.append(f"<unnamed {f.get('SPDXID', 'file')}>")
                 continue
+            found, digest = False, None
             for c in f.get("checksums", []) or []:
+                if not isinstance(c, dict):
+                    continue
                 if str(c.get("algorithm", "")).upper() == "SHA256":
-                    out[normalise(name)] = str(c.get("checksumValue", "")).lower()
+                    found, digest = True, c.get("checksumValue")
                     break
-        return out, "SPDX 2.x"
+            if not found:
+                unchecked.append(normalise(name))
+                continue
+            out[normalise(name)] = checked_sha256(path, name, digest)
+        return out, "SPDX 2.x", unchecked
 
     die(f"{path}: neither an SPDX 3.x @graph nor an SPDX 2.x files[] list")
+
+
+def checked_sha256(source, name, value):
+    """Return a lower-case SHA-256 hex digest, or stop.
+
+    A missing, empty or malformed value must never reach the comparison:
+    two empty strings compare equal and would be counted as identical.
+    """
+    v = "" if value is None else str(value).strip().lower()
+    if len(v) != 64 or any(ch not in "0123456789abcdef" for ch in v):
+        die(f"{source}: {name}: SHA-256 value missing or malformed: {value!r}")
+    return v
 
 
 def normalise(name):
@@ -171,7 +204,7 @@ def parse_kv(pairs, flag):
         if "=" not in p:
             die(f"{flag} expects name=sha256, got: {p}")
         k, v = p.split("=", 1)
-        out[k.strip()] = v.strip().lower()
+        out[k.strip()] = checked_sha256(flag, k.strip(), v)
     return out
 
 
@@ -223,8 +256,8 @@ def main():
                 code=2,
             )
 
-    a, flav_a = load_file_hashes(args.sbom_a)
-    b, flav_b = load_file_hashes(args.sbom_b)
+    a, flav_a, unc_a = load_file_hashes(args.sbom_a)
+    b, flav_b, unc_b = load_file_hashes(args.sbom_b)
 
     if flav_a != flav_b:
         print(
@@ -250,6 +283,11 @@ def main():
     only_b = [k for k in only_b if not is_image_container(k)]
     common = [k for k in common if not is_image_container(k)]
 
+    # An empty comparison proves nothing; without this guard it would be
+    # reported as ACHIEVED, because no file differs when no file is compared.
+    if not common:
+        die("no file with a SHA-256 is present in both SBOMs; nothing was compared")
+
     identical = [k for k in common if a[k] == b[k]]
     differing = [k for k in common if a[k] != b[k]]
 
@@ -265,9 +303,11 @@ def main():
     art_names = sorted(set(art_a) | set(art_b))
 
     # Content reproducibility is achieved iff nothing outside the image-level
-    # and known-volatile buckets differs, and neither build has files the
-    # other lacks.
-    achieved = not buckets["content"] and not only_a and not only_b
+    # and known-volatile buckets differs, neither build has files the other
+    # lacks, and every file either SBOM lists carries a SHA-256 (a file with
+    # no hash was not compared, so it cannot count as reproduced).
+    achieved = (not buckets["content"] and not only_a and not only_b
+                and not unc_a and not unc_b)
 
     os.makedirs(args.outdir, exist_ok=True)
 
@@ -288,7 +328,11 @@ def main():
             fh.write(f"only-B   {k} - {b[k]}\n")
         for k in img_containers:
             fh.write(f"img-cont {k} (excluded: image-level artifact, not rootfs content)\n")
-        if not differing and not only_a and not only_b:
+        for k in unc_a:
+            fh.write(f"no-sha-A {k} (listed in SBOM A without SHA-256, not compared)\n")
+        for k in unc_b:
+            fh.write(f"no-sha-B {k} (listed in SBOM B without SHA-256, not compared)\n")
+        if not differing and not only_a and not only_b and not unc_a and not unc_b:
             fh.write("# no differences\n")
 
     # ---------------- markdown report -------------------------------------
@@ -308,6 +352,7 @@ def main():
     w(f"| SBOM | `{os.path.basename(args.sbom_a)}` | `{os.path.basename(args.sbom_b)}` |")
     w(f"| SBOM format | {flav_a} | {flav_b} |")
     w(f"| Files with SHA-256 | {len(a)} | {len(b)} |")
+    w(f"| Files listed without SHA-256 | {len(unc_a)} | {len(unc_b)} |")
     w("")
 
     if art_names:
@@ -359,6 +404,11 @@ def main():
         if only_a or only_b:
             w(f"{len(only_a)} file(s) exist only in build A, "
               f"{len(only_b)} only in build B.")
+            w("")
+        if unc_a or unc_b:
+            w(f"{len(unc_a)} file(s) in SBOM A and {len(unc_b)} in SBOM B are "
+              "listed without a SHA-256 and were not compared "
+              f"(see `{os.path.basename(diff_path)}`).")
             w("")
 
     if buckets["image"]:
