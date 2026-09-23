@@ -191,3 +191,35 @@ jobs:
           python-version: '3.12'
       - name: Run generator tests
         run: python3 tests/repro/test_mk_repro_report.py
+
+  rim-tests:
+    name: RIM generator tests
+    runs-on: ubuntu-24.04
+    # scripts/mk-rim.py writes the Reference Integrity Manifest a verifier
+    # matches devices against. A fingerprint over the wrong bytes, a digest in
+    # the wrong case, or a FIT other than the one the PCR reference was computed
+    # from all still yield a RIM that reads as complete. The test builds its
+    # inputs synthetically, cross-checks every fingerprint with openssl,
+    # validates the output against schemas/rim-v1.json and exercises each gate.
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install jsonschema
+        run: python3 -m pip install 'jsonschema==4.26.0'
+      - name: Run RIM generator tests
+        run: python3 tests/rim/test_mk_rim.py
+      - name: RIM leaf posture (pki/dev)
+        run: |
+          # mk-release.sh signs the RIM only with a leaf whose sole EKU is the
+          # RIM OID, and a verifier trusts it through the Signing CA.
+          openssl verify -CAfile pki/dev/root-ca.pem \
+                         -untrusted pki/dev/signing-ca.pem \
+                         pki/dev/rim-signer.pem \
+            || { echo "::error::pki/dev/rim-signer.pem does not chain to root-ca.pem"; exit 1; }
+          openssl x509 -in pki/dev/rim-signer.pem -noout -ext extendedKeyUsage \
+            | grep -qx '[[:space:]]*2.25.209288284150790823604684143005475146259' \
+            || { echo "::error::pki/dev/rim-signer.pem: EKU is not the RIM OID alone"; exit 1; }
+          echo "RIM leaf posture: OK"

@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/revenue7-eng/tactiq-os/schemas/rim-v1.json",
+  "title": "TactiQ OS Reference Integrity Manifest, format tactiq-rim/1",
+  "description": "Written by scripts/mk-rim.py, signed by scripts/mk-release.sh (CMS, detached, DER, no signed attributes, sha256). Serialized canonically: UTF-8, sorted keys, no insignificant whitespace. identity is the selection key; witness takes no part in selection. All digests are lower-case hex and are compared as bytes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "identity",
+    "witness",
+    "pcr",
+    "keys",
+    "disclosures"
+  ],
+  "properties": {
+    "format": {
+      "const": "tactiq-rim/1"
+    },
+    "identity": {
+      "description": "/etc/tactiq-release of the image, as shipped in the release set.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "sha256",
+        "fields"
+      ],
+      "properties": {
+        "file": {
+          "$ref": "#/$defs/basename"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "fields": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "witness": {
+      "description": "Facts about the build that take no part in selection (build_label, tag_commit).",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "pcr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bank",
+        "selection",
+        "values",
+        "reference"
+      ],
+      "properties": {
+        "bank": {
+          "const": "sha256"
+        },
+        "selection": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 23
+          }
+        },
+        "values": {
+          "description": "For every selected PCR its set of reference values (5.3): a list, or for PCR 1 one value per boot slot.",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^(1?[0-9]|2[0-3])$"
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/sha256"
+                }
+              },
+              {
+                "type": "object",
+                "minProperties": 1,
+                "propertyNames": {
+                  "pattern": "^[A-Za-z0-9_]+$"
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/sha256"
+                }
+              }
+            ]
+          }
+        },
+        "reference": {
+          "$ref": "#/$defs/file_digest"
+        },
+        "cmdline": {
+          "description": "Kernel command line of each slot in clear, so PCR 1 is recomputed rather than trusted (5.4).",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9_]+$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "keys": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fit",
+        "rauc_keyring"
+      ],
+      "properties": {
+        "fit": {
+          "description": "FIT verification keys in the control device tree inside u-boot.itb.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "file",
+            "signed_with",
+            "keys"
+          ],
+          "properties": {
+            "file": {
+              "$ref": "#/$defs/basename"
+            },
+            "signed_with": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "keys": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "node",
+                  "key_name_hint",
+                  "algo",
+                  "required",
+                  "bits",
+                  "spki_sha256"
+                ],
+                "properties": {
+                  "node": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "key_name_hint": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "algo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "required": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "bits": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "spki_sha256": {
+                    "$ref": "#/$defs/sha256"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "rauc_keyring": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "certificates"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/"
+            },
+            "certificates": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/certificate"
+              }
+            }
+          }
+        },
+        "ima": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "certificates"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/"
+            },
+            "certificates": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/certificate"
+              }
+            }
+          },
+          "description": "IMA keyring certificate of the rootfs, where one is installed."
+        },
+        "release_root": {
+          "$ref": "#/$defs/certificate",
+          "description": "The release root certificate the RIM signature chains to."
+        }
+      }
+    },
+    "chain_root": {
+      "description": "idbloader.img: SPL is the unmeasured root of the measurement chain; checked against the boot medium, not the TPM.",
+      "$ref": "#/$defs/file_digest"
+    },
+    "disclosures": {
+      "description": "Assumptions under which the values hold (RELEASE_INTEGRITY.md 5.4): those of the PCR reference, then platform facts the build cannot know.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "basename": {
+      "type": "string",
+      "pattern": "^[^/]+$"
+    },
+    "file_digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "sha256"
+      ],
+      "properties": {
+        "file": {
+          "$ref": "#/$defs/basename"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "certificate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject",
+        "spki_sha256"
+      ],
+      "properties": {
+        "subject": {
+          "type": "string"
+        },
+        "spki_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}
