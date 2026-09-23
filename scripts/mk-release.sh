@@ -41,6 +41,10 @@
 #   ALLOW_IDENTITY_MISMATCH=1  let the release proceed when /etc/tactiq-release
 #                        in the image does not name the tag. For mechanics
 #                        testing ONLY; the output is NOT a valid release.
+#   ALLOW_KNOWN_ISSUES_GAP=1  let the release proceed when an issue the
+#                        previous release left open is missing from this
+#                        manifest. For mechanics testing ONLY; the output
+#                        is NOT a valid release.
 #
 # Produces in <output-dir>:
 #   image-${BOARD}.wic.gz, image-${BOARD}.wic.bmap   (compressed image + bmap;
@@ -179,6 +183,23 @@ case "$COV_GENERATED" in
 esac
 
 echo "==> release identity: ${T} matches manifest.build_id  (generated ${COV_GENERATED})"
+
+# ---------------------------------------------------------------------------
+# Known-issue continuity gate.
+#
+# Every issue the previous release left open must reappear in this release's
+# manifest, still deferred or marked resolved, under the same id. v2.1.0-rc11
+# dropped one silently: the lists were carried by copying and nothing
+# compared one release with the next (docs/release-notes/v2.1.0-rc11-errata.md).
+# ---------------------------------------------------------------------------
+echo "==> known-issue continuity"
+if ! python3 "${SCRIPT_DIR}/check-known-issues.py" "${SCRIPT_DIR}/.." "$BOARD" "$TAG"; then
+    if [[ "${ALLOW_KNOWN_ISSUES_GAP:-0}" == 1 ]]; then
+        echo "::warning:: proceeding (ALLOW_KNOWN_ISSUES_GAP=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+    else
+        exit 1
+    fi
+fi
 
 # ---------------------------------------------------------------------------
 # Image identity gate.

@@ -7,6 +7,14 @@
 #   + a manifest block (build_id, hashes, rekor_index, SBOM, CVE posture)
 #   + per-technique: coverage status, evidence, note, provenance.
 #
+# Known issues (schema 0.3): the manifest block carries known_issues with
+# `previous` (the release this one follows) and two lists, `deferred` and
+# `resolved`, of {id, text}. The id carries an issue from release to release;
+# the text may be reworded. Every id the previous release left deferred must
+# reappear here, deferred or resolved, or mk-release.sh refuses the release
+# (scripts/check-known-issues.py, which documents the format). Start a new
+# manifest's list from the previous manifest's, not from memory.
+#
 # Honesty rule: in an instance, `covered` only with confirmed evidence.
 # This template carries NO status — it asserts no coverage, only the map.
 #
@@ -18,7 +26,7 @@
 # named dm-verity over the rootfs and IPE, neither of which is in use.
 # ---------------------------------------------------------------------------
 
-schema_version: "0.2"
+schema_version: "0.3"
 
 reference_frameworks:
   - "SPARTA v3.2 (Aerospace Corp)"
