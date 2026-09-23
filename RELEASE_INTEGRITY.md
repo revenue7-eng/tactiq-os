@@ -594,8 +594,15 @@ with a gap in it.
   environment from an earlier release with a different `boot_ab`
   changes PCR 1); no initrd; OTP fuse state of the reference platform.
   The first three are carried over from `pcr-reference-<machine>.json`;
-  platform facts the build cannot know, such as the OTP state, come
-  from `security/rim-disclosures-<machine>.txt` in the tagged tree.
+  platform facts the build cannot know, such as the OTP state and that
+  a warm reboot does not reset the TPM, come from
+  `security/rim-disclosures-<machine>.txt` in the tagged tree, as does
+  the statement that the root filesystem is outside the measured chain.
+- **Selection matches the agent.** The PCR set in the RIM is the set the
+  attestation agent of the same image quotes. `mk-release.sh` reads
+  `TACTIQ_PCR_SPEC` from the agent's systemd unit in the release rootfs,
+  and `mk-rim.py` refuses a selection that differs from it in bank or
+  indices: an envelope over another set could never match the values.
 
 The FIT verification key is self-signed (§2.3, current
 implementation): U-Boot checks a raw public key and builds no

@@ -440,7 +440,9 @@ echo "    + coverage-${BOARD}.${TAG}.yaml"
 # rim-<board>.json from files already in the set (identity, PCR reference,
 # FIT, u-boot.itb, idbloader), the RAUC keyring and, where installed, the IMA
 # certificate read from the release rootfs, the release root certificate, and
-# the platform disclosures of security/rim-disclosures-<board>.txt. It is signed with the RIM leaf
+# the platform disclosures of security/rim-disclosures-<board>.txt, and the
+# attestation agent's unit from the release rootfs, whose PCR set must equal the
+# RIM selection. It is signed with the RIM leaf
 # of the release Signing CA (gen-pki.sh rim / rim-prod): CMS, detached, DER,
 # no signed attributes, sha256; the container carries the leaf and the Signing
 # CA. Both files land in SHA256SUMS below and ride the keyless release
@@ -460,6 +462,7 @@ echo "==> RIM"
 RIM_EKU="2.25.209288284150790823604684143005475146259"
 RIM_KEYRING_PATH="/etc/rauc/root-ca.pem"   # recipes-core/rauc/files/system.conf [keyring] path
 RIM_IMA_PATH="/etc/keys/x509_ima.der"      # kernel default CONFIG_IMA_X509_PATH
+RIM_AGENT_PATH="/usr/lib/systemd/system/tactiq-agent.service"  # usrmerge: systemd_system_unitdir
 RIM_DISCLOSURES="$(cd "${SCRIPT_DIR}/.." && pwd)/security/rim-disclosures-${BOARD}.txt"
 rootfs_dump() {  # rootfs_dump <path-in-rootfs> <dest>: 0 dumped, 2 absent, 1 present but unreadable; follows symlinks
     local p="$1" dst="$2" st dest n
@@ -514,10 +517,10 @@ if [[ -n "${RIM_SIGNER_CERT:-}" ]]; then
         || { echo "::error:: RIM_SIGNER_CERT is set but RIM_ROOT_CA is not, or is unreadable." >&2; exit 1; }
 fi
 [[ -n "${RIM_ROOT_CA:-}" ]] && rim_args+=( --release-root "$RIM_ROOT_CA" )
-RIM_KEYRING="$(mktemp)"; RIM_IMA="$(mktemp)"
+RIM_KEYRING="$(mktemp)"; RIM_IMA="$(mktemp)"; RIM_AGENT="$(mktemp)"
 rim_rc=0; rootfs_dump "$RIM_KEYRING_PATH" "$RIM_KEYRING" || rim_rc=$?
 if [[ "$rim_rc" != 0 ]]; then
-    rm -f -- "$RIM_KEYRING" "$RIM_IMA"
+    rm -f -- "$RIM_KEYRING" "$RIM_IMA" "$RIM_AGENT"
     echo "::error:: ${RIM_KEYRING_PATH} is $([[ $rim_rc == 2 ]] && echo absent || echo unreadable) in ${PREFIX}.ext4" >&2
     exit 1
 fi
@@ -526,8 +529,16 @@ case "$rim_rc" in
     0)  rim_args+=( --ima-cert "$RIM_IMA" --ima-cert-path "$RIM_IMA_PATH" )
         echo "    IMA certificate: ${RIM_IMA_PATH}  (sha256 $(sha256sum "$RIM_IMA" | cut -c1-16)...)" ;;
     2)  echo "    IMA certificate: none installed at ${RIM_IMA_PATH}" ;;
-    *)  rm -f -- "$RIM_KEYRING" "$RIM_IMA"
+    *)  rm -f -- "$RIM_KEYRING" "$RIM_IMA" "$RIM_AGENT"
         echo "::error:: ${RIM_IMA_PATH} exists in ${PREFIX}.ext4 but does not resolve to a readable file" >&2
+        exit 1 ;;
+esac
+rim_rc=0; rootfs_dump "$RIM_AGENT_PATH" "$RIM_AGENT" || rim_rc=$?
+case "$rim_rc" in
+    0)  rim_args+=( --agent-unit "$RIM_AGENT" ) ;;
+    2)  rim_no_rim "no attestation agent unit at ${RIM_AGENT_PATH}: the PCR set a device quotes is unchecked" ;;
+    *)  rm -f -- "$RIM_KEYRING" "$RIM_IMA" "$RIM_AGENT"
+        echo "::error:: ${RIM_AGENT_PATH} exists in ${PREFIX}.ext4 but does not resolve to a readable file" >&2
         exit 1 ;;
 esac
 python3 "${SCRIPT_DIR}/mk-rim.py" \
@@ -537,8 +548,8 @@ python3 "${SCRIPT_DIR}/mk-rim.py" \
     --idbloader "idbloader-${BOARD}.img" \
     --rauc-keyring "$RIM_KEYRING" --rauc-keyring-path "$RIM_KEYRING_PATH" \
     "${rim_witness[@]}" "${rim_args[@]}" \
-    -o "rim-${BOARD}.json" || { rm -f -- "$RIM_KEYRING" "$RIM_IMA"; exit 1; }
-rm -f -- "$RIM_KEYRING" "$RIM_IMA"
+    -o "rim-${BOARD}.json" || { rm -f -- "$RIM_KEYRING" "$RIM_IMA" "$RIM_AGENT"; exit 1; }
+rm -f -- "$RIM_KEYRING" "$RIM_IMA" "$RIM_AGENT"
 echo "    + rim-${BOARD}.json"
 if [[ -n "${RIM_SIGNER_CERT:-}" ]]; then
     for v in RIM_SIGNER_KEY RIM_SIGNING_CA; do

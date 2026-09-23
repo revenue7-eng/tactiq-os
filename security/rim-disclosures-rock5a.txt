@@ -1,2 +1,4 @@
 # Platform facts the build cannot know; mk-release.sh carries them into rim-<board>.json (RELEASE_INTEGRITY.md 5.4).
 OTP fuse state of the reference platform: not established; this RIM makes no claim about it. Whether SPL is authenticated on a device depends on that device's OTP state (5.2, 2.5), which the verifier establishes separately.
+The TPM of the reference platform is not reset by a warm reboot: after one, every PCR holds the boot chain extended twice and no envelope from that boot can match these values. They hold for a boot that follows a power cycle.
+The root filesystem is outside the measured chain. These values cover the boot chain up to the kernel, its device tree and its command line; nothing on the root filesystem, the release identity file included, is attested by them.

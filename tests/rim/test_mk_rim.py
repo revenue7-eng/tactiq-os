@@ -342,6 +342,33 @@ def main():
             check("selection 0-7,9: carries exactly those",
                   v["selection"] == [0, 1, 2, 3, 4, 5, 6, 7, 9] and sorted(v["values"], key=int) == [str(i) for i in v["selection"]])
 
+        # --- the agent quotes the selected set --------------------------------
+        def unit(name, *lines):
+            path = root / name
+            path.write_text("[Service]\nExecStart=/opt/tactiq/bin/tactiq-agent run\n"
+                            "Environment=TPM2TOOLS_TCTI=device:/dev/tpmrm0\n" + "".join(l + "\n" for l in lines))
+            return str(path)
+        u09 = unit("agent-0-9.service", "Environment=TACTIQ_PCR_SPEC=sha256:0,1,2,3,4,5,6,7,8,9")
+        r, out = c.run("--agent-unit", u09, out="rim-agent.json")
+        check("agent unit 0-9: exits 0", r.returncode == 0, r.stderr.strip())
+        if r.returncode == 0:
+            r0, out0 = c.run(out="rim-noagent.json")
+            check("agent unit: gate only, the RIM is byte-identical without it",
+                  r0.returncode == 0 and out.read_bytes() == out0.read_bytes())
+        r, _ = c.run("--agent-unit", unit("agent-last-wins.service",
+                                          "Environment=TACTIQ_PCR_SPEC=sha256:0,1,2,3,4,5,6,7",
+                                          "Environment=TACTIQ_PCR_SPEC=sha256:0,1,2,3,4,5,6,7,8,9"),
+                     out="rim-agent-last.json")
+        check("agent unit: the last assignment wins, as in systemd", r.returncode == 0, r.stderr.strip())
+        r, _ = c.run("--agent-unit", unit("agent-quoted.service",
+                                          'Environment="A=1" "TACTIQ_PCR_SPEC=sha256:0,1,2,3,4,5,6,7,8,9"'),
+                     out="rim-agent-quoted.json")
+        check("agent unit: quoted multi-assignment line", r.returncode == 0, r.stderr.strip())
+        r, _ = c.run("--selection", "0-7,9", "--agent-unit",
+                     unit("agent-079.service", "Environment=TACTIQ_PCR_SPEC=sha256:0,1,2,3,4,5,6,7,9"),
+                     out="rim-agent-079.json")
+        check("agent unit: matches a narrower selection", r.returncode == 0, r.stderr.strip())
+
         # --- keyring with two certificates ----------------------------------
         c2 = build(root, good_keys, keyring=root / "keyring2.pem")
         r, out = c2.run()
@@ -419,6 +446,24 @@ def main():
         expect_fail("disclosures file with no lines",
                     build(root, good_keys, keyring=kr), "no disclosure lines",
                     "--disclosures", str(root / "disclosures-empty.txt"))
+        expect_fail("agent unit without TACTIQ_PCR_SPEC",
+                    build(root, good_keys, keyring=kr), "no TACTIQ_PCR_SPEC",
+                    "--agent-unit", unit("agent-none.service"))
+        expect_fail("agent quotes the default 0-7, RIM selects 0-9",
+                    build(root, good_keys, keyring=kr), "could match",
+                    "--agent-unit", unit("agent-0-7.service", "Environment=TACTIQ_PCR_SPEC=sha256:0,1,2,3,4,5,6,7"))
+        expect_fail("agent quotes another bank",
+                    build(root, good_keys, keyring=kr), "could match",
+                    "--agent-unit", unit("agent-sha1.service", "Environment=TACTIQ_PCR_SPEC=sha1:0,1,2,3,4,5,6,7,8,9"))
+        expect_fail("agent spec with a range the agent cannot parse",
+                    build(root, good_keys, keyring=kr), "bad PCR index",
+                    "--agent-unit", unit("agent-range.service", "Environment=TACTIQ_PCR_SPEC=sha256:0-9"))
+        expect_fail("agent spec with decreasing indices",
+                    build(root, good_keys, keyring=kr), "indices must increase",
+                    "--agent-unit", unit("agent-order.service", "Environment=TACTIQ_PCR_SPEC=sha256:0,1,2,3,4,5,6,7,9,8"))
+        expect_fail("agent spec over two banks",
+                    build(root, good_keys, keyring=kr), "over one bank",
+                    "--agent-unit", unit("agent-banks.service", "Environment=TACTIQ_PCR_SPEC=sha256:0,1+sha1:0"))
         del fit_other
 
     check("no __pycache__ left in scripts/",
