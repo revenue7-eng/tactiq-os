@@ -45,6 +45,18 @@
 #                        previous release left open is missing from this
 #                        manifest. For mechanics testing ONLY; the output
 #                        is NOT a valid release.
+#   ALLOW_BUILD_ID_MISMATCH=1  let the release proceed when manifest.build_id
+#                        of the tagged coverage manifest does not name the
+#                        build in the deploy tree. For mechanics testing
+#                        ONLY; the output is NOT a valid release.
+#   RIM_SIGNER_CERT, RIM_SIGNER_KEY, RIM_SIGNING_CA, RIM_ROOT_CA
+#                        the RIM leaf, its key, the Signing CA and the release
+#                        root; see the RIM block below. Without them the RIM
+#                        is left unsigned.
+#   ALLOW_NO_RIM=1       let IMAGE=tactiq-image go without a signed RIM or
+#                        without security/rim-disclosures-<board>.txt. For
+#                        mechanics testing ONLY; the output is NOT a valid
+#                        release.
 #
 # Produces in <output-dir>:
 #   image-${BOARD}.wic.gz, image-${BOARD}.wic.bmap   (compressed image + bmap;
@@ -182,7 +194,11 @@ case "$COV_GENERATED" in
         exit 1 ;;
 esac
 
-echo "==> release identity: ${T} matches manifest.build_id  (generated ${COV_GENERATED})"
+if [[ "$COV_BUILD_ID" == "$T" ]]; then
+    echo "==> release identity: ${T} matches manifest.build_id  (generated ${COV_GENERATED})"
+else
+    echo "==> release identity: ${T} does NOT match manifest.build_id ${COV_BUILD_ID}; check overridden (generated ${COV_GENERATED})"
+fi
 
 # ---------------------------------------------------------------------------
 # Known-issue continuity gate.
