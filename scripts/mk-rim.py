@@ -27,7 +27,9 @@ The RIM is the statement a verifier matches a device against:
 Consistency gates: the FIT image and u-boot.itb must be byte-identical to the
 files the PCR reference was computed from; every key-name-hint that signs the
 default FIT configuration must be present in the control device tree and
-marked required; the SPL version string must match U-Boot.
+marked required; the SPL version string must match U-Boot; with --agent-unit,
+the PCR set the attestation agent quotes (TACTIQ_PCR_SPEC in its systemd unit,
+last assignment wins) must equal the selection in the same bank.
 
 This script only writes JSON. Signing (CMS, detached, DER, -noattr, sha256)
 is done by mk-release.sh. Output is canonical (RELEASE_INTEGRITY.md 5.5):
@@ -41,6 +43,7 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 
@@ -257,6 +260,42 @@ def read_disclosures(path):
     return out
 
 
+def agent_pcr_spec(path):
+    # systemd semantics: Environment= lines accumulate, a later assignment of
+    # the same variable wins; values may be quoted
+    spec = None
+    for ln in read(path).decode().splitlines():
+        ln = ln.strip()
+        if not ln.startswith("Environment="):
+            continue
+        try:
+            toks = shlex.split(ln[len("Environment="):])
+        except ValueError as e:
+            die(f"{base(path)}: unparseable Environment= line: {e}")
+        for t in toks:
+            k, sep, v = t.partition("=")
+            if sep and k == "TACTIQ_PCR_SPEC":
+                spec = v
+    return spec
+
+
+def parse_agent_spec(spec, where):
+    # the agent's own grammar (tactiq-attest prover, tpm::parse_pcr_spec):
+    # "<alg>:<i>,<j>,..." with strictly increasing indices, no ranges, one bank
+    alg, sep, lst = spec.partition(":")
+    if not sep or "+" in spec:
+        die(f"{where}: TACTIQ_PCR_SPEC {spec!r} is not <alg>:<pcr,...> over one bank")
+    idx = []
+    for tok in lst.split(","):
+        tok = tok.strip()
+        if not tok.isdigit() or int(tok) > 23:
+            die(f"{where}: TACTIQ_PCR_SPEC {spec!r}: bad PCR index {tok!r}")
+        if idx and int(tok) <= idx[-1]:
+            die(f"{where}: TACTIQ_PCR_SPEC {spec!r}: indices must increase")
+        idx.append(int(tok))
+    return alg.strip(), idx
+
+
 def check_input(ref, ref_path, path):
     want = ref.get("inputs", {}).get(base(path))
     if want is None:
@@ -283,6 +322,8 @@ def main():
                     "the build cannot know, e.g. OTP state); # comments ignored")
     ap.add_argument("--idbloader", help="idbloader-<board>.img; recorded as chain_root")
     ap.add_argument("--selection", default="0-9", help="PCR indices, e.g. 0-9 or 0-7,9")
+    ap.add_argument("--agent-unit", help="the attestation agent's systemd unit from the release "
+                    "rootfs; its TACTIQ_PCR_SPEC must equal the selection")
     ap.add_argument("--witness", action="append", default=[], metavar="key=value")
     ap.add_argument("-o", "--output", required=True)
     a = ap.parse_args()
@@ -299,6 +340,16 @@ def main():
     missing = [i for i in selection if str(i) not in ref["pcr"]]
     if missing:
         die(f"selection {selection}: {base(a.pcr_reference)} has no value for PCR {missing}")
+    if a.agent_unit:
+        spec = agent_pcr_spec(a.agent_unit)
+        if spec is None:
+            die(f"{base(a.agent_unit)}: no TACTIQ_PCR_SPEC; the agent would quote its built-in "
+                f"default, which this RIM cannot see")
+        alg, idx = parse_agent_spec(spec, base(a.agent_unit))
+        if alg != ref["bank"] or idx != selection:
+            die(f"{base(a.agent_unit)}: the agent quotes {spec}, the RIM selects "
+                f"{ref['bank']}:{','.join(map(str, selection))}; no envelope from the device "
+                f"could match these values")
     values = {}
     for i in selection:
         v = norm_hex(ref["pcr"][str(i)], f"PCR {i}")

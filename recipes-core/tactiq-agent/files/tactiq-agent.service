@@ -38,6 +38,13 @@ RuntimeDirectoryMode=0700
 # is granted below only so a diagnostic run can use it.
 Environment=TPM2TOOLS_TCTI=device:/dev/tpmrm0
 
+# The PCR set the agent quotes. It must equal the selection of the release RIM
+# (scripts/mk-rim.py --selection), or no envelope from the device can match the
+# published reference values; mk-release.sh reads this line back out of the
+# release rootfs and refuses a RIM whose selection differs. The agent's
+# built-in default is 0-7, which leaves out the kernel measurements.
+Environment=TACTIQ_PCR_SPEC=sha256:0,1,2,3,4,5,6,7,8,9
+
 # Resource limits
 MemoryMax=128M
 CPUQuota=25%
