@@ -19,6 +19,9 @@ LICENSE = "MIT"
 inherit core-image
 inherit selinux-image
 
+# /etc/tactiq-release is written by the image, not by a package: see the class.
+inherit tactiq-release-identity
+
 # ---------------------------------------------------------------------------
 # Base: core-image-minimal (no kernel-modules group!)
 # ---------------------------------------------------------------------------
@@ -77,7 +80,6 @@ IMAGE_INSTALL:append = " \
 IMAGE_INSTALL:append = " \
     tactiq-agent \
     tactiq-config \
-    tactiq-release \
     agentgateway \
     agentgateway-config \
 "
