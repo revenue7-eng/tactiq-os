@@ -37,7 +37,7 @@ for edge AI deployments on Rockchip RK3588 and compatible ARM64 targets.
 - `recipes-core/images/tactiq-image.bb` — production image profile, read-only rootfs, root account locked, no SSH server, `create-spdx` inherited (SPDX 3.0 SBOM per build). This is the canonical recipe for tagged release builds.
 - `recipes-core/images/tactiq-image-dev.bb` — development profile retaining `debug-tweaks` and `ssh-server-openssh` for bring-up. Never signed as a release artifact; CI guards enforce that the production recipe stays hardened.
 - `recipes-core/rauc/` — RAUC A/B update config. The development keyring comes from `pki/dev/`, shared with kernel module signing, so that a bundle the image accepts can be built from the tag alone; production builds override `RAUC_KEYRING_FILE` from CI secrets.
-- `recipes-core/tactiq-{agent,config,release}` — attestation agent (ECDSA P-256 signing inside the TPM, runs as the unprivileged `tactiq-agent` user with full systemd sandboxing), runtime config, build info embedded at `/etc/tactiq-release`.
+- `recipes-core/tactiq-{agent,config}`: attestation agent (ECDSA P-256 signing inside the TPM, runs as the unprivileged `tactiq-agent` user with full systemd sandboxing) and runtime config. Build identity at `/etc/tactiq-release` is written by the image (`classes-recipe/tactiq-release-identity.bbclass`).
 - `recipes-kernel/linux/` — linux-yocto pinned to 6.18 for board targets (QEMU/generic reference targets remain on 6.6 LTS), security fragment enabling IMA, SELinux, kernel lockdown groundwork. A sibling bbappend mirrors the fragment for `linux-rockchip` (used by the rock5b machine).
 
 ## Architectural principles

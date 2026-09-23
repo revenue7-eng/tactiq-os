@@ -37,8 +37,9 @@ nodes through the `tactiq_tpm_access` interface macro (defined in
 read/write on `/dev/tpm0` and `/dev/tpmrm0` and append on
 `tpm_log_t`-labelled kernel TPM event log files), vault domain
 (`tactiq_vault_t`) for sealed key material, and the build-identity
-manifest at `/etc/tactiq-release` written by the `tactiq-release`
-recipe. These are the parts the agent uses.
+manifest at `/etc/tactiq-release` written into every image by
+`classes-recipe/tactiq-release-identity.bbclass`. These are the parts the
+agent uses.
 
 This document describes what the agent is being built toward. It
 deliberately separates design from implementation status so that a
@@ -89,8 +90,8 @@ within the attestation framework. Created at first boot, persists
 across reboots, sealed to the TPM (see Key management).
 
 **Build identity.** The contents of `/etc/tactiq-release` as written
-by the `tactiq-release` recipe — version, codename, UTC build date,
-machine target, meta-layer git short hash, image basename. This is
+into the image by `tactiq-release-identity.bbclass`: version, codename,
+machine target, release tag, image basename and release date. This is
 what allows a verifier to correlate a running attestation with a
 specific build artifact whose provenance is independently verifiable
 through the supply-chain machinery described in `SUPPLY_CHAIN.md`.
@@ -288,7 +289,9 @@ the work progresses.
   ties into.
 - `recipes-core/tactiq-agent/` — agent recipe; builds the agent from
   `tactiq-attest`.
-- `recipes-core/tactiq-release/` — build identity manifest writer.
+- `classes-recipe/tactiq-release-identity.bbclass` and
+  `recipes-core/tactiq-release/release-rev.inc`: build identity manifest
+  writer and the release tag and date it records.
 - `recipes-kernel/linux/linux-yocto/tactiq-security.cfg` — kernel
   TPM and IMA configuration.
 - `meta-tactiq-selinux` — SELinux policy modules including

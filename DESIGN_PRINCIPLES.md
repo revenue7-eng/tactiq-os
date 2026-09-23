@@ -168,8 +168,8 @@ machinery enabled at PCR 10; a systemd unit (`tactiq-agent.service`);
 a SELinux domain (`tactiq_agent_t`) with permissions to access TPM
 device nodes through the `tactiq_tpm_access` macro; a vault domain
 (`tactiq_vault_t`) for sealed key material; build identity written
-into `/etc/tactiq-release` on every image by the `tactiq-release`
-recipe, so that a remote verifier can correlate a running system with
+into `/etc/tactiq-release` on every image by the image itself
+(`tactiq-release-identity.bbclass`), so that a remote verifier can correlate a running system with
 a specific build artifact. The binary at
 `/opt/tactiq/bin/tactiq-agent` is the real agent, built from
 `tactiq-attest` at the revision pinned in

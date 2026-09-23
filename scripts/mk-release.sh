@@ -38,6 +38,9 @@
 #                        builds).
 #   ALLOW_DEV_FIT_KEY=1  let IMAGE=tactiq-image ship a FIT signed with the
 #                        development key. The output is NOT a valid release.
+#   ALLOW_IDENTITY_MISMATCH=1  let the release proceed when /etc/tactiq-release
+#                        in the image does not name the tag. For mechanics
+#                        testing ONLY; the output is NOT a valid release.
 #
 # Produces in <output-dir>:
 #   image-${BOARD}.wic.gz, image-${BOARD}.wic.bmap   (compressed image + bmap;
@@ -54,6 +57,7 @@
 #   sbom-${BOARD}.spdx.json                          (SPDX 3.0.1)
 #   cve-${BOARD}.sbom-cve-check.yocto.json
 #   bundle-${BOARD}.raucb                            (required for IMAGE=tactiq-image)
+#   tactiq-release-${BOARD}                          (/etc/tactiq-release from the release rootfs)
 #   SHA256SUMS
 
 set -euo pipefail
@@ -101,7 +105,7 @@ T="$(ts_of "$WIC_LINK")"
 [[ -n "$T" ]] || { echo "::error:: cannot read build timestamp from ${WIC_LINK}" >&2; exit 1; }
 echo "==> release build: ${T}  (IMAGE=${IMAGE}, MACHINE=${MACHINE})"
 
-ROOTFS_ARTIFACTS=( wic.gz wic.bmap bootext4 spdx.json sbom-cve-check.yocto.json manifest testdata.json )
+ROOTFS_ARTIFACTS=( wic.gz wic.bmap bootext4 ext4 spdx.json sbom-cve-check.yocto.json manifest testdata.json )
 mixed=0
 for ext in "${ROOTFS_ARTIFACTS[@]}"; do
     got="$(ts_of "${DEPLOY}/${PREFIX}.${ext}")"
@@ -176,6 +180,59 @@ esac
 
 echo "==> release identity: ${T} matches manifest.build_id  (generated ${COV_GENERATED})"
 
+# ---------------------------------------------------------------------------
+# Image identity gate.
+#
+# The gate above ties the deploy tree to the tag. This one ties the image to
+# it. /etc/tactiq-release, read from the release rootfs itself, is what the
+# device reports as its identity and the key by which a verifier selects the
+# reference for this build. v2.1.0-rc11 shipped reporting v2.1.0-rc9 because
+# release-rev.inc was set by hand and nothing read it back
+# (docs/release-notes/v2.1.0-rc11-errata.md).
+# ---------------------------------------------------------------------------
+echo "==> image identity"
+command -v debugfs >/dev/null 2>&1 || { echo "::error:: debugfs not on PATH (e2fsprogs), needed to read the release rootfs." >&2; exit 1; }
+ROOTFS_EXT4="${DEPLOY}/${PREFIX}.ext4"
+IDENTITY="$(debugfs -R "cat /etc/tactiq-release" "$ROOTFS_EXT4" 2>/dev/null || true)"
+[[ -n "$IDENTITY" ]] || { echo "::error:: /etc/tactiq-release not found in ${PREFIX}.ext4" >&2; exit 1; }
+
+id_field() {  # echo the value of one KEY=value line of /etc/tactiq-release
+    printf '%s\n' "$IDENTITY" | sed -n "s/^$1=//p" | head -n 1
+}
+ID_VERSION="$(id_field TACTIQ_OS_VERSION)"
+ID_MACHINE="$(id_field TACTIQ_BUILD_MACHINE)"
+ID_REV="$(id_field TACTIQ_META_TACTIQ_GIT)"
+ID_IMAGE="$(id_field TACTIQ_IMAGE_NAME)"
+ID_DATE="$(id_field TACTIQ_RELEASE_DATE)"
+
+id_bad=0
+id_expect() {  # id_expect <field> <found> <expected>
+    if [[ "$2" != "$3" ]]; then
+        echo "::error:: /etc/tactiq-release ${1}='${2}', expected '${3}'" >&2
+        id_bad=1
+    fi
+}
+id_expect TACTIQ_META_TACTIQ_GIT "$ID_REV"     "$TAG"
+id_expect TACTIQ_BUILD_MACHINE   "$ID_MACHINE" "$MACHINE"
+id_expect TACTIQ_IMAGE_NAME      "$ID_IMAGE"   "$IMAGE"
+if [[ -z "$ID_VERSION" || ( "$TAG" != "v${ID_VERSION}" && "$TAG" != "v${ID_VERSION}-"* ) ]]; then
+    echo "::error:: /etc/tactiq-release TACTIQ_OS_VERSION='${ID_VERSION}' does not match tag ${TAG}" >&2
+    id_bad=1
+fi
+if [[ ! "$ID_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+    echo "::error:: /etc/tactiq-release TACTIQ_RELEASE_DATE='${ID_DATE}' is not a date (YYYY-MM-DD)" >&2
+    id_bad=1
+fi
+if [[ "$id_bad" == 1 ]]; then
+    echo "::error:: the image does not identify itself as ${TAG}; set recipes-core/tactiq-release/release-rev.inc in the tagged commit." >&2
+    if [[ "${ALLOW_IDENTITY_MISMATCH:-0}" == 1 ]]; then
+        echo "::warning:: proceeding (ALLOW_IDENTITY_MISMATCH=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+    else
+        exit 1
+    fi
+fi
+echo "==> image identity: ${ID_REV} ${ID_IMAGE} ${ID_MACHINE} ${ID_DATE}"
+
 mkdir -p "$OUT"; cd "$OUT"
 
 copy() {  # copy <src-relative-to-deploy> <dest>  — resolves symlinks, asserts existence
@@ -195,6 +252,8 @@ copy "${PREFIX}.manifest"                   "manifest-${BOARD}.txt"
 copy "${PREFIX}.testdata.json"              "testdata-${BOARD}.json"
 copy "${PREFIX}.spdx.json"                  "sbom-${BOARD}.spdx.json"
 copy "${PREFIX}.sbom-cve-check.yocto.json"  "cve-${BOARD}.sbom-cve-check.yocto.json"
+printf '%s\n' "$IDENTITY" > "tactiq-release-${BOARD}"
+echo "    + tactiq-release-${BOARD}  (/etc/tactiq-release from ${PREFIX}.ext4)"
 
 # RAUC OTA bundle. Taken through the per-machine "latest" link and held to the
 # same build as the image: a bundle from another build would install bytes the

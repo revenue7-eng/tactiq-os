@@ -143,9 +143,14 @@ the verification step is not running on every merge.
 
 ## Build provenance
 
-- `image-buildinfo` class inherited; `tactiq-release` package writes
-  `/etc/tactiq-release` into every image — version, codename, UTC build
-  date, machine target, meta-layer git short hash, image basename.
+- The image writes `/etc/tactiq-release`
+  (`classes-recipe/tactiq-release-identity.bbclass`): version, codename,
+  machine target, release tag, image basename and release date.
+  `scripts/mk-release.sh` reads it back from the release rootfs and refuses
+  a release whose image does not name the tag. Until v2.1.0-rc11 the file
+  came from a package recipe that also inherited `image-buildinfo`; that
+  class runs its hook at rootfs time and never ran in a package, so no
+  `/etc/buildinfo` was produced (checked on the v2.1.0-rc11 rootfs).
 - For `v2.1.0-rc3`, a SLSA build-provenance attestation was generated
   on GitHub Actions at the time of tagging, using
   `actions/attest-build-provenance@v2` with GitHub's OIDC identity and
