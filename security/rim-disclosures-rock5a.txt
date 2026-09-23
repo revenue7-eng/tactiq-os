@@ -1,0 +1,2 @@
+# Platform facts the build cannot know; mk-release.sh carries them into rim-<board>.json (RELEASE_INTEGRITY.md 5.4).
+OTP fuse state of the reference platform: not established; this RIM makes no claim about it. Whether SPL is authenticated on a device depends on that device's OTP state (5.2, 2.5), which the verifier establishes separately.

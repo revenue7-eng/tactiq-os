@@ -558,10 +558,17 @@ with a gap in it.
 ### 5.4 What a RIM contains
 
 - **Format identifier and version.**
-- **Build identity.** Release tag; machine; build label; the **full**
-  commit SHA of the meta-layer (not short); the image basename. These
-  are the fields of `/etc/tactiq-release`, so a verifier can select the
-  RIM from what the device reports.
+- **Build identity.** The fields of `/etc/tactiq-release` as the image
+  carries them (release tag, version, codename, machine, image name,
+  release date), with the SHA-256 of that file. These are the selection
+  key: a verifier selects the RIM from what the device reports, so only
+  what the device can report selects.
+- **Witness.** The build label and the **full** commit SHA of the
+  release tag in the meta-layer (not short). They record which build
+  and which source produced the RIM and take no part in selection: the
+  device does not report them. That the build came from that commit is
+  enforced when the release is assembled (the build-identity gates of
+  `mk-release.sh`), not by the RIM.
 - **Reference values.** The hash bank and, for every PCR of §5.2, its
   set of values, with PCR 1 keyed by slot. The kernel command line of
   each slot, in clear, so that PCR 1 can be checked by recomputation
@@ -570,15 +577,25 @@ with a gap in it.
   `pcr-reference-<machine>.json` of the same release, the file from
   which the reference values are taken. Anyone can recompute that file
   from the five published inputs and compare it byte for byte.
-- **Key endorsements.** SHA-256 fingerprints of: the FIT verification
-  key compiled into U-Boot; the root certificate of the RAUC keyring
-  the image installs; the IMA certificate, where one is installed; and
-  the release root certificate.
+- **Key endorsements.** For each key, the SHA-256 of its DER-encoded
+  SubjectPublicKeyInfo: the FIT verification key compiled into U-Boot,
+  read from the control devicetree inside the published `u-boot.itb`;
+  the certificates of the RAUC keyring the image installs; the IMA
+  certificate, where one is installed; and the release root
+  certificate. Keys in the rootfs are read from the image itself, with
+  symbolic links resolved.
+- **Root of the measurement chain.** The SHA-256 of the published
+  `idbloader` image. SPL is unmeasured (§5.2), so no PCR covers it; a
+  verifier checks this value against the loader on the boot medium,
+  not against the TPM.
 - **Disclosures.** The assumptions under which the values hold, stated
   in the file rather than left to the reader: SPL is unmeasured; the
   default U-Boot environment of this release is in use (a saved
   environment from an earlier release with a different `boot_ab`
   changes PCR 1); no initrd; OTP fuse state of the reference platform.
+  The first three are carried over from `pcr-reference-<machine>.json`;
+  platform facts the build cannot know, such as the OTP state, come
+  from `security/rim-disclosures-<machine>.txt` in the tagged tree.
 
 The FIT verification key is self-signed (§2.3, current
 implementation): U-Boot checks a raw public key and builds no
@@ -601,11 +618,25 @@ differs from that of the bundle signer, so RAUC does not accept it as
 a bundle signer, and the bundle signer does not sign RIMs. The signing
 key is held and used offline like the other release keys. A verifier
 checks the signature against the release root it has pinned, offline,
-with no dependency on any online service. The exact signature
-container (CMS detached signature or a raw signature over the file) is
-fixed with the first RIM-producing release and recorded here; the
-requirement is that it verifies with the release root certificate alone
-and in a browser.
+with no dependency on any online service.
+
+The signature container is `rim-<machine>.json.p7s`: CMS SignedData
+(RFC 5652), detached, DER-encoded, SHA-256, with no signed attributes,
+so the signature is computed over the RIM bytes themselves. The
+container carries the RIM signer certificate and the Signing CA
+certificate; the verifier supplies only the release root. The
+requirement stands that it verifies with the release root certificate
+alone and in a browser.
+
+The RIM signer's only extended key usage is the RIM purpose OID
+`2.25.209288284150790823604684143005475146259` (critical). OpenSSL's
+`cms -verify` rejects such a leaf under its default purpose check, so a
+verifier using OpenSSL passes `-purpose any` and checks the extended
+key usage of the signer itself:
+
+    openssl cms -verify -binary -inform DER -in rim-<machine>.json.p7s \
+        -content rim-<machine>.json -CAfile <release-root.pem> \
+        -purpose any -out /dev/null
 
 The RIM is also listed in `SHA256SUMS`, so the per-build Sigstore
 signature covers it transitively. That signature gives transparency

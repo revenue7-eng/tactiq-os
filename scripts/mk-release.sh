@@ -419,6 +419,132 @@ echo "==> coverage manifest"
 # COV_SRC resolved and validated by the release-identity gate above.
 cp -L "$COV_SRC" "coverage-${BOARD}.${TAG}.yaml"
 echo "    + coverage-${BOARD}.${TAG}.yaml"
+# ---------------------------------------------------------------------------
+# Reference Integrity Manifest (RELEASE_INTEGRITY.md 5). mk-rim.py builds
+# rim-<board>.json from files already in the set (identity, PCR reference,
+# FIT, u-boot.itb, idbloader), the RAUC keyring and, where installed, the IMA
+# certificate read from the release rootfs, the release root certificate, and
+# the platform disclosures of security/rim-disclosures-<board>.txt. It is signed with the RIM leaf
+# of the release Signing CA (gen-pki.sh rim / rim-prod): CMS, detached, DER,
+# no signed attributes, sha256; the container carries the leaf and the Signing
+# CA. Both files land in SHA256SUMS below and ride the keyless release
+# signature on top.
+#   RIM_SIGNER_CERT, RIM_SIGNER_KEY  the RIM leaf and its key (the key may be
+#                                    encrypted: openssl asks for the password)
+#   RIM_SIGNING_CA                   the Signing CA certificate
+#   RIM_ROOT_CA                      the release root certificate; required
+#                                    with RIM_SIGNER_CERT, fingerprinted into
+#                                    the RIM and used to verify the signature
+#   ALLOW_NO_RIM=1                   let IMAGE=tactiq-image go without a signed
+#                                    RIM or its disclosures file (mechanics only)
+# Witness fields (no part in RIM selection): build_label is the pinned build
+# timestamp ${T}; tag_commit is the full SHA of refs/tags/${TAG} in this tree.
+# ---------------------------------------------------------------------------
+echo "==> RIM"
+RIM_EKU="2.25.209288284150790823604684143005475146259"
+RIM_KEYRING_PATH="/etc/rauc/root-ca.pem"   # recipes-core/rauc/files/system.conf [keyring] path
+RIM_IMA_PATH="/etc/keys/x509_ima.der"      # kernel default CONFIG_IMA_X509_PATH
+RIM_DISCLOSURES="$(cd "${SCRIPT_DIR}/.." && pwd)/security/rim-disclosures-${BOARD}.txt"
+rootfs_dump() {  # rootfs_dump <path-in-rootfs> <dest>: 0 dumped, 2 absent, 1 present but unreadable; follows symlinks
+    local p="$1" dst="$2" st dest n
+    for n in 1 2 3 4 5 6 7 8; do
+        st="$(DEBUGFS_PAGER=__none__ debugfs -R "stat ${p}" "$ROOTFS_EXT4" 2>/dev/null || true)"
+        if [[ -z "$st" ]]; then
+            [[ "$p" == "$1" ]] && return 2 || return 1   # a dangling link is unreadable, not absent
+        fi
+        if [[ "$st" =~ Type:\ regular ]]; then
+            : > "$dst"
+            DEBUGFS_PAGER=__none__ debugfs -R "dump ${p} ${dst}" "$ROOTFS_EXT4" >/dev/null 2>&1 || true
+            [[ -s "$dst" ]] && return 0 || return 1
+        elif [[ "$st" =~ Type:\ symlink ]]; then
+            if [[ "$st" =~ Fast\ link\ dest:\ \"([^\"]*)\" ]]; then
+                dest="${BASH_REMATCH[1]}"
+            else
+                dest="$(DEBUGFS_PAGER=__none__ debugfs -R "cat ${p}" "$ROOTFS_EXT4" 2>/dev/null || true)"
+            fi
+            [[ -n "$dest" ]] || return 1
+            if [[ "$dest" == /* ]]; then p="$dest"; else p="$(dirname "$p")/${dest}"; fi
+        else
+            return 1
+        fi
+    done
+    return 1
+}
+rim_no_rim() {  # a RIM requirement is missing: fatal for a release image unless ALLOW_NO_RIM=1
+    if [[ "$IMAGE" == tactiq-image && "${ALLOW_NO_RIM:-0}" != 1 ]]; then
+        echo "::error:: $1 (ALLOW_NO_RIM=1 for mechanics only)" >&2
+        exit 1
+    fi
+    echo "::warning:: $1" >&2
+}
+rim_witness=( --witness "build_label=${T}" )
+RIM_TAG_COMMIT="$(git -C "${SCRIPT_DIR}/.." rev-parse --verify -q "refs/tags/${TAG}^{commit}" 2>/dev/null || true)"
+if [[ -n "$RIM_TAG_COMMIT" ]]; then
+    rim_witness+=( --witness "tag_commit=${RIM_TAG_COMMIT}" )
+elif [[ "$IMAGE" == tactiq-image ]]; then
+    echo "::error:: tag ${TAG} is not in $(cd "${SCRIPT_DIR}/.." && pwd); a release RIM must name the tagged commit." >&2
+    exit 1
+else
+    echo "::warning:: tag ${TAG} not in this tree; RIM witness carries no tag_commit." >&2
+fi
+rim_args=()
+if [[ -f "$RIM_DISCLOSURES" ]]; then
+    rim_args+=( --disclosures "$RIM_DISCLOSURES" )
+else
+    rim_no_rim "no platform disclosures: ${RIM_DISCLOSURES} is absent"
+fi
+if [[ -n "${RIM_SIGNER_CERT:-}" ]]; then
+    [[ -n "${RIM_ROOT_CA:-}" && -r "${RIM_ROOT_CA}" ]] \
+        || { echo "::error:: RIM_SIGNER_CERT is set but RIM_ROOT_CA is not, or is unreadable." >&2; exit 1; }
+fi
+[[ -n "${RIM_ROOT_CA:-}" ]] && rim_args+=( --release-root "$RIM_ROOT_CA" )
+RIM_KEYRING="$(mktemp)"; RIM_IMA="$(mktemp)"
+rim_rc=0; rootfs_dump "$RIM_KEYRING_PATH" "$RIM_KEYRING" || rim_rc=$?
+if [[ "$rim_rc" != 0 ]]; then
+    rm -f -- "$RIM_KEYRING" "$RIM_IMA"
+    echo "::error:: ${RIM_KEYRING_PATH} is $([[ $rim_rc == 2 ]] && echo absent || echo unreadable) in ${PREFIX}.ext4" >&2
+    exit 1
+fi
+rim_rc=0; rootfs_dump "$RIM_IMA_PATH" "$RIM_IMA" || rim_rc=$?
+case "$rim_rc" in
+    0)  rim_args+=( --ima-cert "$RIM_IMA" --ima-cert-path "$RIM_IMA_PATH" )
+        echo "    IMA certificate: ${RIM_IMA_PATH}  (sha256 $(sha256sum "$RIM_IMA" | cut -c1-16)...)" ;;
+    2)  echo "    IMA certificate: none installed at ${RIM_IMA_PATH}" ;;
+    *)  rm -f -- "$RIM_KEYRING" "$RIM_IMA"
+        echo "::error:: ${RIM_IMA_PATH} exists in ${PREFIX}.ext4 but does not resolve to a readable file" >&2
+        exit 1 ;;
+esac
+python3 "${SCRIPT_DIR}/mk-rim.py" \
+    --identity "tactiq-release-${BOARD}" \
+    --pcr-reference "pcr-reference-${BOARD}.json" \
+    --fit "fitImage-${BOARD}" --uboot "u-boot-${BOARD}.itb" \
+    --idbloader "idbloader-${BOARD}.img" \
+    --rauc-keyring "$RIM_KEYRING" --rauc-keyring-path "$RIM_KEYRING_PATH" \
+    "${rim_witness[@]}" "${rim_args[@]}" \
+    -o "rim-${BOARD}.json" || { rm -f -- "$RIM_KEYRING" "$RIM_IMA"; exit 1; }
+rm -f -- "$RIM_KEYRING" "$RIM_IMA"
+echo "    + rim-${BOARD}.json"
+if [[ -n "${RIM_SIGNER_CERT:-}" ]]; then
+    for v in RIM_SIGNER_KEY RIM_SIGNING_CA; do
+        [[ -n "${!v:-}" && -r "${!v}" ]] || { echo "::error:: RIM_SIGNER_CERT is set but ${v} is not, or is unreadable." >&2; exit 1; }
+    done
+    if ! openssl x509 -in "$RIM_SIGNER_CERT" -noout -ext extendedKeyUsage 2>/dev/null | grep -qx "[[:space:]]*${RIM_EKU}"; then
+        echo "::error:: ${RIM_SIGNER_CERT} is not a RIM leaf: its only EKU must be ${RIM_EKU}." >&2
+        exit 1
+    fi
+    openssl verify -CAfile "$RIM_ROOT_CA" -untrusted "$RIM_SIGNING_CA" "$RIM_SIGNER_CERT" >/dev/null \
+        || { echo "::error:: ${RIM_SIGNER_CERT} does not chain to RIM_ROOT_CA through RIM_SIGNING_CA." >&2; exit 1; }
+    openssl cms -sign -binary -noattr -md sha256 \
+        -in "rim-${BOARD}.json" -signer "$RIM_SIGNER_CERT" -inkey "$RIM_SIGNER_KEY" \
+        -certfile "$RIM_SIGNING_CA" -outform DER -out "rim-${BOARD}.json.p7s"
+    openssl cms -verify -binary -inform DER -in "rim-${BOARD}.json.p7s" \
+        -content "rim-${BOARD}.json" -CAfile "$RIM_ROOT_CA" \
+        -purpose any -out /dev/null 2>/dev/null \
+        || { echo "::error:: rim-${BOARD}.json.p7s does not verify to RIM_ROOT_CA." >&2; exit 1; }
+    echo "    + rim-${BOARD}.json.p7s  ($(openssl x509 -in "$RIM_SIGNER_CERT" -noout -subject -nameopt RFC2253 | sed 's/^subject=//'))"
+else
+    rim_no_rim "RIM left unsigned: set RIM_SIGNER_CERT, RIM_SIGNER_KEY, RIM_SIGNING_CA, RIM_ROOT_CA"
+fi
 echo "==> SHA256SUMS"
 # SHA256SUMS does not exist yet, so the glob below cannot include it.
 shopt -s nullglob; files=( * ); shopt -u nullglob
