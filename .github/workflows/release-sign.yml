@@ -69,9 +69,16 @@ jobs:
         run: |
           set -euo pipefail
           cd work
+          # The bundle carries the certificate, the signature, the transparency
+          # log inclusion proof and its timestamp in one file. It is what lets a
+          # reader verify after the ten-minute certificate has expired, from the
+          # release assets and the Sigstore trusted root alone, without querying
+          # Rekor. The .pem and .sig stay for readers already using them.
           cosign sign-blob \
             --output-certificate SHA256SUMS.workflow.pem \
             --output-signature   SHA256SUMS.workflow.sig \
+            --bundle             SHA256SUMS.sigstore.json \
+            --new-bundle-format \
             SHA256SUMS
           # cosign may write the certificate base64-encoded rather than as PEM.
           # cosign reads its own output back either way, so the defect is
@@ -84,7 +91,7 @@ jobs:
             mv SHA256SUMS.workflow.pem.dec SHA256SUMS.workflow.pem
           fi
           echo "--- signature file ---"
-          ls -la SHA256SUMS.workflow.pem SHA256SUMS.workflow.sig
+          ls -la SHA256SUMS.workflow.pem SHA256SUMS.workflow.sig SHA256SUMS.sigstore.json
           echo "--- certificate SAN ---"
           # No `|| true` here: a certificate that openssl cannot parse is
           # exactly the defect this check exists to catch, and it must fail
@@ -101,6 +108,7 @@ jobs:
           gh release upload "${TAG}" \
             SHA256SUMS.workflow.pem \
             SHA256SUMS.workflow.sig \
+            SHA256SUMS.sigstore.json \
             --repo "${GITHUB_REPOSITORY}" \
             --clobber
 
@@ -119,3 +127,32 @@ jobs:
             --certificate-oidc-issuer    https://token.actions.githubusercontent.com \
             SHA256SUMS
           echo "Workflow-identity signature verified."
+          cosign verify-blob \
+            --bundle            SHA256SUMS.sigstore.json \
+            --new-bundle-format \
+            --certificate-identity       "${EXPECTED_IDENTITY}" \
+            --certificate-oidc-issuer    https://token.actions.githubusercontent.com \
+            SHA256SUMS
+          echo "Bundle verified."
+
+      # A reader holding only the release assets and a cached Sigstore trusted
+      # root verifies this way. First run on a real tag is the first evidence
+      # that cosign v2.4.1 accepts --offline with a new-format bundle, so this
+      # step reports without failing the release; make it fatal once it has
+      # passed on a tag.
+      - name: Verify bundle offline
+        continue-on-error: true
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd work
+          EXPECTED_IDENTITY="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release-sign.yml@refs/tags/${TAG}"
+          cosign verify-blob \
+            --offline \
+            --bundle            SHA256SUMS.sigstore.json \
+            --new-bundle-format \
+            --certificate-identity       "${EXPECTED_IDENTITY}" \
+            --certificate-oidc-issuer    https://token.actions.githubusercontent.com \
+            SHA256SUMS
+          echo "Bundle verified offline."
