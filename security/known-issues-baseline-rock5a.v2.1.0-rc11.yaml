@@ -1,0 +1,41 @@
+# Known issues open at v2.1.0-rc11, with the ids later manifests carry them by.
+#
+# Written once. The v2.1.0-rc11 coverage manifest predates known-issue ids and
+# is pinned to its tag, so it cannot gain them. scripts/check-known-issues.py
+# reads this file in its place when the first schema 0.3 manifest names
+# v2.1.0-rc11 as its previous release. Later releases are checked against
+# each other's manifests and never read this file.
+#
+# Sources:
+#   - security/coverage-rock5a.v2.1.0-rc11.yaml, reproducibility.deferred_in_rc11
+#     (the first nine entries, text verbatim);
+#   - release-identity: open at rc11 but dropped from its manifest
+#     (docs/release-notes/v2.1.0-rc11-errata.md); text verbatim from rc10;
+#   - layer-set-evidence: open at rc11, stated in the rc11 reproducibility
+#     note rather than in the list; text verbatim from rc10.
+
+baseline_for: "v2.1.0-rc11"
+
+deferred:
+  - id: ca-keys-same-medium
+    text: "Root CA and Signing CA private keys sit on the same offline medium as the build-time keys; moving them to a separate container, so only the build-time files travel to the build, is pending"
+  - id: spl-unmeasured-otp
+    text: "SPL is the unmeasured root of the measurement chain and RK3588 OTP is not fused, so the BootROM does not authenticate SPL; a replaced SPL could extend the expected values. The reference describes the chain from SPL on, not from the BootROM"
+  - id: pcr-computed-not-observed
+    text: "the final PCR values of the release chain are computed, not observed: the SPL stage of the release loader was read on hardware, the complete chain was read on hardware for the development loader only, and the production image has no console by design. Confirmation on a production device awaits a signed quote"
+  - id: no-attestation-envelope
+    text: "no signed attestation envelope is produced by the device yet; a TPM quote through tactiq-agent is the next step"
+  - id: ima-off-production
+    text: "IMA is off in the production image (tactiq-image does not apply ima-evm-rootfs, BOOT_CHAIN.md); IMA appraisal exists only in the development image"
+  - id: rootfs-not-verity
+    text: "the running rootfs is not verity-protected; dm-verity covers the update bundle only (EX-0005)"
+  - id: kernel-pin
+    text: "kernel pin bump: still 6.18.24+git; the layer set offers one linux-yocto version, a bump means a new openembedded-core base, a full rebuild and a fresh CVE baseline. Carried forward with its reason"
+  - id: cve-db-date-rust
+    text: "date of the local CVE database used by sbom-cve-check not recorded (see cve.regression_cause); Rust crate dependencies not checked (see cve.scope_limit_rust)"
+  - id: no-rtc
+    text: "no RTC on the board: a device without a time source rejects a bundle whose signer certificate is newer than the device clock; use-bundle-signing-time and min-bundle-version not set. Not re-examined for rc11"
+  - id: release-identity
+    text: "TACTIQ_IMAGE_NAME in /etc/tactiq-release is empty; TACTIQ_BUILD_DATE is the fixed SOURCE_DATE_EPOCH"
+  - id: layer-set-evidence
+    text: "layer set verification evidence not shipped: integration/LAYERS.lock fixes every Yocto layer by upstream revision and meta-rauc by tree hash, and scripts/check-layers.sh --check verifies an assembled set against it, but no release has yet carried the output of that run, so the layer set consumed by this build is asserted rather than proven"
