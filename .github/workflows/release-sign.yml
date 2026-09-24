@@ -136,12 +136,9 @@ jobs:
           echo "Bundle verified."
 
       # A reader holding only the release assets and a cached Sigstore trusted
-      # root verifies this way. First run on a real tag is the first evidence
-      # that cosign v2.4.1 accepts --offline with a new-format bundle, so this
-      # step reports without failing the release; make it fatal once it has
-      # passed on a tag.
+      # root verifies this way. Fatal since it passed on v2.1.0-rc12 (run
+      # 36048752716): a bundle that does not verify offline fails the release.
       - name: Verify bundle offline
-        continue-on-error: true
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
