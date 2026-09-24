@@ -223,3 +223,32 @@ jobs:
             | grep -qx '[[:space:]]*2.25.209288284150790823604684143005475146259' \
             || { echo "::error::pki/dev/rim-signer.pem: EKU is not the RIM OID alone"; exit 1; }
           echo "RIM leaf posture: OK"
+
+  measurements-integrity:
+    name: Measurement record integrity
+    runs-on: ubuntu-24.04
+    # measurements/ keeps the raw output its reports are read against, and
+    # SHA256SUMS is what lets a reader check that output has not changed
+    # since it was committed. The rule "every raw log goes into SHA256SUMS"
+    # used to be a habit, and it was missed once: a log committed in 1b54b2f
+    # (#58) had no sum until c115419. This job fails on a sum that no longer
+    # matches and on a raw log that has no sum.
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify sums
+        working-directory: measurements
+        run: sha256sum --check --strict SHA256SUMS
+      - name: Every raw log has a sum
+        working-directory: measurements
+        run: |
+          set -e
+          missing=0
+          while IFS= read -r f; do
+            f=${f#./}
+            if ! awk '{print $2}' SHA256SUMS | grep -qxF "$f"; then
+              echo "::error file=measurements/$f::raw log has no entry in measurements/SHA256SUMS"
+              missing=1
+            fi
+          done < <(find . -type f -name '*.log' | sort)
+          test "$missing" -eq 0
+          echo "measurement record integrity: OK"
