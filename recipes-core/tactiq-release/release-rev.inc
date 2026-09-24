@@ -12,5 +12,5 @@
 # Between releases these hold the tag the working tree descends from and its
 # release date, which is what a development build should report.
 
-TACTIQ_OS_RELEASE_REV = "v2.1.0-rc11"
-TACTIQ_OS_RELEASE_DATE = "2026-09-22"
+TACTIQ_OS_RELEASE_REV = "v2.1.0-rc12"
+TACTIQ_OS_RELEASE_DATE = "2026-09-24"
