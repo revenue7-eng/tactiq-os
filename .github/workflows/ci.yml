@@ -246,6 +246,7 @@ jobs:
           while IFS= read -r f; do
             f=${f#./}
             if ! awk '{print $2}' SHA256SUMS | grep -qxF "$f"; then
+              echo "no sum: measurements/$f"
               echo "::error file=measurements/$f::raw log has no entry in measurements/SHA256SUMS"
               missing=1
             fi
