@@ -93,7 +93,7 @@ describes the present state of each link.
 | Kernel runtime → file accesses | n/a | ON | IMA measures file accesses and extends PCR 10 with executed and mapped code, PCR 11 with delivered artifacts labelled `tactiq_vault_data_t`, and PCR 12 with device identity labelled `tactiq_agent_state_t`. This part of the measured-boot chain is functional in the present configuration. |
 | Kernel runtime → file access enforcement | LOG (dev) / OFF (production) | n/a | `tactiq-image-dev` signs its whole rootfs at build time (`IMAGE_CLASSES += "ima-evm-rootfs"`) and ships the appraisal policy as `/etc/ima/ima-policy`. It boots with `ima_appraise=log`, so violations are recorded and nothing is blocked: the policy appraises reads of `tactiq_vault_data_t`, which after the label split covers delivered artifacts alone. `tactiq-image.bb` does not apply the class — a production image has no signatures and no policy on disk. |
 | Kernel → userspace MAC | ON | n/a | SELinux is enforcing from boot, with the targeted reference policy plus the TactiQ-specific modules from `meta-tactiq-selinux`. This is the strongest enforced boundary in the current chain. |
-| Userspace → attestation payload | PARTIAL | n/a | The agent advances a monotonic TPM NV counter, reads the PCR bank, builds a fixed-size canonical envelope and signs it with a TPM-resident key; this has been exercised on the discrete SLB9670. The envelope carries no TPM quote: its final field is a digest over an empty payload, tracked as `tactiq-attest#1`. Architectural specification in `ATTESTATION.md`. |
+| Userspace → attestation payload | PARTIAL | n/a | The agent advances a monotonic TPM NV counter, reads the PCR bank, builds a fixed-size canonical envelope and has the TPM quote the PCR bank under a restricted attestation key, the quote committing to the envelope (tactiq-attest DDR-004). The quote path has been exercised on swtpm with the image's tpm2-tools version, not yet on the discrete SLB9670; the earlier signed-envelope agent was. The attestation key is not yet bound to the endorsement key. The envelope's final field is a digest over an empty evidence bundle. Architectural specification in `ATTESTATION.md`. |
 
 The single ON row in the Verified column at the kernel-to-userspace
 boundary, and the single ON row in the Measured column for IMA
@@ -264,10 +264,11 @@ verified, in dependency order:
    target machine after that platform has reached confidence in
    the keyring.
 
-7. **TPM-quote integration in the attestation agent.** Bring the
-   attestation framework to the state described in
-   `ATTESTATION.md` section "Attestation payload", in which the
-   measured platform state is part of the signed payload.
+7. **TPM-quote integration in the attestation agent.** The agent
+   quotes the PCRs under a restricted attestation key (tactiq-attest
+   DDR-004). Remaining: register that key against the TPM endorsement
+   key, so that the state described in `ATTESTATION.md` section
+   "Attestation payload" holds for an outside verifier.
 
 Steps 1–4 can run in parallel with the kernel agent work tracked
 in the attestation area. Steps 5–7 depend on the earlier ones in

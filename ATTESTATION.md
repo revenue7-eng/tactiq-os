@@ -20,14 +20,16 @@ image. `recipes-core/tactiq-agent/tactiq-agent_0.1.1.bb` builds it from
 `/opt/tactiq/bin/tactiq-agent`.
 
 What it produces is the canonical envelope described below:
-`device_id(16) || counter_be(8) || pcr_selection(5) || pcr_hash(32)`,
-61 bytes, signed with an ECDSA P-256 key held inside the TPM.
+`device_id(16) || counter_be(8) || pcr_selection(5) || pcr_hash(32) ||
+evidence_hash(32)`, 93 bytes, together with a TPM quote over the
+selected PCRs. The quote's qualifying data is the SHA-256 of the
+envelope, and it is signed by a restricted ECDSA P-256 attestation key
+(AK) held inside the TPM (tactiq-attest DDR-004).
 Freshness comes from a TPM NV monotonic counter, so a device can
 attest after months offline with no server nonce, no CA and no NTP.
 
-What is not yet closed is the boundary between what userspace declares
-and what the hardware measured. See *What attestation does not prove*
-below.
+What is not yet closed is the binding of the AK to the TPM's
+endorsement key. See *What attestation does not prove* below.
 
 What exists today is the supporting infrastructure: kernel
 TPM drivers compiled in, IMA machinery enabled at PCR 10, SELinux
@@ -221,19 +223,21 @@ roots.
 The framework, even when fully implemented, has explicit limits.
 Stating them is part of the documentation, not an oversight.
 
-**Before TPM quote integration is complete.** This is the current
-state. The agent reads the PCR values from the TPM (`tpm2_pcrread`),
-hashes them, and signs the resulting envelope with its TPM-resident
-key. So the platform state in the envelope is measured, not declared
-by userspace.
+**Before the attestation key is bound to the endorsement key.** This
+is the current state. The TPM quotes the PCRs with a restricted AK, so
+the PCR digest in an accepted envelope is the TPM's own, and an
+adversary who controls the agent process cannot substitute values: a
+restricted key refuses to sign data that imitates a quote, and the
+verifier refuses a v1-style envelope from an AK.
 
-What is missing is that the TPM does not attest to those values
-itself. Without a quote, the binding between the PCR contents and the
-TPM is made by the agent process rather than by the TPM signature, so
-an adversary who already controls that process on a running system
-can present values of their choosing. This is the boundary called out
-in `DESIGN_PRINCIPLES.md` and `THREAT_MODEL.md`: the difference
-between "the agent signs" and "the system proves what it ran."
+What is missing is proof that the AK lives in a genuine TPM. Until the
+AK is registered against the TPM endorsement key (credential activation,
+EK certificate chained to the manufacturer), a verifier trusts the AK
+public area as presented at provisioning. Someone who controls
+provisioning could hand over a key that is not in a TPM. This is the
+remaining part of the boundary called out in `DESIGN_PRINCIPLES.md` and
+`THREAT_MODEL.md`: the difference between "the agent signs" and "the
+system proves what it ran."
 
 
 **On platforms with firmware TPM rather than discrete TPM.** The
@@ -262,9 +266,11 @@ The work remaining to reach the specification above falls into three
 pieces, in dependency order. The agent binary itself is done: it is
 built from `tactiq-attest` and produces the envelope described above.
 
-1. **TPM quote integration.** Add the TPM quote over PCRs 0–10 to
-   the attestation payload. This is the integration that closes the
-   declaration-vs-measurement boundary.
+1. **TPM quote integration.** Done in the agent: a quote over the
+   selected PCRs (`sha256:0,...,9` in the shipped unit) under a
+   restricted AK, committed to the envelope (tactiq-attest DDR-004).
+   Open: registration of the AK against the endorsement key, which is
+   what lets an outside verifier know the AK is in a TPM.
 
 2. **Reference verifier.** Implement and publish the verifier as
    described above.

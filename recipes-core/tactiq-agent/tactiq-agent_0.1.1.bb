@@ -1,7 +1,9 @@
 SUMMARY = "TactiQ attestation agent"
 DESCRIPTION = "Produces the canonical attestation envelope from the platform TPM: \
 device_id(16) || counter_be(8) || pcr_selection(5) || pcr_hash(32) || \
-evidence_hash(32), signed with an ECDSA P-256 key held inside the TPM. The \
+evidence_hash(32). Each cycle the TPM quotes the selected PCRs with a \
+restricted ECDSA P-256 attestation key held inside it, the quote committing \
+to the envelope; a verifier checks that the TPM's own PCR digest matches. The \
 evidence hash binds an accompanying bundle to the signature; an edge node has \
 no sub-attesters, so the agent attests an empty bundle and that absence is \
 signed like everything else. Freshness comes from a TPM NV monotonic \
@@ -19,7 +21,8 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 # review.
 #
 # Compatibility is defined by the attest-envelope crate VERSION (currently
-# 0.1.0), not by this git rev. The prover's rev moves on changes to the agent
+# 0.2.0, envelope v2: TPM2_Quote under a restricted AK, tactiq-attest
+# DDR-004), not by this git rev. The prover's rev moves on changes to the agent
 # (main.rs, tpm.rs, state.rs) that do not touch the wire format, so SRCREV here
 # and the attest-envelope rev pinned in Custinel's Cargo.lock need NOT match
 # commit-for-commit. They must agree only when the envelope format changes,
@@ -29,22 +32,30 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 # History note: these revs previously drifted (recipe on 84362d3, Custinel on
 # 8d77e2ac) and a "must match" comment masked it. Version-parity is the real
 # invariant; a rev mismatch under one envelope version is expected.
-SRCREV = "d1487af6892ea712454177e781295f256611f219"
+SRCREV = "f8e6bb776fbbe09afa363a3f4458bb393a748f7c"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
 SRC_URI += "file://tactiq-agent.service"
 
 
-# Eleven crates, all pure computation reached through sha2 and hex. The agent
-# depends on attest-envelope alone: no async runtime, no TLS stack and no
-# serialisation framework inside the TCB. The list below is generated, so this
-# note lives here rather than in it.
+# The agent depends on attest-envelope alone, reaching sha2 and hex: no async
+# runtime, no TLS stack and no serialisation framework inside the TCB. The
+# crate list below is longer than that (45 crates) because cargo resolves the
+# whole tactiq-attest workspace, which also holds the verifier library
+# attest-appraise (p256, serde_json). Without them the offline build fails at
+# resolution. They are fetched, not compiled into the agent: see `-p prover`
+# below. The list is generated, so this note lives here rather than in it.
 require tactiq-agent-crates.inc
 
 inherit cargo cargo-update-recipe-crates systemd useradd
 
 # Only the agent binary. The workspace also holds attest-envelope, which is a
 # library and has nothing to install.
-CARGO_BUILD_FLAGS += " --bin tactiq-agent"
+#
+# `-p prover` is load-bearing. With `--bin` alone cargo unifies features across
+# every workspace member, so p256 in attest-appraise turns on extra digest
+# features and const-oid, subtle and zeroize get compiled into the agent. With
+# `-p prover` only the envelope's dependency tree is built.
+CARGO_BUILD_FLAGS += " -p prover --bin tactiq-agent"
 
 # Reproducibility: strip the build path out of the binary and let cargo see the
 # release timestamp. Same treatment as agentgateway in this layer.
