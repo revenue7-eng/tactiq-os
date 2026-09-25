@@ -65,8 +65,8 @@ not to software-held secrets.
 (`CONFIG_TCG_TPM`, `CONFIG_TCG_TIS`, `CONFIG_TCG_TIS_SPI`,
 `CONFIG_TCG_TIS_I2C`, `CONFIG_TCG_CRB`, `CONFIG_HW_RANDOM_TPM` in
 `recipes-kernel/linux/linux-yocto/tactiq-security.cfg`). The attestation
-agent at `/opt/tactiq/bin/tactiq-agent` signs with an ECDSA P-256 key held inside the TPM
-(`recipes-core/tactiq-agent/`). RAUC A/B updates carry a CMS signature, but the current tree ships a
+agent at `/opt/tactiq/bin/tactiq-agent` has the TPM quote its PCRs with a restricted
+ECDSA P-256 attestation key held inside the TPM (`recipes-core/tactiq-agent/`). RAUC A/B updates carry a CMS signature, but the current tree ships a
 development keyring (`pki/dev/root-ca.pem`) whose private keys are in
 the repository on purpose. Anyone can therefore sign a bundle this image
 accepts, which is what makes the check reproducible from outside. It
@@ -75,7 +75,7 @@ establishes availability of the update path, not authenticity.
 **Tracked.** Production RAUC keyring rotation from the in-tree
 development certificate to a keyring provisioned from CI secrets at
 build time. RK3588 OTP-fused secure-boot root. FIT image signing.
-TPM-quote integration into the attestation agent. All tracked in
+Binding the agent's attestation key to the TPM endorsement key. All tracked in
 `SUPPLY_CHAIN.md`.
 
 ## Boot and runtime integrity
@@ -174,9 +174,11 @@ a specific build artifact. The binary at
 `/opt/tactiq/bin/tactiq-agent` is the real agent, built from
 `tactiq-attest` at the revision pinned in
 `recipes-core/tactiq-agent/tactiq-agent_0.1.1.bb`. It produces the
-canonical 61-byte attestation envelope — device_id(16) ||
-counter_be(8) || pcr_selection(5) || pcr_hash(32) — signed with an
-ECDSA P-256 key held inside the TPM, with freshness from a TPM NV
+canonical 93-byte attestation envelope, device_id(16) ||
+counter_be(8) || pcr_selection(5) || pcr_hash(32) || evidence_hash(32),
+and a TPM quote over the selected PCRs whose qualifying data is the
+SHA-256 of that envelope, signed by a restricted ECDSA P-256
+attestation key held inside the TPM; freshness comes from a TPM NV
 monotonic counter: a device can attest after months offline with no
 server nonce, no CA and no NTP. The verifier — signature checking,
 the anti-replay high-water mark, the reference-value appraisal — is a
@@ -186,8 +188,9 @@ same revision, so the two sides of the protocol are the same code.
 **Tracked.** The full architectural specification of the attestation
 framework is in [`ATTESTATION.md`](ATTESTATION.md); parts of it
 describe the target protocol rather than the current agent. The key
-items still open: TPM-quote integration that closes the gap between
-"the agent signs" and "the system proves what it ran"; mTLS 1.3
+items still open: binding the attestation key to the TPM endorsement
+key, without which an outside verifier trusts the key on first
+presentation rather than knowing it lives in a TPM; mTLS 1.3
 transport; porting TPM access from `tpm2-tools` to `tss-esapi`; a
 publishable reference verifier; per-build Reference
 Integrity Manifest (RIM) generation in the release pipeline.

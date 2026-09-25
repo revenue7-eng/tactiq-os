@@ -177,10 +177,11 @@ The runtime posture of a TactiQ OS image includes, at minimum:
   runtime measurements (PCR 10-12). Pre-kernel stages are not
   measured; see [`BOOT_CHAIN.md`](BOOT_CHAIN.md) section Per-stage
   status.
-- Attestation agent path provisioned at `/opt/tactiq/bin/tactiq-agent`.
-  This is a stub in the current release: it produces no quote and signs
-  nothing. See [`ATTESTATION.md`](ATTESTATION.md) for what exists and what
-  does not.
+- Attestation agent at `/opt/tactiq/bin/tactiq-agent`: the TPM quotes the
+  PCRs under a restricted attestation key, committing to the envelope. The
+  key is not yet bound to the TPM endorsement key, and release images ship
+  the agent disabled. See [`ATTESTATION.md`](ATTESTATION.md) for what exists
+  and what does not.
 
 Items explicitly not yet wired — and therefore not in scope for a hardened
 posture today — are listed in `SUPPLY_CHAIN.md`.

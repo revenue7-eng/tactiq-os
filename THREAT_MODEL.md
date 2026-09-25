@@ -291,20 +291,24 @@ the adversary classes because it is the most consequential current
 limitation and a consumer of this document needs to understand it
 explicitly.
 
-The attestation agent is a stub. When the agent is
-brought to a real implementation, the design target is for it to
-include a TPM quote in its signed payload, so that what the device
-attests is what the hardware measured at boot. Until that integration
-lands, an attestation produced by the agent attests to what userspace
-declares about the device, not to what the hardware measured. This is
-the difference between "the agent signs" and "the system proves what
-it ran." TactiQ OS is in the first state and is
-designed to reach the second.
+The attestation agent has the TPM quote the PCRs under a restricted
+attestation key (AK), and the quote commits to the envelope
+(tactiq-attest DDR-004). An adversary who controls the agent process
+can no longer present PCR values of their choosing under that key: the
+AK refuses to sign data that imitates a quote, and the verifier refuses
+an AK envelope without one.
 
-A consumer of attestation produced by TactiQ OS today should treat
-the attestation as build-identity self-declaration of the running
-userspace, anchored by the agent's signing key. A consumer of
-attestation post-TPM-quote integration can treat it as a
+What is not yet proven to an outside verifier is that the AK lives in a
+genuine TPM. That needs the AK registered against the TPM endorsement
+key, with the EK certificate chained to the manufacturer. Until then the
+verifier trusts the AK as presented at provisioning. This is the
+remaining part of the difference between "the agent signs" and "the
+system proves what it ran."
+
+A consumer of attestation produced by TactiQ OS today should treat it as
+a TPM-quoted statement of platform state under a key whose TPM residence
+is asserted by whoever provisioned the device, not proven. After AK
+registration against the endorsement key, it can be treated as a
 hardware-measured statement of platform state.
 
 This boundary is the central reason why production deployment of
