@@ -91,7 +91,10 @@ GROUPADD_PARAM:${PN} = "--system tactiq-agent"
 USERADD_DEPENDS = "tpm2-tss"
 
 SYSTEMD_SERVICE:${PN} = "tactiq-agent.service"
-SYSTEMD_AUTO_ENABLE = "disable"
+# Enabled from rc13. Autostart was disabled in d18ee7d while the image carried a stub that
+# SELinux kept in a respawn loop; the real agent (prover 0.3.0) runs confined under enforcing
+# on the bench. An unprovisioned device fails three times and stops (see the unit).
+SYSTEMD_AUTO_ENABLE = "enable"
 
 do_install:append() {
     install -d ${D}/opt/tactiq/bin
