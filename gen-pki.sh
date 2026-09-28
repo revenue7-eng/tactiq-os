@@ -6,6 +6,7 @@
 #   ./gen-pki.sh ima    -> pki/dev/    IMA appraisal leaf, existing hierarchy
 #   ./gen-pki.sh fit    -> pki/dev/    U-Boot FIT signer, self-signed
 #   ./gen-pki.sh rim    -> pki/dev/    RIM signer leaf, existing hierarchy
+#   ./gen-pki.sh regsigner -> pki/dev/ AK registration signer leaf
 #
 #   ./gen-pki.sh prod DIR          release RAUC hierarchy, encrypted keys
 #   ./gen-pki.sh ima-prod DIR      release IMA leaf from the release Signing CA
@@ -14,6 +15,9 @@
 #   ./gen-pki.sh rim-prod CA_DIR DIR
 #                                  release RIM signer leaf from the release
 #                                  Signing CA in CA_DIR, written to DIR
+#   ./gen-pki.sh regsigner-prod CA_DIR DIR
+#                                  release AK Registration Signer leaf, as
+#                                  rim-prod (tactiq-attest DDR-005 decision 6)
 #
 # DIR is required for every release flavour and must lie outside this
 # repository: release keys live on encrypted removable media, attached only
@@ -21,8 +25,9 @@
 # modsign-prod write their keys without a passphrase, because mkimage,
 # evmctl and the kernel build read them unattended inside bitbake; their
 # protection is the encrypted medium. Only prod (the RAUC hierarchy, used
-# offline by rauc resign) keeps passphrase-encrypted keys, and rim-prod,
-# whose key signs the RIM in mk-release.sh outside bitbake.
+# offline by rauc resign) keeps passphrase-encrypted keys, and rim-prod and
+# regsigner-prod, whose keys sign a RIM or a registration record outside
+# bitbake.
 #
 # Hierarchy (both flavours):
 #   Root CA  ->  Signing CA  ->  Signer (leaf)
@@ -122,11 +127,30 @@ case "$FLAVOUR" in
     # Matching the Signing CA lifetime states that bound instead of hiding it.
     LEAF_DAYS=1095
     ;;
+  regsigner)
+    CA_DIR="pki/dev"
+    OUT="pki/dev"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS DEVELOPMENT Registration Signer - NOT FOR PRODUCTION"
+    ENC=""
+    LEAF_DAYS=730
+    ;;
+  regsigner-prod)
+    CA_DIR="${2:-}"
+    OUT="${3:-}"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS Release Registration Signer"
+    ENC="-aes-256-cbc"     # passphrase required: signs records offline, not in bitbake
+    # As rim-prod: a record stops verifying when the Signing CA expires.
+    LEAF_DAYS=1095
+    ;;
   *)
     echo "usage: $0 {dev|ima|fit|signer}" >&2
     echo "       $0 {prod|ima-prod|fit-prod|modsign-prod} DIR" >&2
     echo "       $0 rim" >&2
     echo "       $0 rim-prod CA_DIR DIR" >&2
+    echo "       $0 regsigner" >&2
+    echo "       $0 regsigner-prod CA_DIR DIR" >&2
     exit 1
     ;;
 esac
@@ -149,10 +173,10 @@ case "$FLAVOUR" in
     esac
     OUT="$ABS"
     ;;
-  rim-prod)
+  rim-prod|regsigner-prod)
     if [ -z "$CA_DIR" ] || [ -z "$OUT" ]; then
-      echo "ERROR: rim-prod needs the Signing CA directory and an output directory:" >&2
-      echo "       $0 rim-prod CA_DIR DIR" >&2
+      echo "ERROR: $FLAVOUR needs the Signing CA directory and an output directory:" >&2
+      echo "       $0 $FLAVOUR CA_DIR DIR" >&2
       exit 1
     fi
     REPO="$(cd "$(dirname "$0")" && pwd -P)"
@@ -261,6 +285,98 @@ $OUT/rim-signer.cnf       extensions used, kept for the record
 Nothing uses this key until mk-release.sh signs a RIM with it.
 Before relying on it: a bundle signed with this key must be rejected by
 rauc with the system.conf from recipes-core/rauc/files.
+EOF
+  exit 0
+fi
+
+if [ "$FLAVOUR" = "regsigner" ] || [ "$FLAVOUR" = "regsigner-prod" ]; then
+  # ----------------------------------------------- AK Registration Signer
+  # Signs AK registration records (tactiq-attest DDR-005 decision 6): the
+  # record that ties an attestation key to a TPM's endorsement key. Issued
+  # from the Signing CA like the RIM signer, so a reader verifies a record
+  # against the same release root and needs nothing else.
+  #
+  # A key of its own, not the RIM signer (DDR-005 decision 6): one key for
+  # two meanings would make revoking one revoke the other. Its only
+  # extended key usage is the private OID below, critical, distinct from
+  # the RIM OID. `openssl cms -verify -purpose any` does not look at the
+  # EKU, so a verifier checks it itself (RELEASE_INTEGRITY.md, RIM
+  # signature): a RIM signature must not pass as a registration signature,
+  # nor the other way round. No codeSigning, so RAUC refuses the key too.
+  #
+  # RSA-3072 like the other leaves. The key is written to DIR, the Signing
+  # CA stays in CA_DIR; CA_DIR must be writable for -CAcreateserial.
+  REG_EKU_OID="2.25.205994972697553183157730487844756597568"
+  RIM_EKU_OID="2.25.209288284150790823604684143005475146259"
+  CA_DIR="$(realpath -m "$CA_DIR")"
+
+  for f in signing-ca.key.pem signing-ca.pem root-ca.pem; do
+    if [ ! -e "$CA_DIR/$f" ]; then
+      echo "ERROR: $CA_DIR/$f not found. Create the hierarchy first ($0 dev, or $0 prod DIR)." >&2
+      exit 1
+    fi
+  done
+  mkdir -p "$OUT"
+  for f in reg-signer.key.pem reg-signer.pem; do
+    if [ -e "$OUT/$f" ]; then
+      echo "ERROR: $OUT/$f already exists. Refusing to reissue in place:" >&2
+      echo "       signed registration records name the certificate that signed them." >&2
+      exit 1
+    fi
+  done
+  cd "$OUT"
+
+  cat > reg-signer.cnf <<EOF
+[v3_signer]
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature
+extendedKeyUsage       = critical, $REG_EKU_OID
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+EOF
+
+  echo "[1/1] Registration signer (leaf)"
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
+    $ENC -out reg-signer.key.pem
+  openssl req -new -sha256 \
+    -key reg-signer.key.pem \
+    -subj "/O=$ORG/CN=$LEAF_CN" \
+    -out reg-signer.csr
+  openssl x509 -req -sha256 \
+    -in reg-signer.csr \
+    -CA "$CA_DIR/signing-ca.pem" -CAkey "$CA_DIR/signing-ca.key.pem" \
+    -CAcreateserial \
+    -days "$LEAF_DAYS" \
+    -extfile reg-signer.cnf -extensions v3_signer \
+    -out reg-signer.pem
+  rm -f reg-signer.csr
+
+  echo
+  echo "---- verification ----------------------------------------------"
+  openssl verify -CAfile "$CA_DIR/root-ca.pem" \
+    -untrusted "$CA_DIR/signing-ca.pem" reg-signer.pem
+  echo
+  echo "leaf key usage:"
+  openssl x509 -in reg-signer.pem -noout -text \
+    | grep -A1 -E 'X509v3 (Key Usage|Extended Key Usage)'
+  eku="$(openssl x509 -in reg-signer.pem -noout -ext extendedKeyUsage | sed -n '2p' | tr -d ' ')"
+  if [ "$eku" != "$REG_EKU_OID" ]; then
+    echo "ERROR: reg-signer.pem EKU is '$eku', expected exactly $REG_EKU_OID." >&2
+    exit 1
+  fi
+  if openssl x509 -in reg-signer.pem -noout -text | grep -q -e 'Code Signing' -e "$RIM_EKU_OID"; then
+    echo "ERROR: reg-signer.pem carries codeSigning or the RIM purpose." >&2
+    exit 1
+  fi
+  echo
+  openssl x509 -in reg-signer.pem -noout -subject -issuer -enddate
+
+  cat <<EOF
+
+---- files ------------------------------------------------------
+$OUT/reg-signer.pem       PUBLIC  -> registration signer certificate
+$OUT/reg-signer.key.pem   PRIVATE -> signs registration-<device>.json
+$OUT/reg-signer.cnf       extensions used, kept for the record
 EOF
   exit 0
 fi
