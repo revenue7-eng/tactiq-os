@@ -164,14 +164,18 @@ catch.
 
 ## 8. Open items, to close before or during implementation
 
-1. **IMA policy in a production image.** `BOOT_CHAIN.md` states that IMA
-   extends PCR 10, 11 and 12 "in the present configuration", and also that
-   `tactiq-image.bb` ships "no signatures and no policy on disk". The
-   `measure` rules live in `tactiq-ima-appraise.policy`. Establish which
-   measure policy a production boot actually loads. The report's value rests
-   on evidence that the runtime binary is the released one; if the release
-   has no IMA measurement of executed code and dm-verity is not in the boot
-   chain, that evidence is missing and must be supplied first.
+1. **IMA policy in a production image.** Resolved 2026-09-29: none.
+   `security/coverage-rock5a.v2.1.0-rc13.yaml` (lines 240-242) records that
+   the production image has no IMA signatures and no policy on disk, and
+   `ima_policy=` reaches the kernel command line only under the
+   `tactiq-dev-policy` override (`tactiq-rockchip-rk3588.inc:92`).
+   `BOOT_CHAIN.md` is corrected in the same change. Consequence: in a
+   release nothing measures the runtime binary, and dm-verity is not in the
+   boot chain, so the PCR 14 report would have no anchor. One of the two must
+   come first: rootfs dm-verity with the root hash inside the signed FIT
+   (`docs/design/verity-fit-ab.md`), which puts the whole rootfs, runtime
+   included, under PCR 8; or a measure-only IMA policy in the production
+   image. This is a prerequisite, not part of this design.
 2. **C API reach.** Confirm against `libtensorflow-lite-c_2.21.0` headers
    whether internal tensors are reachable; if they are, the C API may be
    preferable for a smaller surface.
