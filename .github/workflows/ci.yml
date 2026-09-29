@@ -33,16 +33,6 @@ jobs:
             | xargs oelint-adv --quiet --fix --nofix=oelint.file.patchsignedoff \
             || echo "oelint-adv reported findings (non-fatal in CI bootstrap)"
 
-  selinux-policy-syntax:
-    name: SELinux policy syntax check
-    runs-on: ubuntu-24.04
-    # This job is skipped unless the companion meta-tactiq-selinux layer is
-    # checked out side-by-side. The production pipeline runs a full refpolicy
-    # compile via bitbake; this CI job only validates .te syntax statically.
-    if: ${{ false }}
-    steps:
-      - uses: actions/checkout@v6
-
   shellcheck:
     name: Shellcheck scripts
     runs-on: ubuntu-24.04
