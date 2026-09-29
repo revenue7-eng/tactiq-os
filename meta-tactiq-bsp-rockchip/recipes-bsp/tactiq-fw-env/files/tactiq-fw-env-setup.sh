@@ -25,6 +25,19 @@ devno="$(awk '$5 == "/" { print $3; exit }' /proc/self/mountinfo)"
 part_sys="/sys/dev/block/${devno}"
 [ -d "${part_sys}" ] || exit 1
 
+# With rootfs dm-verity the root is a device-mapper node (dm-0) on top of the
+# rootfs partition. Descend through device-mapper to the single underlying
+# device; otherwise the config would name dm-0 itself, which carries no
+# U-Boot environment and is read-only.
+depth=0
+while [ -d "${part_sys}/dm" ]; do
+	set -- "${part_sys}"/slaves/*
+	[ "$#" -eq 1 ] && [ -e "$1" ] || exit 1
+	part_sys="$(readlink -f "$1")"
+	depth=$((depth + 1))
+	[ "${depth}" -le 4 ] || exit 1
+done
+
 # A partition has a "partition" attribute; a whole disk does not.
 # Partition: .../block/mmcblk0/mmcblk0p2 -> parent dir is the disk.
 # Whole disk: use the node itself.
