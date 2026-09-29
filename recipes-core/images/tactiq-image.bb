@@ -226,3 +226,13 @@ addtask image_wic after image_verity
 inherit image_types_bootext4
 IMAGE_FSTYPES += "bootext4"
 IMAGE_TYPEDEP:wic:append = " bootext4"
+
+# ---------------------------------------------------------------------------
+# Network posture (decision)
+# ---------------------------------------------------------------------------
+# The production image carries no general-purpose HTTP client and no active
+# network configuration for Ethernet. Networking is configured per
+# deployment, explicitly, with no default route. curl is removed here
+# (it was inherited from the dev profile); libcurl4 goes with it, nothing
+# else in the image requires it.
+IMAGE_INSTALL:remove = "curl"
