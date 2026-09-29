@@ -181,3 +181,7 @@ IMAGE_INSTALL:append = " \
 # The ima-evm-rootfs class reads IMA_EVM_POLICY inside a shell function; without
 # this varflag bitbake does not see content changes and ships a stale policy.
 do_image[file-checksums] += "${IMA_EVM_POLICY}:True"
+
+# curl: bring-up convenience only. Kept out of the production base on purpose
+# (general-purpose HTTP client = ready-made write channel on a device).
+IMAGE_INSTALL:append = " curl"

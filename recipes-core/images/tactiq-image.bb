@@ -98,7 +98,6 @@ IMAGE_INSTALL:append = " tactiq-fw-env"
 # ---------------------------------------------------------------------------
 IMAGE_INSTALL:append = " \
     bash \
-    curl \
     procps \
 "
 
@@ -226,3 +225,11 @@ addtask image_wic after image_verity
 inherit image_types_bootext4
 IMAGE_FSTYPES += "bootext4"
 IMAGE_TYPEDEP:wic:append = " bootext4"
+
+# ---------------------------------------------------------------------------
+# Network posture (decision)
+# ---------------------------------------------------------------------------
+# The production image carries no general-purpose HTTP client (curl ships
+# only in the development profile, see tactiq-image-dev.bb) and no active
+# network configuration for Ethernet. Networking is configured per
+# deployment, explicitly, with no default route.
