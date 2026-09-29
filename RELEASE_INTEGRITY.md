@@ -622,7 +622,10 @@ release that produces a RIM.
 The signature is made by a **RIM signer**: a leaf certificate issued
 by the release Signing CA for this purpose only. Its extended key usage
 differs from that of the bundle signer, so RAUC does not accept it as
-a bundle signer, and the bundle signer does not sign RIMs. The signing
+a bundle signer, and the bundle signer does not sign RIMs. The same
+holds for the Registration Signer (tactiq-attest DDR-005 decision 6), a
+third leaf under the same Signing CA: it signs AK registration records,
+not RIMs, and has an extended key usage of its own. The signing
 key is held and used offline like the other release keys. A verifier
 checks the signature against the release root it has pinned, offline,
 with no dependency on any online service.
@@ -638,12 +641,22 @@ alone and in a browser.
 The RIM signer's only extended key usage is the RIM purpose OID
 `2.25.209288284150790823604684143005475146259` (critical). OpenSSL's
 `cms -verify` rejects such a leaf under its default purpose check, so a
-verifier using OpenSSL passes `-purpose any` and checks the extended
-key usage of the signer itself:
+verifier using OpenSSL passes `-purpose any`. With `-purpose any`
+OpenSSL accepts a signature by any leaf under the root, so the verifier
+then checks the extended key usage of the signer itself; `-signer`
+writes the signer certificate out for that check:
 
     openssl cms -verify -binary -inform DER -in rim-<machine>.json.p7s \
         -content rim-<machine>.json -CAfile <release-root.pem> \
-        -purpose any -out /dev/null
+        -purpose any -signer rim-signer.pem -out /dev/null
+    openssl x509 -in rim-signer.pem -noout -ext extendedKeyUsage
+
+The second command must print `critical` and the RIM purpose OID as the
+only usage. The first command alone establishes that some leaf under
+the release root signed the file, not that the file is a RIM: on
+`v2.1.0-rc13` it also succeeds on the AK registration record and its
+signature, published with the same release, and the second command
+then prints the registration purpose instead.
 
 The RIM is also listed in `SHA256SUMS`, so the per-build Sigstore
 signature covers it transitively. That signature gives transparency
