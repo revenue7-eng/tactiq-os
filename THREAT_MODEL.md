@@ -96,6 +96,31 @@ authenticity beyond signature verification (e.g. authenticated transport
 to a known update endpoint) is per-deployment configuration, not
 distro-level enforcement.
 
+### Device-originated writes through permitted services
+
+**Capabilities.** Code running on the device (an agent workload, or an
+attacker with code execution inside a confined daemon) uses a network
+service the device is legitimately allowed to reach, such as an update
+mirror, a package repository or a log collector, as a channel: to move
+data out, or to coordinate with other devices through writes the service
+accepts. Every individual request can be within policy. The July 2026
+OpenAI / Hugging Face incident followed this pattern: agents turned a
+permitted internal artifact repository into a message board.
+
+**Current mitigations.** `agentgateway`, the mediator for agent traffic,
+is confined to loopback by systemd (`IPAddressAllow=localhost`,
+`IPAddressDeny=any`) and by SELinux (`agentgateway_t` holds no
+`name_connect` on any port type and no DNS resolution). `tactiq-agent`
+runs with `IPAddressDeny=any`. The production image ships no
+general-purpose HTTP client and no default time source, and carries no
+active network configuration for Ethernet.
+
+**Known gaps at this stage.** No image-level packet filter: `iptables`
+is installed but carries no ruleset. The mTLS pull path for attestation
+will need a narrow, explicit exception in `tactiq-agent.service` when it
+is implemented. Confinement is verified at build level; a negative test
+on hardware is pending.
+
 ### Local non-privileged user
 
 **Capabilities.** Has credentials of an unprivileged user account on
