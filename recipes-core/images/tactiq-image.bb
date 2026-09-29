@@ -220,6 +220,13 @@ PACKAGE_EXCLUDE += "shared-mime-info libxml2"
 IMAGE_FSTYPES += "verity"
 addtask image_wic after image_verity
 
+# dm-verity presents the root device with a logical block size equal to its
+# data block size (4096), and ext4 cannot mount a filesystem whose block size
+# is smaller than that ("bad block size 1024"). mke2fs picks 1024-byte blocks
+# for filesystems under 512 MB, which this rootfs is, so the block size is
+# fixed here. -i 4096 is the oe-core default for ext4 and is kept.
+EXTRA_IMAGECMD:ext4 = "-i 4096 -b 4096"
+
 # tactiq-slot-dtb needs these parameters before this image completes: the FIT
 # it feeds goes into this image's boot partition, so do_image_complete cannot
 # be the handoff (a cycle). This task publishes the parameters file to
