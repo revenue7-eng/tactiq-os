@@ -65,6 +65,14 @@ TACTIQ_BOOTEXT4_ROOT ?= "${WORKDIR}/bootext4-root"
 PSEUDO_INCLUDE_PATHS:append = ",${TACTIQ_BOOTEXT4_ROOT}"
 
 IMAGE_CMD:bootext4 () {
+	# The FIT carries the verity root hash of TACTIQ_VERITY_IMAGE. Booting it
+	# with another image's rootfs fails at dm-verity before userspace, so a
+	# mismatch is refused here instead of on the board.
+	if [ "${TACTIQ_BOOT_METHOD}" = "fit" ] && \
+	   [ "${PREFERRED_PROVIDER_virtual/dtb}" = "tactiq-slot-dtb" ] && \
+	   [ "${TACTIQ_VERITY_IMAGE}" != "${PN}" ]; then
+		bbfatal "TACTIQ_VERITY_IMAGE is '${TACTIQ_VERITY_IMAGE}' but this image is '${PN}': set TACTIQ_VERITY_IMAGE = \"${PN}\""
+	fi
 	boot_root="${TACTIQ_BOOTEXT4_ROOT}"
 	rm -rf "$boot_root"
 	install -d "$boot_root/boot/extlinux"
