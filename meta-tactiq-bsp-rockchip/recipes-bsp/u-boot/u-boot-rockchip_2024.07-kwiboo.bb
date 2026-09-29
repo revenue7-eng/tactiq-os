@@ -31,6 +31,15 @@ SRC_URI += "file://tpm-spi.cfg"
 SRC_URI += "file://measured-boot.cfg"
 SRC_URI += "file://spl-measured-boot.cfg"
 SRC_URI += "file://tactiq-boot.env"
+SRC_URI += "file://tactiq-boot-fit.env"
+
+# Default environment by boot method. "fit" boots the signed FIT with bootm
+# and never reads extlinux.conf; "extlinux" keeps sysboot.
+TACTIQ_UBOOT_ENV = "${@'tactiq-boot-fit.env' if d.getVar('TACTIQ_BOOT_METHOD') == 'fit' else 'tactiq-boot.env'}"
+# FIT configuration names follow kernel-fit-image (conf-<dtb basename>) and
+# the per-slot devicetrees of tactiq-slot-dtb.bb (slot B adds "-b").
+TACTIQ_FIT_DTB = "${@os.path.basename(d.getVar('KERNEL_DEVICETREE').split()[0])}"
+do_configure[vardeps] += "TACTIQ_UBOOT_ENV TACTIQ_FIT_DTB"
 
 TACTIQ_MIRROR ?= "https://github.com/revenue7-eng/tactiq-os/releases/download/bsp-mirror-2024.10/"
 
@@ -63,7 +72,12 @@ python () {
 do_configure() {
     oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
     ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/spl-measured-boot.cfg
-    cp ${UNPACKDIR}/tactiq-boot.env ${S}/tactiq-boot.env
+    dtb="${TACTIQ_FIT_DTB}"
+    sed -e "s|@FIT_CONF_A@|conf-${dtb}|g" -e "s|@FIT_CONF_B@|conf-${dtb%.dtb}-b.dtb|g" \
+        ${UNPACKDIR}/${TACTIQ_UBOOT_ENV} > ${S}/tactiq-boot.env
+    if grep -q "@FIT_CONF_" ${S}/tactiq-boot.env; then
+        bbfatal "unresolved FIT configuration placeholder in ${TACTIQ_UBOOT_ENV}"
+    fi
     oe_runmake -C ${S} O=${B} olddefconfig
 }
 

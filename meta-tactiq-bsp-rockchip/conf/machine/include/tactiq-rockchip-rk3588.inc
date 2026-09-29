@@ -90,3 +90,14 @@ UBOOT_EXTLINUX_KERNEL_ARGS:append = " rauc.slot=__RAUC_SLOT__"
 # in local.conf. Default log records violations without blocking.
 TACTIQ_IMA_APPRAISE ?= "log"
 UBOOT_EXTLINUX_KERNEL_ARGS:append:tactiq-dev-policy = " ima_appraise=${TACTIQ_IMA_APPRAISE} ima_policy=appraise_tcb"
+
+# ---- FIT boot: per-slot devicetrees carry the kernel command line ----
+# With TACTIQ_BOOT_METHOD = "fit", boot_ab runs bootm on the signed FIT and
+# the command line is /chosen of the slot's devicetree, written by
+# tactiq-slot-dtb.bb with the dm-verity table of TACTIQ_VERITY_IMAGE. The
+# dev-policy IMA arguments reach that command line through
+# TACTIQ_EXTRA_BOOTARGS, not through extlinux. A build of an image other than
+# TACTIQ_VERITY_IMAGE is refused at do_image_bootext4.
+PREFERRED_PROVIDER_virtual/dtb ?= "tactiq-slot-dtb"
+FIT_CONF_DEFAULT_DTB ?= "${@os.path.basename(d.getVar('KERNEL_DEVICETREE').split()[0])}"
+TACTIQ_EXTRA_BOOTARGS:append:tactiq-dev-policy = " ima_appraise=${TACTIQ_IMA_APPRAISE} ima_policy=appraise_tcb"
