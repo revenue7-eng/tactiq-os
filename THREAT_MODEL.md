@@ -344,9 +344,12 @@ the strength of the hardware primitives that anchor each part:
 The supported machine configurations and their current state along
 these axes are tracked in `docs/machines/` as each platform completes
 bring-up. At the time of this writing no machine has a functional
-validation gate in CI: the workflows run static checks only (Yocto
-recipe lint, SELinux policy syntax, shellcheck, YAML and distro
-config validation) and build no image. Functional evidence is
+validation gate in CI: the workflows run static checks and script
+tests only (Yocto recipe lint, shellcheck, YAML and distro config
+validation, the RIM generator and reproducibility report tests,
+measurement record integrity) and build no image. The SELinux policy
+is checked for module structure in the CI of `tactiq-os-selinux` and
+compiled only in the image build. Functional evidence is
 recorded per run under `measurements/`. The physical Rockchip-family
 machines (rock5a, rock5b, rock5t) are in active bring-up phase, with
 a discrete TPM 2.0 exercised on the rock5a reference board and the secure boot
