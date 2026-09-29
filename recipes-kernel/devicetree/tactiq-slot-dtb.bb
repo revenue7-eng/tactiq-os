@@ -29,15 +29,17 @@ TACTIQ_COMMON_BOOTARGS ?= "ro rootwait rootfstype=ext4 earlycon panic=5 console=
 # do_image_verity, not do_image_complete: the latter includes do_image_wic,
 # which depends on the boot image, which will depend on the FIT, which depends
 # on this recipe. That would be a cycle.
-do_compile[depends] += "virtual/kernel:do_deploy ${TACTIQ_VERITY_IMAGE}:do_image_verity"
+# do_deploy_verity_params (tactiq-image.bb) publishes the parameters to
+# DEPLOY_DIR_IMAGE right after do_image_verity.
+do_compile[depends] += "virtual/kernel:do_deploy ${TACTIQ_VERITY_IMAGE}:do_deploy_verity_params"
 
 do_compile() {
     src_name="$(basename ${@d.getVar('KERNEL_DEVICETREE').split()[0]})"
     src="${DEPLOY_DIR_IMAGE}/${src_name}"
     [ -f "$src" ] || bbfatal "device tree not in deploy: $src"
 
-    params="$(ls ${DEPLOY_DIR_IMAGE}/${TACTIQ_VERITY_IMAGE}-${MACHINE}*.ext4.verity-params 2>/dev/null | head -1)"
-    [ -n "$params" ] || bbfatal "no .ext4.verity-params for ${TACTIQ_VERITY_IMAGE} in ${DEPLOY_DIR_IMAGE}"
+    params="${DEPLOY_DIR_IMAGE}/${TACTIQ_VERITY_IMAGE}-${MACHINE}.ext4.verity-params"
+    [ -f "$params" ] || bbfatal "no verity parameters for ${TACTIQ_VERITY_IMAGE}: $params"
     # bitbake expands VERITY_SALT itself (it exists in the datastore via
     # conf/distro/tactiq.conf) before the shell ever sees the line, so the
     # value would come from the distro config rather than from the artefact.

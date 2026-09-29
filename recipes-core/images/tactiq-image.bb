@@ -220,6 +220,28 @@ PACKAGE_EXCLUDE += "shared-mime-info libxml2"
 IMAGE_FSTYPES += "verity"
 addtask image_wic after image_verity
 
+# tactiq-slot-dtb needs these parameters before this image completes: the FIT
+# it feeds goes into this image's boot partition, so do_image_complete cannot
+# be the handoff (a cycle). This task publishes the parameters file to
+# DEPLOY_DIR_IMAGE right after do_image_verity, through sstate, under a fixed
+# name: <image>-<machine>.ext4.verity-params.
+TACTIQ_VERITY_PARAMS_DIR = "${WORKDIR}/deploy-verity-params"
+SSTATETASKS += "do_deploy_verity_params"
+do_deploy_verity_params[sstate-inputdirs] = "${TACTIQ_VERITY_PARAMS_DIR}"
+do_deploy_verity_params[sstate-outputdirs] = "${DEPLOY_DIR_IMAGE}"
+do_deploy_verity_params[dirs] = "${TACTIQ_VERITY_PARAMS_DIR}"
+do_deploy_verity_params[cleandirs] = "${TACTIQ_VERITY_PARAMS_DIR}"
+do_deploy_verity_params() {
+    src="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.ext4.verity-params"
+    [ -e "$src" ] || bbfatal "no verity parameters at $src"
+    install -m 0644 "$src" "${TACTIQ_VERITY_PARAMS_DIR}/${PN}-${MACHINE}.ext4.verity-params"
+}
+python do_deploy_verity_params_setscene () {
+    sstate_setscene(d)
+}
+addtask do_deploy_verity_params after do_image_verity before do_image_complete
+addtask do_deploy_verity_params_setscene
+
 # Boot partition image, built as a type of this recipe so that it can be
 # ordered after do_image_verity. See classes-recipe/image_types_bootext4.bbclass.
 inherit image_types_bootext4
