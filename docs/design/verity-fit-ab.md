@@ -564,3 +564,93 @@ it. Commit `fdb6a77`.
 Step 5 (moving `boot_a` from extlinux to `.itb`) is unchanged in the sequence
 and is now unblocked: the root hash is available inside the task that builds
 the boot partition, with no ring to route around.
+
+## 13. State as of 2026-09-30
+
+Addendum, same convention as §§11-12: sections 1-10 are left unedited. Every
+item below was established by a command in this tree or on the board. It
+describes the development build on the Rock 5A reference board. No release has
+shipped with rootfs dm-verity.
+
+### 13.1 §10 steps 3 to 6 are done
+
+The boot partition of each slot carries a signed FIT with one configuration per
+slot. `boot_ab` loads it and runs `bootm` with that slot's configuration
+(`#conf-rk3588s-rock-5a.dtb` for A, `#conf-rk3588s-rock-5a-b.dtb` for B). It
+no longer calls `sysboot`. `bootcmd` and `boot_ab` live in the compiled-in
+default environment, and the writable list of §7.1 imports only `BOOT_ORDER`,
+`BOOT_A_LEFT` and `BOOT_B_LEFT`. Each configuration's devicetree carries the
+kernel command line in `/chosen`, including `dm-mod.create=` with the root hash
+of the paired rootfs. Main `1d08e36` (#217); the loader inputs came to main
+with #215.
+
+The last sentence of §7.1 ("Not yet verified on hardware") is superseded:
+`fw_setenv bootargs` with a probe value from Linux, followed by a cold start,
+leaves the probe out of `/proc/cmdline` and out of the environment after boot.
+
+### 13.2 A second path past §7.1, found and closed
+
+§7.1 treated `bootcmd` as the way a saved environment could steer the boot.
+There was a second path, through `sysboot` itself. While `boot_ab` booted the
+FIT through `sysboot` of `extlinux.conf`, U-Boot copied the unsigned `APPEND`
+line into `bootargs` (`boot/pxe_utils.c`), and before starting the kernel
+`fdt_chosen()` replaced the signed `/chosen/bootargs` with it
+(`boot/fdt_support.c`). The FIT signature still verified. Write access to the
+boot partition was therefore enough to start the signed kernel without
+`dm-mod.create=`. Removing `APPEND` from the build would not have closed this,
+because `extlinux.conf` is not signed and can be rewritten.
+
+Closed by the `bootm` path of 13.1: the loader no longer reads
+`extlinux.conf`. Verified on the board on 2026-09-30, slot B, image built from
+the tree of `1d08e36`, after autoboot through `boot_ab`:
+
+1. `/proc/cmdline` carries `dm-mod.create=` over the slot's partition and
+   `root=/dev/dm-0`.
+2. `extlinux.conf` on the slot's boot partition was replaced by one whose
+   `APPEND` names the raw rootfs partition read-write, with no
+   `dm-mod.create=`. After a cold start `/proc/cmdline` was unchanged.
+3. One byte of data block 25600 of the slot's rootfs was changed from the
+   other slot. A full read of `dm-0` stopped with
+   `verity: 179:4: data block 25600 is corrupted`. After the block was
+   restored from the image file, the full read completed.
+
+### 13.3 What the TPM records
+
+On the `bootm` path U-Boot measures the kernel devicetree into PCR 0
+(`EV_TABLE_OF_DEVICES`) before `fdt_chosen()` runs. The root hash in the signed
+`/chosen` is therefore covered by PCR 0, and PCR 0 differs between slots. PCR 1
+measures the `bootargs` variable; with the variable unset the event carries the
+digest of one NUL byte. After a cold start PCR 1 was
+
+    FBF3642E972E016E33B8776E33F8EE3656BD7C15EB31C00AC13EFA190932A434
+
+in both slots, so a verifier holding the reference can check remotely that no
+`bootargs` override was in effect. Reference values are reproduced from build
+artefacts by `scripts/mk-pcr-reference.py`, which refuses a loader whose
+`boot_ab` calls `sysboot` or sets `bootargs`, whose `bootcmd` is not
+`run boot_ab`, or whose writable list admits `bootargs`, `bootcmd`, `boot_ab`
+or `preboot`.
+
+### 13.4 Limits
+
+- Development build. [KEY SENTENCE: to be settled before commit, see note.]
+- No release has shipped with rootfs dm-verity. The release loader will be
+  built from this tree before one does.
+- On the reference board SPL is neither verified by the boot ROM (OTP not
+  fused) nor measured. An attacker able to rewrite raw storage, the loader
+  included, is outside what this section shows. The threat model assumes
+  deployment inside an operator-controlled physical perimeter; see
+  `THREAT_MODEL.md`, physical attacker.
+- Anti-rollback of boot images is not claimed.
+- Installing an update bundle into a verity slot is not covered here.
+
+### 13.5 §9, revisited
+
+May now be said, with the scope of 13.4: on the development build for the
+reference board, the root filesystem of each slot is checked by dm-verity
+against a root hash carried in the signed FIT configuration, and a changed
+block is refused on read (observed on hardware, 2026-09-30).
+
+Still may not be said: any of this about a shipped release; any property of
+`DM_VERITY_VERIFY_ROOTHASH_SIG`; anything about the loader stages before
+U-Boot proper.
