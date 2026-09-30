@@ -80,6 +80,7 @@ IMAGE_INSTALL:append = " \
 IMAGE_INSTALL:append = " \
     tactiq-agent \
     tactiq-config \
+    tactiq-netperm \
     agentgateway \
     agentgateway-config \
 "

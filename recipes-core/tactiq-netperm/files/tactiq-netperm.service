@@ -1,0 +1,16 @@
+[Unit]
+Description=TactiQ: apply site network permission to tactiq-agent
+Documentation=https://github.com/revenue7-eng/tactiq-os/blob/main/THREAT_MODEL.md
+Requires=data.mount
+After=data.mount data-tactiq-dirs.service
+Before=tactiq-agent.service
+# The agent does not depend on this unit: if it fails or is skipped,
+# the agent runs without network (IPAddressDeny=any in its own unit).
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/tactiq-netperm
+
+[Install]
+WantedBy=multi-user.target

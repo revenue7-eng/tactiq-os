@@ -20,6 +20,7 @@
 #                               IMA appraisal signer and its trust chain
 #   TACTIQ_FIT_KEY_DIR          FIT verification key in the U-Boot FDT
 #   TACTIQ_MODULE_SIG_KEY       kernel module signing key and built-in cert
+#   TACTIQ_NETPERM_PUBKEY       site network permission key (tactiq-netperm)
 
 TACTIQ_KEYGATE_VARS ?= "\
     RAUC_KEYRING_FILE_EXTERNAL \
@@ -27,6 +28,7 @@ TACTIQ_KEYGATE_VARS ?= "\
     IMA_EVM_PRIVKEY IMA_EVM_X509 IMA_EVM_ROOT_CA \
     TACTIQ_FIT_KEY_DIR \
     TACTIQ_MODULE_SIG_KEY \
+    TACTIQ_NETPERM_PUBKEY \
 "
 
 addhandler tactiq_keygate

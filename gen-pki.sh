@@ -7,6 +7,7 @@
 #   ./gen-pki.sh fit    -> pki/dev/    U-Boot FIT signer, self-signed
 #   ./gen-pki.sh rim    -> pki/dev/    RIM signer leaf, existing hierarchy
 #   ./gen-pki.sh regsigner -> pki/dev/ AK registration signer leaf
+#   ./gen-pki.sh netperm   -> pki/dev/ site network permission key
 #
 #   ./gen-pki.sh prod DIR          release RAUC hierarchy, encrypted keys
 #   ./gen-pki.sh ima-prod DIR      release IMA leaf from the release Signing CA
@@ -18,6 +19,7 @@
 #   ./gen-pki.sh regsigner-prod CA_DIR DIR
 #                                  release AK Registration Signer leaf, as
 #                                  rim-prod (tactiq-attest DDR-005 decision 6)
+#   ./gen-pki.sh netperm-prod DIR  release site network permission key
 #
 # DIR is required for every release flavour and must lie outside this
 # repository: release keys live on encrypted removable media, attached only
@@ -43,6 +45,48 @@ set -euo pipefail
 umask 077
 
 FLAVOUR="${1:-}"
+
+if [ "$FLAVOUR" = "netperm" ] || [ "$FLAVOUR" = "netperm-prod" ]; then
+  # ------------------------------------------------ site network permission
+  # Signs /data/site/network-allow, which tactiq-netperm checks before it
+  # lets tactiq-agent reach a verifier (THREAT_MODEL.md, agent network
+  # exception). A bare ECDSA P-256 key pair, outside every hierarchy on
+  # purpose: the public half is pinned in the image, and no chain means no
+  # other signer can be made to count. It must not be an IMA key, because
+  # IMA would accept that key for executables too.
+  if [ "$FLAVOUR" = "netperm" ]; then
+    OUT="pki/dev"
+  else
+    OUT="${2:-}"
+    if [ -z "$OUT" ]; then
+      echo "Usage: $0 netperm-prod DIR" >&2
+      exit 1
+    fi
+    REPO="$(cd "$(dirname "$0")" && pwd -P)"
+    case "$(realpath -m "$OUT")/" in
+      "$REPO"/*)
+        echo "ERROR: $OUT is inside the repository ($REPO)." >&2
+        echo "       Release keys must live outside it, on encrypted media." >&2
+        exit 1
+        ;;
+    esac
+  fi
+  mkdir -p "$OUT"
+  for f in netperm.key.pem netperm.pem; do
+    if [ -e "$OUT/$f" ]; then
+      echo "ERROR: $OUT/$f already exists. Refusing to reissue in place." >&2
+      exit 1
+    fi
+  done
+  openssl ecparam -name prime256v1 -genkey -noout -out "$OUT/netperm.key.pem"
+  openssl ec -in "$OUT/netperm.key.pem" -pubout -out "$OUT/netperm.pem" 2>/dev/null
+  cat <<EOF2
+$OUT/netperm.pem       PUBLIC  -> TACTIQ_NETPERM_PUBKEY, pinned in the image
+$OUT/netperm.key.pem   PRIVATE -> signs network-allow:
+    openssl dgst -sha256 -sign $OUT/netperm.key.pem -out network-allow.sig network-allow
+EOF2
+  exit 0
+fi
 case "$FLAVOUR" in
   dev)
     OUT="pki/dev"

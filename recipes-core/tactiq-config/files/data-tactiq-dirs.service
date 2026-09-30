@@ -11,7 +11,7 @@ RemainAfterExit=yes
 # In production the tactiq_vault_data_t label is applied by the
 # LUKS unlock unit in the tactiq_vault_t domain (not yet built).
 ExecStart=/bin/sh -c '\
-    mkdir -p /data/tactiq; \
+    mkdir -p /data/tactiq /data/site; \
     restorecon -Rv /data; \
     for d in keys counter audit certs; do mkdir -p /data/tactiq/$d; done; \
     restorecon -Rv /data/tactiq; \
