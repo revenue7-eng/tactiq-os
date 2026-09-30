@@ -142,9 +142,9 @@ refused with an AVC) is pending.
 - The mTLS pull path for attestation needs a narrow, explicit network
   exception for `tactiq-agent`. The root filesystem is read-only under
   dm-verity, so the exception cannot be a drop-in written on the device.
-  Decided (2026-09-30), not implemented: the exception comes from a
-  permission file on `/data`, and is applied at boot by a
-  dedicated oneshot unit ordered before `tactiq-agent`.
+  Decided and implemented in the OS (2026-09-30, `tactiq-netperm`): the
+  exception comes from a permission file in `/data/site`, and is applied
+  at boot by a dedicated oneshot unit ordered before `tactiq-agent`.
   - Content. The file carries the device identifier and the verifier
     IP addresses, nothing else. Host names are not accepted, so the
     exception never has to include a DNS server. The unit refuses a file
@@ -167,7 +167,17 @@ refused with an AVC) is pending.
     `IPAddressAllow=`, on `tactiq-agent` at runtime; `IPAddressDeny=any`
     stays in the unit. A missing, unsigned or invalid file leaves the
     agent running without network, and the agent does not depend on the
-    unit.
+    unit. Every path that does not apply a permission first clears any
+    permission applied earlier in the same boot. A rejected file fails
+    the unit, so the attempt is visible; a missing file does not.
+  - Verified on a Rock 5A development image with SELinux enforcing
+    (2026-09-30): the permission is in force before the agent starts, a
+    file altered after signing is rejected and clears an earlier
+    permission, a missing file leaves the agent without network, and the
+    file and its signature appear in the IMA log in PCR 11 with the
+    expected hashes. The signing key in that image is the development
+    key in `pki/dev`, public by design; nothing here speaks for a
+    production key.
   - Still open. The agent has no network listener yet, and its SELinux
     domain allows outbound connections only, so the inbound mTLS path
     needs agent code and policy before the exception carries traffic.
