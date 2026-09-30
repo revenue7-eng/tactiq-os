@@ -140,11 +140,41 @@ refused with an AVC) is pending.
 - No image-level packet filter: `iptables` is installed but carries no
   ruleset.
 - The mTLS pull path for attestation needs a narrow, explicit network
-  exception for `tactiq-agent`. The unit points to a per-deployment
-  drop-in under `/etc/systemd/system/tactiq-agent.service.d/`, but the
-  root filesystem is read-only under dm-verity, so such a drop-in cannot
-  be added on the device: it has to be part of the image or come from a
-  verified writable layer. This is not decided.
+  exception for `tactiq-agent`. The root filesystem is read-only under
+  dm-verity, so the exception cannot be a drop-in written on the device.
+  Decided (2026-09-30), not implemented: the exception comes from a
+  permission file on `/data`, and is applied at boot by a
+  dedicated oneshot unit ordered before `tactiq-agent`.
+  - Content. The file carries the device identifier and the verifier
+    IP addresses, nothing else. Host names are not accepted, so the
+    exception never has to include a DNS server. The unit refuses a file
+    whose device identifier is not this device's.
+  - Authorisation. The unit checks a detached signature over the file
+    with a dedicated permission key, whose public half ships in the root
+    filesystem under dm-verity. The IMA key is not used for this: the
+    IMA policy in this image does not restrict which trusted key may
+    sign which files, so a key accepted for vault files is also accepted
+    for executables, and signing site permissions with it would move the
+    code-signing key into field operations.
+  - Measurement. The file carries its own SELinux type, outside the
+    vault type: vault files are appraised, and appraisal would demand
+    an IMA-accepted signature, which is exactly the key this design
+    keeps out of field use. The IMA policy measures reads of that type
+    into PCR 11 without appraising them, so the permission in force is
+    still visible to the verifier through the IMA log.
+  - Application. The unit does not copy the file as systemd
+    configuration. It validates the addresses and sets one property,
+    `IPAddressAllow=`, on `tactiq-agent` at runtime; `IPAddressDeny=any`
+    stays in the unit. A missing, unsigned or invalid file leaves the
+    agent running without network, and the agent does not depend on the
+    unit.
+  - Still open. The agent has no network listener yet, and its SELinux
+    domain allows outbound connections only, so the inbound mTLS path
+    needs agent code and policy before the exception carries traffic.
+    Labels on `/data` come from a relabel in development images;
+    production depends on the LUKS unlock unit, which does not exist
+    yet. The file has no expiry, so a superseded permission for the
+    same device stays valid until the permission key is rotated.
 
 ### Local non-privileged user
 
