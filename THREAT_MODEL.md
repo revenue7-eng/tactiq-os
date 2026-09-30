@@ -215,14 +215,34 @@ keys, when implemented, prevent extraction of cryptographic material
 without the original platform state. SELinux and lockdown still apply
 if the attacker can boot the device.
 
-*Known gaps at this stage.* The verifying boot chain is the central
-unsigned link in rc3: RK3588 OTP fuses are not burned, FIT image
-signing is not implemented, the bootloader is not anchored. An
-opportunistic physical attacker who can flash storage can today boot
-the device into an unverified state. Sealing keys to the TPM and
-binding them to expected PCR values mitigates the data-extraction half
-of this attacker; the runtime-integrity half depends on the
-end-to-end signed boot chain reaching production state.
+*Known gaps at this stage.* The loader is not anchored in hardware:
+RK3588 OTP fuses are not burned, so the boot ROM starts any SPL it
+finds in storage without verifying it. From SPL on, the rock5a
+reference board has a verifying chain: U-Boot checks the signed FIT
+and boots each slot's signed configuration with `bootm`; the kernel
+command line, including the dm-verity root hash of the slot's rootfs,
+comes from `/chosen` inside that signature; and the stored U-Boot
+environment cannot supply `bootargs`, `bootcmd` or `boot_ab`. Three
+limits remain for an opportunistic physical attacker who can write
+storage:
+
+- Writing the loader area of eMMC defeats the verifying chain: a
+  replaced SPL can boot anything.
+- The same write defeats measured boot. SPL is the root of the
+  measurement chain and is itself unmeasured, so a replaced SPL can
+  extend exactly the PCR values that a verifier or a TPM policy
+  expects. Sealing keys to PCR values protects against changes to the
+  stages after SPL, not against a replaced SPL.
+- Writing only a boot partition is enough to roll back to an older
+  `fitImage` signed with the same key: FIT signatures carry no
+  rollback index. The kernel devicetree and kernel digests in PCR 0 and
+  PCR 8 change, so remote attestation detects the rollback; the device
+  itself does not refuse it.
+
+Closing the first two requires fusing the OTP key, so that the SPL
+which starts the measurement chain is one the boot ROM has
+authenticated. Closing the third requires a rollback policy for FIT
+images.
 
 **Well-resourced physical attacker.** Has access to chip-level
 laboratory: decapsulation, side-channel analysis rigs, fault injection
