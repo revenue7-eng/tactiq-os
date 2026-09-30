@@ -8,6 +8,10 @@
 #
 # Exit codes: 0 applied or no permission present (agent stays offline),
 # 1 a permission is present but rejected (signature, device, format).
+#
+# Every path that does not apply a permission first clears any permission
+# applied earlier in the same boot, so a rejected or removed file never
+# leaves an older allowance in force (found on hardware, 2026-09-30).
 set -eu
 
 PERM=/data/site/network-allow
@@ -17,9 +21,11 @@ SERIAL_NODE=/proc/device-tree/serial-number
 UNIT=tactiq-agent.service
 
 log() { echo "tactiq-netperm: $*" >&2; }
-reject() { log "rejected: $*; agent stays without network"; exit 1; }
+revoke() { systemctl set-property --runtime "$UNIT" "IPAddressAllow=" || true; }
+reject() { revoke; log "rejected: $*; agent stays without network"; exit 1; }
 
 if [ ! -e "$PERM" ]; then
+    revoke
     log "no permission file; agent stays without network"
     exit 0
 fi
