@@ -103,23 +103,48 @@ attacker with code execution inside a confined daemon) uses a network
 service the device is legitimately allowed to reach, such as an update
 mirror, a package repository or a log collector, as a channel: to move
 data out, or to coordinate with other devices through writes the service
-accepts. Every individual request can be within policy. The July 2026
-OpenAI / Hugging Face incident followed this pattern: agents turned a
-permitted internal artifact repository into a message board.
+accepts. Every individual request can be within policy.
 
-**Current mitigations.** `agentgateway`, the mediator for agent traffic,
-is confined to loopback by systemd (`IPAddressAllow=localhost`,
-`IPAddressDeny=any`) and by SELinux (`agentgateway_t` holds no
-`name_connect` on any port type and no DNS resolution). `tactiq-agent`
-runs with `IPAddressDeny=any`. The production image ships no
-general-purpose HTTP client and no default time source, and carries no
-active network configuration for Ethernet.
+**Designed mitigations.** These are in the unit files, the image recipe
+and the SELinux policy source. None of them has yet been observed on a
+running production image (see the verification status below).
 
-**Known gaps at this stage.** No image-level packet filter: `iptables`
-is installed but carries no ruleset. The mTLS pull path for attestation
-will need a narrow, explicit exception in `tactiq-agent.service` when it
-is implemented. Confinement is verified at build level; a negative test
-on hardware is pending.
+- `agentgateway`, the mediator for agent traffic, is confined to
+  loopback by systemd (`IPAddressAllow=localhost`, `IPAddressDeny=any`
+  in `agentgateway.service`). Its SELinux domain `agentgateway_t` is
+  written to hold no `name_connect` on any port type and no DNS
+  resolution.
+- `tactiq-agent` runs with `IPAddressDeny=any`.
+- The production image recipe does not install `curl`, the shipped
+  `chrony.conf` names no time source, and the layer ships no
+  `systemd-networkd` configuration for Ethernet.
+
+The control is the confinement of processes, not the absence of tools:
+the production image still carries `openssl-bin`, whose `s_client`
+opens a TLS connection to any host, and BusyBox, whose applet set is the
+default configuration and is not pinned by this layer.
+
+**Verification status.** Verified: the unit files and recipes above, by
+reading them. Not verified: the binary SELinux policy of a built
+production image (the claim about `agentgateway_t` rests on the policy
+source); the root filesystem of a production image built after the
+network posture change (the last production build predates it); whether
+any network configuration from upstream packages is active in that root
+filesystem, given that `systemd-networkd` and a BusyBox DHCP client are
+both installed; and behaviour on hardware, where a negative test
+(outbound connection attempts from the confined domains, expected to be
+refused with an AVC) is pending.
+
+**Known gaps at this stage.**
+
+- No image-level packet filter: `iptables` is installed but carries no
+  ruleset.
+- The mTLS pull path for attestation needs a narrow, explicit network
+  exception for `tactiq-agent`. The unit points to a per-deployment
+  drop-in under `/etc/systemd/system/tactiq-agent.service.d/`, but the
+  root filesystem is read-only under dm-verity, so such a drop-in cannot
+  be added on the device: it has to be part of the image or come from a
+  verified writable layer. This is not decided.
 
 ### Local non-privileged user
 
