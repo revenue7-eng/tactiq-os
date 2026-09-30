@@ -1,0 +1,90 @@
+#!/bin/sh
+# Apply the site network permission to tactiq-agent.
+# Design: THREAT_MODEL.md, "Known gaps at this stage", agent network exception.
+#
+# The permission file is copied once, and only the copy is verified and
+# parsed, so the file cannot change between the check and the use.
+# The read of the original is measured by IMA into PCR 11.
+#
+# Exit codes: 0 applied or no permission present (agent stays offline),
+# 1 a permission is present but rejected (signature, device, format).
+set -eu
+
+PERM=/data/site/network-allow
+SIG=/data/site/network-allow.sig
+PUB=/usr/share/tactiq/netperm.pem
+SERIAL_NODE=/proc/device-tree/serial-number
+UNIT=tactiq-agent.service
+
+log() { echo "tactiq-netperm: $*" >&2; }
+reject() { log "rejected: $*; agent stays without network"; exit 1; }
+
+if [ ! -e "$PERM" ]; then
+    log "no permission file; agent stays without network"
+    exit 0
+fi
+[ -r "$SIG" ] || reject "signature file missing"
+[ -r "$PUB" ] || reject "permission public key missing from the image"
+
+serial=$(tr -d '\000' < "$SERIAL_NODE" 2>/dev/null || true)
+case "$serial" in
+    "" | *[!0-9a-f]*) reject "device serial unreadable" ;;
+esac
+case "$serial" in
+    *[!0]*) ;;
+    *) reject "device serial is all zeros" ;;
+esac
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+cp "$PERM" "$work/perm"
+cp "$SIG" "$work/sig"
+
+openssl dgst -sha256 -verify "$PUB" -signature "$work/sig" "$work/perm" \
+    > /dev/null 2>&1 || reject "signature does not verify"
+
+valid_ipv4() {
+    addr=${1%/*}
+    if [ "$addr" != "$1" ]; then
+        prefix=${1#*/}
+        case "$prefix" in "" | *[!0-9]*) return 1 ;; esac
+        [ "$prefix" -le 32 ] || return 1
+    fi
+    case "$addr" in *[!0-9.]* | .* | *. | *..*) return 1 ;; esac
+    old_ifs=$IFS
+    IFS=.
+    # shellcheck disable=SC2086
+    set -- $addr
+    IFS=$old_ifs
+    [ "$#" -eq 4 ] || return 1
+    for octet in "$@"; do
+        [ "${#octet}" -le 3 ] || return 1
+        [ "$octet" -le 255 ] || return 1
+    done
+    return 0
+}
+
+device=""
+allow=""
+while IFS=' ' read -r key value rest || [ -n "$key" ]; do
+    [ -z "$rest" ] || reject "unexpected field in line: $key"
+    case "$key" in
+        "" | "#"*) continue ;;
+        device)
+            [ -z "$device" ] || reject "more than one device line"
+            device=$value
+            ;;
+        allow)
+            valid_ipv4 "$value" || reject "not an IPv4 address: $value"
+            allow="$allow $value"
+            ;;
+        *) reject "unknown line: $key" ;;
+    esac
+done < "$work/perm"
+
+[ "$device" = "$serial" ] || reject "issued for another device"
+[ -n "$allow" ] || reject "no allow lines"
+
+allow=${allow# }
+systemctl set-property --runtime "$UNIT" "IPAddressAllow=$allow"
+log "applied: IPAddressAllow=$allow"

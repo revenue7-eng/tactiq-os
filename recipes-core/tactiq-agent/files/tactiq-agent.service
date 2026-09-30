@@ -115,10 +115,11 @@ RemoveIPC=yes
 # does not open a socket of its own in this phase.
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 IPAddressDeny=any
-# The verifier endpoint is per-deployment configuration; enable specific
-# network access via a drop-in (/etc/systemd/system/tactiq-agent.service.d/
-# network.conf) on devices where the agent must reach a verifier. By
-# default the production posture is offline-first.
+# The verifier endpoint is per-deployment configuration. It is not a drop-in
+# (the root filesystem is read-only): tactiq-netperm.service reads a signed
+# permission file from /data/site and sets IPAddressAllow= on this unit at
+# runtime. Without a valid file the agent stays offline, which is the
+# default posture (THREAT_MODEL.md, agent network exception).
 
 # ---------------------------------------------------------------------------
 # System call filtering (in-kernel seccomp via systemd)

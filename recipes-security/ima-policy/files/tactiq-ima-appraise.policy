@@ -71,6 +71,13 @@ measure func=MODULE_CHECK
 # model/doctrine hashes independently of code-measurement churn in PCR 10.
 measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t pcr=11
 
+# Site network permission (tactiq-netperm) into the same PCR as other
+# consumed data, measured but never appraised: it carries its own signature
+# under a key IMA does not know. The type is defined in the SELinux layer
+# (tactiq_netperm.te); this line and that module must ship together, since
+# a rule naming a type the loaded policy lacks is rejected.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_site_perm_t pcr=11
+
 # Device identity into a PCR of its own. keys and counter are produced on the
 # device, so nothing signs them and they are never appraised; each is a single
 # inode measured once per boot, so the aggregate is stable within a boot. It is
