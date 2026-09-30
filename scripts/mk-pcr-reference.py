@@ -11,8 +11,10 @@ the loader executes (CONFIG_ENV_WRITEABLE_LIST imports only BOOT_ORDER and the
 BOOT_x_LEFT counters from storage). The kernel command line lives in /chosen of
 each configuration's devicetree, so it is covered by the devicetree digest in
 PCR 0; U-Boot's bootargs variable is empty and PCR 1 is one value for every
-slot. The script refuses a boot_ab that calls sysboot or sets bootargs: either
-would let an unsigned command line reach the kernel (SF-001).
+slot. The script refuses a boot_ab that calls sysboot or sets bootargs, a
+bootcmd other than `run boot_ab`, and a compiled-in writable list that admits
+bootargs, bootcmd, boot_ab or preboot: each would let an unsigned command line
+reach the kernel (SF-001).
 
 extlinux (--extlinux and --boot-env): the older path, sysboot of extlinux.conf.
 Inputs are fitImage and extlinux.conf from the boot partition, u-boot.itb, and
@@ -327,6 +329,51 @@ def read_boot_ab(path):
     return slots, sha(found[0]).hex()
 
 
+BOOTCMD_RE = re.compile(rb"\0bootcmd=([^\0]*)\0")
+FORBIDDEN_WRITABLE = ("bootargs", "bootcmd", "boot_ab", "preboot")
+
+
+def read_env_lockdown(path):
+    """Check that the loader runs boot_ab and imports only safe variables.
+
+    The bootm model holds only if bootcmd is `run boot_ab` and the
+    compiled-in CONFIG_ENV_WRITEABLE_LIST lets nothing that shapes the boot
+    (bootargs, bootcmd, boot_ab, preboot) come from stored environment.
+    """
+    buf = read(path)
+    cmds = sorted(set(BOOTCMD_RE.findall(buf)))
+    if cmds != [b"run boot_ab"]:
+        die(f"bootcmd in {os.path.basename(path)} is {cmds}, expected "
+            "['run boot_ab']")
+    lists = set()
+    for chunk in buf.split(b"\0"):
+        if b"BOOT_ORDER:" in chunk and not chunk.startswith(b".flags="):
+            try:
+                lists.add(chunk.decode("ascii"))
+            except UnicodeDecodeError:
+                continue
+    if len(lists) != 1:
+        die(f"expected one compiled-in env flags list naming BOOT_ORDER in "
+            f"{os.path.basename(path)}, found {len(lists)}: without it "
+            "CONFIG_ENV_WRITEABLE_LIST cannot be confirmed")
+    flags = lists.pop()
+    writable = []
+    for entry in filter(None, flags.split(",")):
+        name, sep, attr = entry.rpartition(":")
+        if not sep or not name:
+            die(f"cannot parse env flags entry {entry!r} in {flags!r}")
+        if "w" in attr:
+            writable.append(name)
+    bad = [n for n in writable if n in FORBIDDEN_WRITABLE]
+    if bad:
+        die(f"stored environment may set {bad}: the command line would not "
+            "come from the signed configuration (SF-001)")
+    if "BOOT_ORDER" not in writable:
+        die(f"BOOT_ORDER is not writable in {flags!r}: RAUC could not "
+            "switch slots, this is not the expected loader")
+    return flags, sorted(writable)
+
+
 def one_or_per_slot(d):
     vals = set(d.values())
     return next(iter(vals)) if len(vals) == 1 else d
@@ -433,6 +480,7 @@ def main():
 
     if mode == "bootm":
         slots, bootab_sha = read_boot_ab(a.uboot)
+        env_flags, env_writable = read_env_lockdown(a.uboot)
         per = {}
         confs = {}
         for s_, cname in sorted(slots.items()):
@@ -451,8 +499,14 @@ def main():
             "boot_path": "bootm",
             "assumptions": [
                 "U-Boot runs boot_ab from the default environment compiled into "
-                "u-boot.itb; only BOOT_ORDER and BOOT_x_LEFT are imported from "
-                "storage (CONFIG_ENV_WRITEABLE_LIST)",
+                "u-boot.itb (bootcmd is run boot_ab); only the variables under "
+                "components.env_writable are imported from storage "
+                "(CONFIG_ENV_WRITEABLE_LIST), checked to exclude bootargs, "
+                "bootcmd, boot_ab and preboot",
+                "the values hold only while the loader itself is the one built: "
+                "SPL is neither measured nor verified by the boot ROM until the "
+                "SoC OTP key is fused, and a replaced SPL can extend these same "
+                "values",
                 "bootargs is empty at bootm, so PCR 1 is one value for every "
                 "slot; any other PCR 1 means a command line outside the "
                 "signed configuration reached U-Boot",
@@ -471,6 +525,8 @@ def main():
             "components": {
                 "uboot_version": ver.decode(),
                 "boot_ab_sha256": bootab_sha,
+                "env_flags_list": env_flags,
+                "env_writable": env_writable,
                 "fit_default_configuration": fit["configuration"],
                 "fit_configurations": fit["configurations"],
                 "fit_key_name_hint": fit["key_name_hint"],
