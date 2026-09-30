@@ -2,9 +2,24 @@
 """mk-pcr-reference.py: expected SHA-256 PCR values for a TactiQ OS FIT boot,
 derived from release artefacts without the device.
 
-Inputs are the files the board boots from: fitImage and extlinux.conf from the
-boot partition, u-boot.itb, and the default U-Boot environment file that sets
-rauc_slot / rauc_part per slot (tactiq-boot.env).
+Two boot paths are modelled.
+
+bootm (default, no --extlinux): the loader's boot_ab loads the signed FIT and
+runs bootm with an explicit configuration per slot. Slots and configurations
+are read from the default environment compiled into u-boot.itb, which is what
+the loader executes (CONFIG_ENV_WRITEABLE_LIST imports only BOOT_ORDER and the
+BOOT_x_LEFT counters from storage). The kernel command line lives in /chosen of
+each configuration's devicetree, so it is covered by the devicetree digest in
+PCR 0; U-Boot's bootargs variable is empty and PCR 1 is one value for every
+slot. The script refuses a boot_ab that calls sysboot or sets bootargs, a
+bootcmd other than `run boot_ab`, and a compiled-in writable list that admits
+bootargs, bootcmd, boot_ab or preboot: each would let an unsigned command line
+reach the kernel (SF-001).
+
+extlinux (--extlinux and --boot-env): the older path, sysboot of extlinux.conf.
+Inputs are fitImage and extlinux.conf from the boot partition, u-boot.itb, and
+the U-Boot environment file that sets rauc_slot / rauc_part per slot
+(tactiq-boot.env). Kept to recompute references of loaders built before bootm.
 
 Each PCR is extended in boot order, E(p, d) = sha256(p || d) from p0 = 32
 zero bytes, and closed with s = sha256(ffffffff) for PCR 0-7.
@@ -16,14 +31,15 @@ loadable, with the U-Boot devicetree right after U-Boot):
   PCR 4  U-Boot proper
   PCR 6  U-Boot control devicetree (carries the FIT verification key)
 U-Boot proper then measures:
-  PCR 0  S-CRTM version, then the kernel devicetree
-  PCR 1  kernel command line                            one value per slot
-  PCR 8  kernel
+  PCR 0  S-CRTM version, then the kernel devicetree    bootm: one value per slot
+  PCR 1  bootargs variable, NUL-terminated               bootm: empty, one value
+                                                         extlinux: one per slot
+  PCR 8  kernel                                         bootm: per configuration
   PCR 9  "initrd" NUL                                   no initrd
 --no-spl-measure computes the values for a loader whose SPL measures nothing.
 
-kernel and fdt are the payloads of the default configuration of the FIT. Their
-digests are checked against the hash nodes inside the FIT, and against loose
+kernel and fdt are the payloads of the FIT configuration each slot boots (the
+default configuration on the extlinux path). Their digests are checked against the hash nodes inside the FIT, and against loose
 Image / .dtb files when those are given. Any mismatch aborts.
 
 No third-party modules and no u-boot-tools: the FIT is parsed here so that a
@@ -148,7 +164,7 @@ def fit_payload(buf, totalsize, img, label):
     return data, digest
 
 
-def read_fit(path):
+def read_fit(path, want=None):
     buf = read(path)
     root, totalsize = parse_fdt(buf)
     images = root["nodes"].get("images")
@@ -156,6 +172,10 @@ def read_fit(path):
     if images is None or confs is None:
         die("FIT has no /images or /configurations")
     default = pstr(confs, "default")
+    if want is not None:
+        if want not in confs["nodes"]:
+            die(f"FIT has no configuration {want}")
+        default = want
     if default is None or default not in confs["nodes"]:
         die("FIT has no usable default configuration")
     conf = confs["nodes"][default]
@@ -284,6 +304,81 @@ def read_extlinux(path):
     return kernel, append
 
 
+BOOTAB_RE = re.compile(rb"boot_ab=([^\0]*)\0")
+SLOT_RE = re.compile(
+    r"setenv rauc_slot (\w+);.*?"
+    r"bootm \$\{kernel_addr_r\}#([A-Za-z0-9_.,+-]+)")
+
+
+def read_boot_ab(path):
+    """Slot -> FIT configuration from boot_ab in the loader's default env."""
+    found = sorted(set(BOOTAB_RE.findall(read(path))))
+    if len(found) != 1:
+        die(f"expected one boot_ab in {os.path.basename(path)}, found {len(found)}")
+    text = found[0].decode()
+    if "sysboot" in text:
+        die("boot_ab calls sysboot: extlinux APPEND would override the signed "
+            "command line (SF-001); use --extlinux/--boot-env for such a loader")
+    if "bootargs" in text:
+        die("boot_ab sets bootargs: the kernel command line would not come "
+            "from the signed configuration (SF-001)")
+    pairs = SLOT_RE.findall(text)
+    slots = dict(pairs)
+    if len(slots) != len(pairs) or not slots:
+        die("rauc_slot / bootm configuration pairs missing or ambiguous in boot_ab")
+    return slots, sha(found[0]).hex()
+
+
+BOOTCMD_RE = re.compile(rb"\0bootcmd=([^\0]*)\0")
+FORBIDDEN_WRITABLE = ("bootargs", "bootcmd", "boot_ab", "preboot")
+
+
+def read_env_lockdown(path):
+    """Check that the loader runs boot_ab and imports only safe variables.
+
+    The bootm model holds only if bootcmd is `run boot_ab` and the
+    compiled-in CONFIG_ENV_WRITEABLE_LIST lets nothing that shapes the boot
+    (bootargs, bootcmd, boot_ab, preboot) come from stored environment.
+    """
+    buf = read(path)
+    cmds = sorted(set(BOOTCMD_RE.findall(buf)))
+    if cmds != [b"run boot_ab"]:
+        die(f"bootcmd in {os.path.basename(path)} is {cmds}, expected "
+            "['run boot_ab']")
+    lists = set()
+    for chunk in buf.split(b"\0"):
+        if b"BOOT_ORDER:" in chunk and not chunk.startswith(b".flags="):
+            try:
+                lists.add(chunk.decode("ascii"))
+            except UnicodeDecodeError:
+                continue
+    if len(lists) != 1:
+        die(f"expected one compiled-in env flags list naming BOOT_ORDER in "
+            f"{os.path.basename(path)}, found {len(lists)}: without it "
+            "CONFIG_ENV_WRITEABLE_LIST cannot be confirmed")
+    flags = lists.pop()
+    writable = []
+    for entry in filter(None, flags.split(",")):
+        name, sep, attr = entry.rpartition(":")
+        if not sep or not name:
+            die(f"cannot parse env flags entry {entry!r} in {flags!r}")
+        if "w" in attr:
+            writable.append(name)
+    bad = [n for n in writable if n in FORBIDDEN_WRITABLE]
+    if bad:
+        die(f"stored environment may set {bad}: the command line would not "
+            "come from the signed configuration (SF-001)")
+    if "BOOT_ORDER" not in writable:
+        die(f"BOOT_ORDER is not writable in {flags!r}: RAUC could not "
+            "switch slots, this is not the expected loader")
+    return flags, sorted(writable)
+
+
+def one_or_per_slot(d):
+    vals = set(d.values())
+    return next(iter(vals)) if len(vals) == 1 else d
+
+
 def read_slots(path):
     pairs = re.findall(r"setenv rauc_slot (\w+); setenv rauc_part (\w+);",
                        read(path).decode())
@@ -305,9 +400,9 @@ def cmdline_for(append, slot, part):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--fit", required=True)
-    ap.add_argument("--extlinux", required=True)
+    ap.add_argument("--extlinux", help="extlinux path only (sysboot loaders)")
     ap.add_argument("--uboot", required=True, help="u-boot.itb")
-    ap.add_argument("--boot-env", required=True, help="tactiq-boot.env")
+    ap.add_argument("--boot-env", help="tactiq-boot.env, extlinux path only")
     ap.add_argument("--image", help="loose kernel Image to cross-check")
     ap.add_argument("--dtb", help="loose DTB to cross-check")
     ap.add_argument("--require-key", help="fail unless the FIT is signed with this key-name-hint")
@@ -328,29 +423,25 @@ def main():
     if a.require_key and fit["key_name_hint"] != [a.require_key]:
         die(f"FIT signed with {fit['key_name_hint']}, required {a.require_key}")
 
-    ver = uboot_version(a.uboot)
-    kpath, append = read_extlinux(a.extlinux)
-    slots = read_slots(a.boot_env)
+    if bool(a.extlinux) != bool(a.boot_env):
+        die("--extlinux and --boot-env go together (extlinux path); "
+            "give neither for the bootm path")
+    mode = "extlinux" if a.extlinux else "bootm"
 
+    ver = uboot_version(a.uboot)
     if a.idbloader:
         spl_ver = uboot_version(a.idbloader)
         if spl_ver != ver:
             die(f"SPL version {spl_ver!r} differs from U-Boot version {ver!r}")
 
     crtm = sha(ver + b"\0")
-    chain = {i: [] for i in range(0, 10)}
     spl_conf, spl = None, []
+    spl_chain = {i: [] for i in range(0, 10)}
     if not a.no_spl_measure:
         spl_conf, spl = spl_events(a.uboot)
-        chain[0].append(crtm)
+        spl_chain[0].append(crtm)
         for e in spl:
-            chain[e["pcr"]].append(e["sha256"])
-    # U-Boot proper, boot/bootm.c: S-CRTM, kernel, initrd, devicetree,
-    # command line, then separators on PCR 0-7.
-    chain[0].append(crtm)
-    chain[8].append(fit["kernel_sha256"])
-    chain[9].append(sha(b"initrd\0"))
-    chain[0].append(fit["fdt_sha256"])
+            spl_chain[e["pcr"]].append(e["sha256"])
 
     def value(digests):
         v = P0
@@ -358,60 +449,146 @@ def main():
             v = ext(v, d)
         return v
 
-    cmdlines = {s: cmdline_for(append, s, p) for s, p in sorted(slots.items())}
-    pcr = {}
-    for i in range(0, 10):
-        if i == 1:
-            continue
-        tail = [SEP] if i < 8 else []
-        pcr[str(i)] = hx(value(chain[i] + tail))
-    pcr["1"] = {s: hx(value([sha(c.encode() + b"\0"), SEP]))
-                for s, c in cmdlines.items()}
+    def pcrs_for(kernel, fdt):
+        # U-Boot proper, boot/bootm.c: S-CRTM, kernel, initrd, devicetree,
+        # command line, then separators on PCR 0-7.
+        chain = {i: list(spl_chain[i]) for i in range(0, 10)}
+        chain[0].append(crtm)
+        chain[8].append(kernel)
+        chain[9].append(sha(b"initrd\0"))
+        chain[0].append(fdt)
+        out = {}
+        for i in range(0, 10):
+            if i == 1:
+                continue
+            tail = [SEP] if i < 8 else []
+            out[str(i)] = hx(value(chain[i] + tail))
+        return out
 
     base = os.path.basename
-    doc = {
-        "format": "tactiq-pcr-reference/1",
-        "bank": "sha256",
-        "assumptions": [
-            "U-Boot runs with the default environment of this release; a saved "
-            "environment with a different boot_ab changes PCR 1",
-            "the boot partition of each slot carries the fitImage and "
-            "extlinux.conf named under inputs",
-            "no initrd is loaded",
-            "SPL measures the images of u-boot.itb and is itself unmeasured: "
-            "it is the root of the measurement chain"
-            if not a.no_spl_measure else
-            "SPL measures nothing (--no-spl-measure): U-Boot proper is the "
-            "root of the measurement chain",
-        ],
-        "inputs": {
-            base(a.fit): sha(read(a.fit)).hex(),
-            base(a.extlinux): sha(read(a.extlinux)).hex(),
-            base(a.uboot): sha(read(a.uboot)).hex(),
-            base(a.boot_env): sha(read(a.boot_env)).hex(),
-        },
-        "components": {
-            "uboot_version": ver.decode(),
-            "fit_configuration": fit["configuration"],
-            "fit_configurations": fit["configurations"],
-            "fit_key_name_hint": fit["key_name_hint"],
-            "extlinux_kernel": kpath,
-            "kernel_sha256": fit["kernel_sha256"].hex(),
-            "kernel_load": None if fit["load"] is None else f"0x{fit['load']:08x}",
-            "fdt_sha256": fit["fdt_sha256"].hex(),
-            "cmdline": cmdlines,
-            "spl_configuration": spl_conf,
-            "spl_measurements": [
-                {"image": e["image"], "pcr": e["pcr"], "sha256": e["sha256"].hex()}
-                for e in spl],
-        },
-        "pcr": pcr,
-        "recompute": "python3 mk-pcr-reference.py --fit {} --extlinux {} "
-                     "--uboot {} --boot-env {}{}{}".format(
-                         base(a.fit), base(a.extlinux), base(a.uboot), base(a.boot_env),
-                         f" --idbloader {base(a.idbloader)}" if a.idbloader else "",
-                         " --no-spl-measure" if a.no_spl_measure else ""),
-    }
+    spl_list = [{"image": e["image"], "pcr": e["pcr"], "sha256": e["sha256"].hex()}
+                for e in spl]
+    spl_assumption = (
+        "SPL measures the images of u-boot.itb and is itself unmeasured: "
+        "it is the root of the measurement chain"
+        if not a.no_spl_measure else
+        "SPL measures nothing (--no-spl-measure): U-Boot proper is the "
+        "root of the measurement chain")
+    tail_args = "{}{}".format(
+        f" --idbloader {base(a.idbloader)}" if a.idbloader else "",
+        " --no-spl-measure" if a.no_spl_measure else "")
+
+    if mode == "bootm":
+        slots, bootab_sha = read_boot_ab(a.uboot)
+        env_flags, env_writable = read_env_lockdown(a.uboot)
+        per = {}
+        confs = {}
+        for s_, cname in sorted(slots.items()):
+            f = fit if cname == fit["configuration"] else read_fit(a.fit, cname)
+            confs[s_] = f
+            per[s_] = pcrs_for(f["kernel_sha256"], f["fdt_sha256"])
+        pcr = {}
+        for i in range(0, 10):
+            if i == 1:
+                continue
+            pcr[str(i)] = one_or_per_slot({s_: v[str(i)] for s_, v in per.items()})
+        pcr["1"] = hx(value([sha(b"\0"), SEP]))
+        doc = {
+            "format": "tactiq-pcr-reference/2",
+            "bank": "sha256",
+            "boot_path": "bootm",
+            "assumptions": [
+                "U-Boot runs boot_ab from the default environment compiled into "
+                "u-boot.itb (bootcmd is run boot_ab); only the variables under "
+                "components.env_writable are imported from storage "
+                "(CONFIG_ENV_WRITEABLE_LIST), checked to exclude bootargs, "
+                "bootcmd, boot_ab and preboot",
+                "the values hold only while the loader itself is the one built: "
+                "SPL is neither measured nor verified by the boot ROM until the "
+                "SoC OTP key is fused, and a replaced SPL can extend these same "
+                "values",
+                "bootargs is empty at bootm, so PCR 1 is one value for every "
+                "slot; any other PCR 1 means a command line outside the "
+                "signed configuration reached U-Boot",
+                "the kernel command line, including the dm-verity root hash, is "
+                "in /chosen of each configuration's devicetree and is covered "
+                "by the devicetree digest in PCR 0",
+                "the boot partition of each slot carries the fitImage named "
+                "under inputs",
+                "no initrd is loaded",
+                spl_assumption,
+            ],
+            "inputs": {
+                base(a.fit): sha(read(a.fit)).hex(),
+                base(a.uboot): sha(read(a.uboot)).hex(),
+            },
+            "components": {
+                "uboot_version": ver.decode(),
+                "boot_ab_sha256": bootab_sha,
+                "env_flags_list": env_flags,
+                "env_writable": env_writable,
+                "fit_default_configuration": fit["configuration"],
+                "fit_configurations": fit["configurations"],
+                "fit_key_name_hint": fit["key_name_hint"],
+                "slots": {
+                    s_: {
+                        "fit_configuration": f["configuration"],
+                        "kernel_sha256": f["kernel_sha256"].hex(),
+                        "kernel_load": None if f["load"] is None
+                        else f"0x{f['load']:08x}",
+                        "fdt_sha256": f["fdt_sha256"].hex(),
+                    } for s_, f in confs.items()},
+                "bootargs": "",
+                "spl_configuration": spl_conf,
+                "spl_measurements": spl_list,
+            },
+            "pcr": pcr,
+            "recompute": "python3 mk-pcr-reference.py --fit {} --uboot {}{}".format(
+                base(a.fit), base(a.uboot), tail_args),
+        }
+    else:
+        kpath, append = read_extlinux(a.extlinux)
+        slots = read_slots(a.boot_env)
+        pcr = pcrs_for(fit["kernel_sha256"], fit["fdt_sha256"])
+        cmdlines = {s_: cmdline_for(append, s_, p_) for s_, p_ in sorted(slots.items())}
+        pcr["1"] = {s_: hx(value([sha(c.encode() + b"\0"), SEP]))
+                    for s_, c in cmdlines.items()}
+        doc = {
+            "format": "tactiq-pcr-reference/1",
+            "bank": "sha256",
+            "assumptions": [
+                "U-Boot runs with the default environment of this release; a saved "
+                "environment with a different boot_ab changes PCR 1",
+                "the boot partition of each slot carries the fitImage and "
+                "extlinux.conf named under inputs",
+                "no initrd is loaded",
+                spl_assumption,
+            ],
+            "inputs": {
+                base(a.fit): sha(read(a.fit)).hex(),
+                base(a.extlinux): sha(read(a.extlinux)).hex(),
+                base(a.uboot): sha(read(a.uboot)).hex(),
+                base(a.boot_env): sha(read(a.boot_env)).hex(),
+            },
+            "components": {
+                "uboot_version": ver.decode(),
+                "fit_configuration": fit["configuration"],
+                "fit_configurations": fit["configurations"],
+                "fit_key_name_hint": fit["key_name_hint"],
+                "extlinux_kernel": kpath,
+                "kernel_sha256": fit["kernel_sha256"].hex(),
+                "kernel_load": None if fit["load"] is None else f"0x{fit['load']:08x}",
+                "fdt_sha256": fit["fdt_sha256"].hex(),
+                "cmdline": cmdlines,
+                "spl_configuration": spl_conf,
+                "spl_measurements": spl_list,
+            },
+            "pcr": pcr,
+            "recompute": "python3 mk-pcr-reference.py --fit {} --extlinux {} "
+                         "--uboot {} --boot-env {}{}".format(
+                             base(a.fit), base(a.extlinux), base(a.uboot),
+                             base(a.boot_env), tail_args),
+        }
 
     text = json.dumps(doc, indent=2, sort_keys=True) + "\n"
     if a.out:
