@@ -127,12 +127,12 @@ After `AllocateTensors()` succeeds, the runtime computes:
 1. `F = SHA-256` of the model file bytes, as read by the runtime.
 2. Walk `execution_plan()` in order. For each node, record the operator code
    and version. For each input tensor of the node whose data is constant
-   (read-only allocation), record the tensor index at its first reference.
+   (defined below), record the tensor index at its first reference.
 3. For each recorded constant tensor in that order: index, type, shape,
    byte length, `SHA-256` of the data.
-4. `D = SHA-256` over a canonical serialisation of 1-3, format name
-   `tactiq-model-exec/1`, defined in the implementation and reproduced by the
-   reference script.
+4. `D = SHA-256` over the serialisation `tactiq-model-exec/1` of 1-3,
+   defined byte for byte below. `scripts/mk-model-reference.py` computes
+   the same `F` and `D` from the model file alone.
 
 The runtime then extends PCR 14 with `D` and appends one record to its event
 log: format name, model path, `F`, `D`, TFLite version, PCR index. One record
@@ -141,6 +141,41 @@ per model load; a verifier replays the log to reach the quoted PCR 14 value.
 A model that is present and verified on disk but only partly loaded yields a
 different `D` from the reference. That is the case the report is built to
 catch.
+
+### Serialisation `tactiq-model-exec/1`
+
+This subsection is normative. The runtime and `scripts/mk-model-reference.py`
+both implement it; where either disagrees with it, that implementation is
+the bug.
+
+All integers are little-endian. `D = SHA-256(S)`, where `S` is the
+concatenation of:
+
+1. The 19 ASCII bytes `tactiq-model-exec/1` followed by one zero byte.
+2. `F`, 32 raw bytes.
+3. `u32` number of operators in the primary subgraph (subgraph 0). Then,
+   for each operator in its order in that subgraph: `i32` builtin code,
+   taken as the larger of `deprecated_builtin_code` and `builtin_code` of
+   its `OperatorCode`; `i32` operator version, 1 if absent; `u32` length of
+   the custom operator name followed by the name bytes, where the length is
+   0 unless the builtin code is `CUSTOM` (32).
+4. `u32` number of constant tensors. Then, for each constant tensor in order
+   of first reference: `u32` tensor index; `i32` tensor type (TFLite
+   `TensorType`); `u32` rank followed by rank `i32` dimensions, taken from
+   the tensor's `shape` in the model file; `u64` data length in bytes; 32 raw
+   bytes of `SHA-256` of the data.
+
+A tensor is constant when its buffer index is non-zero and the buffer carries
+data, inline or through `offset` and `size`. Order of first reference: walk
+the operators in order and each operator's inputs in order, skip optional
+inputs (index -1), record each tensor once. On the CPU path without delegates
+(section 3), the runtime's `execution_plan()` is exactly this operator order,
+which is why the reference can be computed from the file alone.
+
+A model in which a tensor of any subgraph carries buffer data and has
+`is_variable` or `external_buffer` set has no `D`: TFLite refuses to load it
+(checked in 2.21.0), so the runtime never measures it, and the reference
+script refuses it as well.
 
 ### Reference and verification
 
