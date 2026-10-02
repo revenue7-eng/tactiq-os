@@ -1,5 +1,4 @@
 [Unit]
-ConditionPathExists=!/etc/tactiq/skip-tpm
 Description=TactiQ Attestation Agent
 Documentation=file:///usr/share/doc/tactiq-os/ATTESTATION.md
 After=data-tactiq-dirs.service

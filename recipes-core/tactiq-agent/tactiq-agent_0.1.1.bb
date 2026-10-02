@@ -95,6 +95,11 @@ SYSTEMD_SERVICE:${PN} = "tactiq-agent.service"
 # SELinux kept in a respawn loop; the real agent (prover 0.3.0) runs confined under enforcing
 # on the bench. An unprovisioned device fails three times and stops (see the unit).
 SYSTEMD_AUTO_ENABLE = "enable"
+# QEMU machines carry no TPM, so the agent is not enabled there. This replaces the
+# runtime switch /etc/tactiq/skip-tpm (MT-08), which put a TPM bypass condition into
+# every image, release included. On hardware without a TPM the agent fails three times
+# and stops (see the unit): a device that cannot attest is visibly down.
+SYSTEMD_AUTO_ENABLE:qemuall = "disable"
 
 do_install:append() {
     install -d ${D}/opt/tactiq/bin
