@@ -14,9 +14,8 @@
 - Board `TACTIQ-BENCH-001` (Rock 5A, Infineon SLB9670), slot B,
   `/etc/tactiq-release`: `TACTIQ_IMAGE_NAME=tactiq-image-dev`,
   `TACTIQ_META_TACTIQ_GIT=v2.1.0-rc13`.
-- Loader: a development loader built after rc13. Its PCR 0 differs from the
-  rc13 RIM, so this is not the rc13 release loader. Its identity beyond that
-  is not recorded here.
+- Loader: a development loader, not the rc13 release loader: its PCR 0
+  differs from the rc13 RIM. Which build it is, is not recorded here.
 - Quotes signed by the registered AK, persistent handle `0x81010100`, name
   `000b35c0941662473b6dc78ce636d83dfcaf1bbdfa68bb69121dd9b3c0b414df0a0a`
   (equal to `ak_name` in the signed rc13 registration record). `ak.pub` in
