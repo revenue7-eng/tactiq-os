@@ -890,6 +890,26 @@ Self-hosting runners would shift the trust burden but introduce a
 different set of compromise surfaces and require operational
 infrastructure not currently in place.
 
+**Against A1 to A3 present from the first release: the release root
+itself.** Each release binds the release root to its signed set twice:
+the SHA-256 of the root's public key in the RIM, and the root's
+fingerprint in the coverage manifest. A root replaced on the release
+page after signing is therefore detected. Both bindings live in this
+repository. An adversary who controlled the repository before the first
+release could have issued a different root and signed every manifest
+that names it, and nothing inside a release would show it. A verifier
+should pin the release root from a channel outside this repository and
+its GitHub account. The SHA-256 fingerprint of `release-root-r2.pem` is
+
+```
+8E:10:04:1E:BB:FC:CB:A0:36:62:1B:2E:45:36:87:D2:9A:50:D7:15:65:F2:99:CB:41:28:B4:CE:B9:65:FF:E8
+```
+
+and is printed outside this repository in the measured-boot article
+(<https://www.linkedin.com/pulse/measured-boot-against-what-andrey-lazarev-j3kwc/>,
+update of 29 September 2026). An independent verifier publishes the
+value it observed at <https://ankr.in/tactiq-verification.html>.
+
 ### 7.4 What this means for consumers
 
 A consumer verifying a TactiQ OS release per `VERIFY.md` validates
