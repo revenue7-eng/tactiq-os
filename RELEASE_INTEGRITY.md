@@ -594,8 +594,8 @@ with a gap in it.
   environment from an earlier release with a different `boot_ab`
   changes PCR 1); no initrd; OTP fuse state of the reference platform.
   The first three are carried over from `pcr-reference-<machine>.json`;
-  platform facts the build cannot know, such as the OTP state and that
-  a warm reboot does not reset the TPM, come from
+  platform facts the build cannot know, such as the OTP state and how the TPM
+  behaves on a warm reboot, come from
   `security/rim-disclosures-<machine>.txt` in the tagged tree, as does
   the statement that the root filesystem is outside the measured chain.
 - **Selection matches the agent.** The PCR set in the RIM is the set the
