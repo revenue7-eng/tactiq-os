@@ -23,6 +23,7 @@ SRC_URI += "file://0003-arm64-dts-rk3588s-rock-5a-add-tpm-on-spi4-uboot.patch \
 SRC_URI += "file://0005-configs-rock5a-declare-writeable-env-variables.patch"
 SRC_URI += "file://0006-arm64-dts-rk3588s-rock-5a-reserve-tpm-event-log.patch"
 SRC_URI += "file://0007-rockchip-rk3588s-rock-5a-measure-SPL-loaded-images.patch"
+SRC_URI += "file://0008-rockchip-add-vm-uuid-derived-from-the-SoC-cpuid.patch"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
 SRC_URI += "file://env-lockdown.cfg"
@@ -30,6 +31,7 @@ SRC_URI += "file://fit-signature.cfg"
 SRC_URI += "file://tpm-spi.cfg"
 SRC_URI += "file://measured-boot.cfg"
 SRC_URI += "file://spl-measured-boot.cfg"
+SRC_URI += "file://machine-id.cfg"
 SRC_URI += "file://tactiq-boot.env"
 SRC_URI += "file://tactiq-boot-fit.env"
 
@@ -71,7 +73,7 @@ python () {
 
 do_configure() {
     oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
-    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/spl-measured-boot.cfg
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/spl-measured-boot.cfg ${UNPACKDIR}/machine-id.cfg
     dtb="${TACTIQ_FIT_DTB}"
     sed -e "s|@FIT_CONF_A@|conf-${dtb}|g" -e "s|@FIT_CONF_B@|conf-${dtb%.dtb}-b.dtb|g" \
         ${UNPACKDIR}/${TACTIQ_UBOOT_ENV} > ${S}/tactiq-boot.env
@@ -79,6 +81,9 @@ do_configure() {
         bbfatal "unresolved FIT configuration placeholder in ${TACTIQ_UBOOT_ENV}"
     fi
     oe_runmake -C ${S} O=${B} olddefconfig
+    # olddefconfig drops a symbol with unmet dependencies without a word.
+    grep -q '^CONFIG_OF_BOARD_SETUP=y$' ${B}/.config || \
+        bbfatal "CONFIG_OF_BOARD_SETUP did not survive olddefconfig: no vm,uuid, machine-id stays random"
 }
 
 do_compile() {

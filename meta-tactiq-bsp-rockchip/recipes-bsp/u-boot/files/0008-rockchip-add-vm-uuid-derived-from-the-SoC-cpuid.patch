@@ -1,0 +1,91 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Sat, 3 Oct 2026 00:00:00 +0000
+Subject: [PATCH] rockchip: add vm,uuid derived from the SoC cpuid
+
+systemd on a read-only root with no initrd and no SMBIOS gets a random,
+transient machine-id on every boot. journald keeps one directory per
+machine-id and applies SystemMaxUse to the current one only, so the
+persistent journal on the data partition grows without bound (43
+directories, 538 MB on the bench), and journalctl -b -1 finds nothing.
+
+With systemd.machine_id=firmware on the kernel command line, systemd reads
+the machine-id from /proc/device-tree/vm,uuid. Set that property in the
+board fixup from cpuid#, which misc_init_r reads from OTP on every boot,
+hashed with a label so the raw cpuid is not exposed.
+
+The devicetree is measured in bootm before OS_PREP, where this fixup runs,
+so the devicetree PCR value does not depend on the board. A failure leaves
+the property out and returns 0: a nonzero return aborts bootm.
+
+---
+diff --git a/arch/arm/mach-rockchip/board.c b/arch/arm/mach-rockchip/board.c
+index cd226844..e501f7a4 100644
+--- a/arch/arm/mach-rockchip/board.c
++++ b/arch/arm/mach-rockchip/board.c
+@@ -15,6 +15,7 @@
+ #include <dm.h>
+ #include <dm/uclass-internal.h>
+ #include <efi_loader.h>
++#include <fdt_support.h>
+ #include <fastboot.h>
+ #include <hash.h>
+ #include <init.h>
+@@ -443,6 +444,55 @@ int rockchip_cpuid_set(const u8 *cpuid, const u32 cpuid_length)
+ 	return 0;
+ }
+ 
++#if CONFIG_IS_ENABLED(OF_BOARD_SETUP)
++/*
++ * A stable per-board machine-id for systemd on a read-only root.
++ *
++ * With systemd.machine_id=firmware on the kernel command line, systemd takes
++ * the machine-id from /proc/device-tree/vm,uuid. The value is derived from the
++ * SoC cpuid that misc_init_r() reads from OTP into cpuid# on every boot; the
++ * environment cannot import cpuid# from storage (ENV_WRITEABLE_LIST), so it
++ * always comes from the chip. It is hashed with a label so /etc/machine-id
++ * does not expose the raw cpuid.
++ *
++ * The devicetree is measured in bootm before this fixup runs (the MEASURE
++ * state precedes OS_PREP), so the PCR value of the devicetree stays the same
++ * on every board.
++ *
++ * Any failure here leaves the property out and lets the board boot: a nonzero
++ * return would abort bootm, and systemd then falls back to a random
++ * machine-id, which is today's behaviour.
++ */
++int ft_board_setup(void *blob, struct bd_info *bd)
++{
++	static const char label[] = "tactiq machine-id v1:";
++	const size_t llen = sizeof(label) - 1;
++	const char *cpuid = env_get("cpuid#");
++	u8 in[sizeof(label) - 1 + 32];
++	u8 digest[SHA256_SUM_LEN];
++	char uuid[UUID_STR_LEN + 1];
++	int ret;
++
++	if (!cpuid || strlen(cpuid) != 32) {
++		printf("vm,uuid: no cpuid#, machine-id will be random\n");
++		return 0;
++	}
++
++	memcpy(in, label, llen);
++	memcpy(in + llen, cpuid, 32);
++	sha256_csum_wd(in, sizeof(in), digest, CHUNKSZ_SHA256);
++	digest[6] = (digest[6] & 0x0f) | 0x80;	/* UUID version 8 */
++	digest[8] = (digest[8] & 0x3f) | 0x80;	/* RFC 9562 variant */
++	uuid_bin_to_str(digest, uuid, UUID_STR_FORMAT_STD);
++
++	ret = fdt_setprop_string(blob, 0, "vm,uuid", uuid);
++	if (ret)
++		printf("vm,uuid: %s, machine-id will be random\n", fdt_strerror(ret));
++
++	return 0;
++}
++#endif
++
+ __weak int rockchip_early_misc_init_r(void)
+ {
+ 	return 0;
+-- 
+2.43.0
