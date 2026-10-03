@@ -13,12 +13,18 @@ and are not maintained.
 
 | Version        | Supported          |
 |----------------|--------------------|
-| v2.1.0-rc7     | :white_check_mark: (canonical) |
-| v2.1.0-rc6     | :warning: superseded by rc7 |
-| v2.1.0-rc5     | :warning: superseded by rc7 |
-| v2.1.0-rc4     | :warning: superseded by rc7 |
-| v2.1.0-rc3     | :warning: superseded by rc7 |
-| v2.1.0-rc2     | :warning: deprecated — use rc4 (binary payload identical to rc3; see [`docs/release-notes/v2.1.0-rc2-deprecated.md`](docs/release-notes/v2.1.0-rc2-deprecated.md)) |
+| v2.1.0-rc13    | :white_check_mark: (canonical; see [errata](docs/release-notes/v2.1.0-rc13-errata.md)) |
+| v2.1.0-rc12    | :x: skipped, not a supported release |
+| v2.1.0-rc11    | :warning: superseded by rc13 (see [errata](docs/release-notes/v2.1.0-rc11-errata.md)) |
+| v2.1.0-rc10    | :x: skipped, not a supported release |
+| v2.1.0-rc9     | :x: skipped, not a supported release |
+| v2.1.0-rc8     | :x: skipped, not a supported release |
+| v2.1.0-rc7     | :warning: superseded by rc13 |
+| v2.1.0-rc6     | :warning: superseded by rc13 |
+| v2.1.0-rc5     | :warning: superseded by rc13 |
+| v2.1.0-rc4     | :warning: superseded by rc13 |
+| v2.1.0-rc3     | :warning: superseded by rc13 |
+| v2.1.0-rc2     | :warning: deprecated, binary payload identical to rc3 (see [`docs/release-notes/v2.1.0-rc2-deprecated.md`](docs/release-notes/v2.1.0-rc2-deprecated.md)) |
 | v2.1.0-rc1     | :x:                |
 | v2.0.1         | :white_check_mark: (critical fixes only) |
 | v2.0.0-alpha1  | :x:                |
@@ -148,7 +154,7 @@ inspectable through <https://search.sigstore.dev>.
 
 The integrity binding consumers should rely on is the workflow-identity
 Sigstore signature over `SHA256SUMS`. For the canonical release
-`v2.1.0-rc7` the corresponding Rekor index is `2380986847`. The full
+`v2.1.0-rc13` the corresponding Rekor index is `2981654055`. The full
 consumer-side verification procedure is documented in
 [`VERIFY.md`](VERIFY.md).
 
