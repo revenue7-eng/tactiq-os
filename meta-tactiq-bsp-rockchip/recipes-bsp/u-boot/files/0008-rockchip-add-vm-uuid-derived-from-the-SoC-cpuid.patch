@@ -18,6 +18,7 @@ The devicetree is measured in bootm before OS_PREP, where this fixup runs,
 so the devicetree PCR value does not depend on the board. A failure leaves
 the property out and returns 0: a nonzero return aborts bootm.
 
+Upstream-Status: Inappropriate [TactiQ BSP integration: the label and the use of vm,uuid serve systemd.machine_id=firmware on TactiQ OS]
 ---
 diff --git a/arch/arm/mach-rockchip/board.c b/arch/arm/mach-rockchip/board.c
 index cd226844..e501f7a4 100644
