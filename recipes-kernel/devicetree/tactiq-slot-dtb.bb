@@ -24,7 +24,11 @@ TACTIQ_VERITY_IMAGE ?= "tactiq-image"
 TACTIQ_SLOT_A_DEV ?= "/dev/mmcblk0p2"
 TACTIQ_SLOT_B_DEV ?= "/dev/mmcblk0p4"
 
-TACTIQ_COMMON_BOOTARGS ?= "ro rootwait rootfstype=ext4 earlycon panic=5 console=tty1 console=ttyS2,1500000n8"
+# systemd.machine_id=firmware: take the machine-id from /vm,uuid, which U-Boot
+# sets per board from the SoC cpuid (u-boot patch 0008). Without it a
+# read-only root gets a random machine-id each boot, and the persistent
+# journal keeps a directory per boot that its size limit never covers.
+TACTIQ_COMMON_BOOTARGS ?= "ro rootwait rootfstype=ext4 earlycon panic=5 console=tty1 console=ttyS2,1500000n8 systemd.machine_id=firmware"
 
 # do_image_verity, not do_image_complete: the latter includes do_image_wic,
 # which depends on the boot image, which will depend on the FIT, which depends
