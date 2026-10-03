@@ -21,7 +21,7 @@ the property out and returns 0: a nonzero return aborts bootm.
 Upstream-Status: Inappropriate [TactiQ BSP integration: the label and the use of vm,uuid serve systemd.machine_id=firmware on TactiQ OS]
 ---
 diff --git a/arch/arm/mach-rockchip/board.c b/arch/arm/mach-rockchip/board.c
-index cd226844..e501f7a4 100644
+index cd226844..4874b35f 100644
 --- a/arch/arm/mach-rockchip/board.c
 +++ b/arch/arm/mach-rockchip/board.c
 @@ -15,6 +15,7 @@
@@ -32,7 +32,7 @@ index cd226844..e501f7a4 100644
  #include <fastboot.h>
  #include <hash.h>
  #include <init.h>
-@@ -443,6 +444,55 @@ int rockchip_cpuid_set(const u8 *cpuid, const u32 cpuid_length)
+@@ -443,6 +444,60 @@ int rockchip_cpuid_set(const u8 *cpuid, const u32 cpuid_length)
  	return 0;
  }
  
@@ -77,7 +77,12 @@ index cd226844..e501f7a4 100644
 +	digest[8] = (digest[8] & 0x3f) | 0x80;	/* RFC 9562 variant */
 +	uuid_bin_to_str(digest, uuid, UUID_STR_FORMAT_STD);
 +
-+	ret = fdt_setprop_string(blob, 0, "vm,uuid", uuid);
++	/*
++	 * 36 bytes, no terminating NUL: systemd's id128_read_fd() accepts a
++	 * UUID of exactly 36 bytes, or 37 only when the last one is a newline,
++	 * and rejects a NUL-terminated string property.
++	 */
++	ret = fdt_setprop(blob, 0, "vm,uuid", uuid, UUID_STR_LEN);
 +	if (ret)
 +		printf("vm,uuid: %s, machine-id will be random\n", fdt_strerror(ret));
 +
