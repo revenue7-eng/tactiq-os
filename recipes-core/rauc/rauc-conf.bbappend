@@ -14,3 +14,30 @@ python () {
                  "See RELEASE_INTEGRITY.md section 2.6."
                  % d.getVar('TACTIQ_KEYRING'))
 }
+
+# Version limits, see system.conf: the bundle manifest version and the
+# device's min-bundle-version both come from release-rev.inc.
+require recipes-core/tactiq-release/release-derived.inc
+
+# prevent-late-fallback is on unless a development build turns it off in its
+# own local.conf (to keep the other slot as a bench fallback). Not allowed
+# with a non-development keyring.
+TACTIQ_RAUC_ALLOW_LATE_FALLBACK ??= "0"
+do_install[vardeps] += "TACTIQ_RAUC_VERSION TACTIQ_RAUC_ALLOW_LATE_FALLBACK"
+
+python () {
+    if d.getVar('TACTIQ_RAUC_ALLOW_LATE_FALLBACK') == '1' and d.getVar('TACTIQ_KEYRING') != 'dev':
+        bb.fatal("TACTIQ_RAUC_ALLOW_LATE_FALLBACK=1 is for development keyrings only")
+}
+
+do_install:append() {
+    conf=${D}${sysconfdir}/rauc/system.conf
+    [ -f "$conf" ] || bbfatal "system.conf not installed at $conf"
+    sed -i -e "s|@TACTIQ_RAUC_VERSION@|${TACTIQ_RAUC_VERSION}|" "$conf"
+    if [ "${TACTIQ_RAUC_ALLOW_LATE_FALLBACK}" = "1" ]; then
+        sed -i -e '/^prevent-late-fallback=true$/d' "$conf"
+    fi
+    grep -q "^min-bundle-version=${TACTIQ_RAUC_VERSION}$" "$conf" || \
+        bbfatal "min-bundle-version not set in $conf"
+    ! grep -q "@TACTIQ_" "$conf" || bbfatal "unresolved placeholder in $conf"
+}
