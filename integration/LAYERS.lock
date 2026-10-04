@@ -1,47 +1,46 @@
-# TactiQ OS layer lock — build input state of release v2.1.0-rc7
+# TactiQ OS layer lock: the layer set the build on this commit consumes
 #
-# Records the exact upstream revision of every Yocto layer that produced
-# the release artifacts. Together with scripts/setup-layers.sh this makes
-# the build input fully specified from public sources: an independent
-# party can reconstruct the complete layer set without access to the
-# original build host.
+# Records the exact upstream revision of every Yocto layer. Together with
+# scripts/setup-layers.sh this makes the build input fully specified from
+# public sources: an independent party can reconstruct the complete layer
+# set without access to the original build host.
+#
+# A release is built from the lock at its tag. The release gate is
+# scripts/check-layers.sh --check, run against the assembled tree before
+# the build; its output ships with the release. Releases up to and
+# including v2.1.0-rc13 did not ship that output (coverage manifest known
+# issue layer-set-evidence), so for them the lock at the tag records the
+# layer set the build is believed to have consumed, not one proven against
+# the tree.
 #
 # The repository carrying this file is not listed. It is identified by
 # the tag the verifier checked out; a line pinning it here could not be
 # written before the commit containing that line exists. setup-layers.sh
 # places that checkout into the layer set directly.
 #
-# For v2.1.0-rc6 the revisions below had to be recovered forensically
-# after the release, from a build tree that carried no git metadata.
-#
-# The rc6 file stated that from v2.1.0-rc7 onward this lock would be
-# maintained at build time rather than reconstructed. That is the intent
-# and it is not yet the practice. v2.1.0-rc7 was built on a cloud host
-# destroyed after artifact retrieval, and scripts/check-layers.sh, which
-# is what proves a layer set against this file, was not tracked in the
-# repository until after that tag. For rc7 as for rc6, a clean working
-# tree at build time is asserted, not proven, and the coverage manifest
-# for that release records the layer set as unpinned.
-#
-# What closes this is mechanical, not editorial: assemble with
-# scripts/setup-layers.sh, run scripts/check-layers.sh --check against
-# the assembled tree before the build, and keep that output with the
-# release. Until a release ships that evidence, treat the revisions here
-# as a record of what the build is believed to have consumed.
+# History. The lock at the v2.1.0-rc6 tag was recovered forensically after
+# the release, from a build tree that carried no git metadata. v2.1.0-rc7
+# was built on a cloud host destroyed after artifact retrieval, before
+# scripts/check-layers.sh was tracked; its coverage manifest records the
+# layer set as unpinned.
 #
 # Format: <layer> <remote> <commit> <upstream-branch>
 # meta-rauc is not listed: it is reconstructed deterministically by
 # scripts/setup-meta-rauc.sh (pinned upstream commit plus a local patch
 # carried in this repository, verified by tree hash
 # ce25181e3275664e5ed66d980ef2e74424861801).
+#
+# meta-tensorflow-lite has no wrynose branch. Its main moved to blacksail
+# only (9e0d503); the pin is the last commit whose LAYERSERIES_COMPAT
+# includes wrynose.
 
-bitbake              https://github.com/openembedded/bitbake              22021758e66737bcf68dfd2b74adc6a0cb1d42d9  2.18
-openembedded-core    https://github.com/openembedded/openembedded-core    06dd66e6220e5ce4ed4b9af4d8231ae5f0a8ce80  wrynose
-meta-yocto           https://git.yoctoproject.org/meta-yocto              8251bdad5fda780a000fb41e6eda82eadf0fa39e  wrynose
-meta-openembedded    https://github.com/openembedded/meta-openembedded    9af4488d46cb4fd4c0d2d64820c86225ebd6ac71  wrynose
-meta-selinux         https://git.yoctoproject.org/meta-selinux            1ba26da4b9bec3f102bd831efe0db00c7d61f7f2  wrynose
-meta-security        https://git.yoctoproject.org/meta-security           c0d1d6200e7a84c39fb940cb1f22aad4b0b3d808  wrynose
-meta-arm             https://git.yoctoproject.org/meta-arm                31dd0e8a891800a6dc6823a84389e7bc115d149a  wrynose
+bitbake              https://github.com/openembedded/bitbake              51fd94a67fa17650a9ff623492005972bbc7d26f  2.18
+openembedded-core    https://github.com/openembedded/openembedded-core    0f03c732a0a2d0506b41b1abe60b3f368b2300dc  wrynose
+meta-yocto           https://git.yoctoproject.org/meta-yocto              7c25b11156553145fa6b241a2d4f65d94438f804  wrynose
+meta-openembedded    https://github.com/openembedded/meta-openembedded    47d7dbdd10890bbd429bc0cccbe14435c37e5af1  wrynose
+meta-selinux         https://git.yoctoproject.org/meta-selinux            1c3a699f363167571ab39fecb0fe6f56691a4e20  wrynose
+meta-security        https://git.yoctoproject.org/meta-security           2703974d5e2d61b221dffa302c2e059a522adbf3  wrynose
+meta-arm             https://git.yoctoproject.org/meta-arm                673e8d7c5dcd14de58092eb73e6ecc5eee5c1735  wrynose
 meta-rockchip        https://git.yoctoproject.org/meta-rockchip           9d02575bfd9ca5e87c394f593f2bbdbdee914d4e  wrynose
-meta-tensorflow-lite https://github.com/NobuoTsukamoto/meta-tensorflow-lite f87ee8eab434497e3a1f8329013a4af5415cbd1e main
-tactiq-os-selinux    https://github.com/revenue7-eng/tactiq-os-selinux    c1b13157a94046778737c062e87cf4c8b29edee9  main
+meta-tensorflow-lite https://github.com/NobuoTsukamoto/meta-tensorflow-lite 1fc5d5d68763ded53b11feac20fd65fbc6700f3b  main
+tactiq-os-selinux    https://github.com/revenue7-eng/tactiq-os-selinux    9bc46f835df28e95c784f739bf8e52e4dff1e60a  main

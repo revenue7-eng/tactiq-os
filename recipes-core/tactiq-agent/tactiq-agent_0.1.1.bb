@@ -32,7 +32,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 # History note: these revs previously drifted (recipe on 84362d3, Custinel on
 # 8d77e2ac) and a "must match" comment masked it. Version-parity is the real
 # invariant; a rev mismatch under one envelope version is expected.
-SRCREV = "b8532536b7fe18cf87845c3ce1dba11837f8e553"
+SRCREV = "4e6af38c74217b280e2f6544ce04e12265bb0d8c"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
 SRC_URI += "file://tactiq-agent.service"
 
