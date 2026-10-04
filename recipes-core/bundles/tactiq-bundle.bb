@@ -18,7 +18,8 @@ S = "${UNPACKDIR}"
 
 RAUC_BUNDLE_COMPATIBLE = "TactiQ OS Rock5A"
 RAUC_BUNDLE_FORMAT = "verity"
-RAUC_BUNDLE_VERSION ?= "${DISTRO_VERSION}"
+require recipes-core/tactiq-release/release-derived.inc
+RAUC_BUNDLE_VERSION = "${TACTIQ_RAUC_VERSION}"
 
 RAUC_KEY_FILE  ?= "${LAYERDIR_tactiq-os}/pki/dev/signer.key.pem"
 RAUC_CERT_FILE ?= "${LAYERDIR_tactiq-os}/pki/dev/signer.pem"
