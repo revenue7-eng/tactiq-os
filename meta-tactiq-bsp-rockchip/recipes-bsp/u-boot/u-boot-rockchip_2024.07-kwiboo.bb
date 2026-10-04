@@ -32,6 +32,7 @@ SRC_URI += "file://tpm-spi.cfg"
 SRC_URI += "file://measured-boot.cfg"
 SRC_URI += "file://spl-measured-boot.cfg"
 SRC_URI += "file://machine-id.cfg"
+SRC_URI += "file://console-lockdown.cfg"
 SRC_URI += "file://tactiq-boot.env"
 SRC_URI += "file://tactiq-boot-fit.env"
 
@@ -42,6 +43,12 @@ TACTIQ_UBOOT_ENV = "${@'tactiq-boot-fit.env' if d.getVar('TACTIQ_BOOT_METHOD') =
 # the per-slot devicetrees of tactiq-slot-dtb.bb (slot B adds "-b").
 TACTIQ_FIT_DTB = "${@os.path.basename(d.getVar('KERNEL_DEVICETREE').split()[0])}"
 do_configure[vardeps] += "TACTIQ_UBOOT_ENV TACTIQ_FIT_DTB"
+
+# Interactive U-Boot console, for bench builds only. Off unless a build sets
+# it to "1" in its own local.conf. A loader carrying a FIT key other than the
+# development key is never built with it (checked in do_configure).
+TACTIQ_UBOOT_CONSOLE ??= "0"
+do_configure[vardeps] += "TACTIQ_UBOOT_CONSOLE TACTIQ_FIT_KEY_NAME"
 
 TACTIQ_MIRROR ?= "https://github.com/revenue7-eng/tactiq-os/releases/download/bsp-mirror-2024.10/"
 
@@ -73,7 +80,12 @@ python () {
 
 do_configure() {
     oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
-    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/spl-measured-boot.cfg ${UNPACKDIR}/machine-id.cfg
+    if [ "${TACTIQ_UBOOT_CONSOLE}" = "1" ] && [ "${TACTIQ_FIT_KEY_NAME}" != "dev-fit" ]; then
+        bbfatal "TACTIQ_UBOOT_CONSOLE=1 with FIT key '${TACTIQ_FIT_KEY_NAME}': the console is for development loaders only"
+    fi
+    lockdown=""
+    [ "${TACTIQ_UBOOT_CONSOLE}" = "1" ] || lockdown="${UNPACKDIR}/console-lockdown.cfg"
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/spl-measured-boot.cfg ${UNPACKDIR}/machine-id.cfg ${lockdown}
     dtb="${TACTIQ_FIT_DTB}"
     sed -e "s|@FIT_CONF_A@|conf-${dtb}|g" -e "s|@FIT_CONF_B@|conf-${dtb%.dtb}-b.dtb|g" \
         ${UNPACKDIR}/${TACTIQ_UBOOT_ENV} > ${S}/tactiq-boot.env
@@ -84,6 +96,16 @@ do_configure() {
     # olddefconfig drops a symbol with unmet dependencies without a word.
     grep -q '^CONFIG_OF_BOARD_SETUP=y$' ${B}/.config || \
         bbfatal "CONFIG_OF_BOARD_SETUP did not survive olddefconfig: no vm,uuid, machine-id stays random"
+    grep -q '^CONFIG_MEASURED_BOOT=y$' ${B}/.config || \
+        bbfatal "CONFIG_MEASURED_BOOT did not survive olddefconfig"
+    grep -q '^CONFIG_TPM_V2=y$' ${B}/.config || \
+        bbfatal "CONFIG_TPM_V2 did not survive olddefconfig"
+    if [ "${TACTIQ_UBOOT_CONSOLE}" != "1" ]; then
+        grep -q '^CONFIG_BOOTDELAY=-2$' ${B}/.config || \
+            bbfatal "console lockdown: CONFIG_BOOTDELAY is not -2"
+        ! grep -q '^CONFIG_CMD_TPM=y$' ${B}/.config || \
+            bbfatal "console lockdown: CONFIG_CMD_TPM is still set"
+    fi
 }
 
 do_compile() {
