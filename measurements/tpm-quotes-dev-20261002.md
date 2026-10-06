@@ -40,7 +40,9 @@ Sequence: power off, power on (cold start), quote and log (`cold.*`);
 | `restartCount` (signed) | 0 | 0 |
 | PCR 0 to 9 | as below | identical to cold |
 | PCR 11, 12 | as below | identical to cold |
-| PCR 10 | replay of 173 entries equals quote | replay of 171 entries equals quote |
+| TPM clock (signed) | 605753465 ms | 605872757 ms, 119292 ms after cold |
+| first log entry `boot_aggregate` | equals sha256 of quoted PCR 0 to 9 | equals sha256 of quoted PCR 0 to 9 |
+| PCR 10 | replay of 169 entries equals quote | replay of 167 entries equals quote |
 
 PCR 2, 3, 5 and 7 hold a single `EV_SEPARATOR` (`0xFFFFFFFF`) extension and
 nothing else, as in the rc13 RIM.
@@ -94,7 +96,9 @@ measure func=FILE_CHECK mask=MAY_READ pcr=12 obj_type=tactiq_agent_state_t
 - Whether any of the entries above was appraised. The policy is not measured
   into the log, so the evidence shows measurement only; "not appraised" comes
   from the policy as read on the board.
-- Freshness. The qualifying data is a fixed label.
+- Freshness. The qualifying data is a fixed label, so the date of the
+  quotes is not established. Their order and the interval between them are:
+  the signed TPM clock in the warm quote is 119292 ms after the cold one.
 - Anything for another board or another image.
 
 ## Reproduce
@@ -105,4 +109,19 @@ python3 check.py
 ```
 
 Needs Python 3 and `tpm2_checkquote` (tpm2-tools). Expected last line:
-`ALL CHECKS PASSED`.
+`ALL CHECKS PASSED`, exit status 0. Exit status 1 means a check failed;
+exit status 2 means none failed but at least one could not run, for example
+with `tpm2_checkquote` missing, and the last line then says `NOT ESTABLISHED`.
+Besides the quotes and the replay, `check.py` requires the `.pcr` files to
+carry exactly the signed selection and its values, with every other byte
+zero, and ties each log to its quote through `boot_aggregate`.
+
+## Corrections
+
+2026-10-05. The PCR 10 row gave whole-log entry counts (173 and 171); PCR 10
+itself takes 169 and 167. `check.py` exited with the same status for a crash
+as for a failed check, and did not look at the padding in the `.pcr` files:
+a flipped bit there passed, because `tpm2_checkquote` does not read it
+either. Both are fixed, and the TPM clock order and the `boot_aggregate` tie
+are now reported. All four points come from an independent check of these
+files by Capt Anil Sharma.
