@@ -21,6 +21,7 @@
 #   TACTIQ_FIT_KEY_DIR          FIT verification key in the U-Boot FDT
 #   TACTIQ_MODULE_SIG_KEY       kernel module signing key and built-in cert
 #   TACTIQ_NETPERM_PUBKEY       site network permission key (tactiq-netperm)
+#   TACTIQ_CARTRIDGE_ANCHOR     Edge cartridge trust anchor (tactiq-cartridge-anchor)
 
 TACTIQ_KEYGATE_VARS ?= "\
     RAUC_KEYRING_FILE_EXTERNAL \
@@ -29,6 +30,7 @@ TACTIQ_KEYGATE_VARS ?= "\
     TACTIQ_FIT_KEY_DIR \
     TACTIQ_MODULE_SIG_KEY \
     TACTIQ_NETPERM_PUBKEY \
+    TACTIQ_CARTRIDGE_ANCHOR \
 "
 
 addhandler tactiq_keygate
