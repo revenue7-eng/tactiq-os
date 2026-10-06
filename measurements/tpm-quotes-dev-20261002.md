@@ -125,3 +125,7 @@ a flipped bit there passed, because `tpm2_checkquote` does not read it
 either. Both are fixed, and the TPM clock order and the `boot_aggregate` tie
 are now reported. All four points come from an independent check of these
 files by Capt Anil Sharma.
+
+2026-10-06. Added under "What this does not establish": the attestation agent
+of this image quotes PCR 0 to 9 only, so PCR 10 to 12 in this record come
+from the manual quote, not from the agent. No measured value changed.
