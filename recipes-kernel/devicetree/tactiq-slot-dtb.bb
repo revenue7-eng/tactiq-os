@@ -16,9 +16,9 @@ do_configure[noexec] = "1"
 # /boot is not staged into recipe sysroots by default.
 SYSROOT_DIRS += "/boot"
 
-# Which image profile produces the verity parameters. Production by default;
-# override in local.conf for bring-up builds.
-TACTIQ_VERITY_IMAGE ?= "tactiq-image"
+# Which image profile produces the verity parameters: TACTIQ_VERITY_IMAGE,
+# set in conf/distro/tactiq.conf (production by default) and overridden in
+# local.conf for development builds.
 
 # Block devices as seen by the kernel on this board. Machine-specific.
 TACTIQ_SLOT_A_DEV ?= "/dev/mmcblk0p2"

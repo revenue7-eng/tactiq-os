@@ -26,9 +26,15 @@ RAUC_CERT_FILE ?= "${LAYERDIR_tactiq-os}/pki/dev/signer.pem"
 RAUC_INTERMEDIATE_FILE ?= "${LAYERDIR_tactiq-os}/pki/dev/signing-ca.pem"
 BUNDLE_ARGS += "--intermediate=${RAUC_INTERMEDIATE_FILE}"
 
-# --- Slot: rootfs (ext4 image of tactiq-image, production) ---
+# --- Slot: rootfs (the verity image of TACTIQ_VERITY_IMAGE) ---
+# The boot slot carries a FIT whose slot devicetrees hold the dm-verity root
+# hash of TACTIQ_VERITY_IMAGE (tactiq-slot-dtb.bb). The rootfs in the bundle
+# must be that same image, or the installed slot fails verity on its first
+# boot. Taking it from the same variable keeps the two from drifting apart;
+# a build that sets RAUC_SLOT_rootfs on its own can no longer pair a rootfs
+# with another image's root hash.
 RAUC_BUNDLE_SLOTS = "rootfs boot"
-RAUC_SLOT_rootfs = "tactiq-image"
+RAUC_SLOT_rootfs = "${TACTIQ_VERITY_IMAGE}"
 RAUC_SLOT_rootfs[fstype] = "ext4.verity"
 RAUC_SLOT_rootfs[rename] = "rootfs.ext4"
 
