@@ -7,6 +7,7 @@
 #   ./gen-pki.sh fit    -> pki/dev/    U-Boot FIT signer, self-signed
 #   ./gen-pki.sh rim    -> pki/dev/    RIM signer leaf, existing hierarchy
 #   ./gen-pki.sh regsigner -> pki/dev/ AK registration signer leaf
+#   ./gen-pki.sh cartsigner -> pki/dev/ Edge cartridge signer leaf
 #   ./gen-pki.sh netperm   -> pki/dev/ site network permission key
 #
 #   ./gen-pki.sh prod DIR          release RAUC hierarchy, encrypted keys
@@ -19,6 +20,9 @@
 #   ./gen-pki.sh regsigner-prod CA_DIR DIR
 #                                  release AK Registration Signer leaf, as
 #                                  rim-prod (tactiq-attest DDR-005 decision 6)
+#   ./gen-pki.sh cartsigner-prod CA_DIR DIR
+#                                  release Cartridge Signer leaf, as
+#                                  regsigner-prod (tactiq-edge#3)
 #   ./gen-pki.sh netperm-prod DIR  release site network permission key
 #
 # DIR is required for every release flavour and must lie outside this
@@ -27,9 +31,9 @@
 # modsign-prod write their keys without a passphrase, because mkimage,
 # evmctl and the kernel build read them unattended inside bitbake; their
 # protection is the encrypted medium. Only prod (the RAUC hierarchy, used
-# offline by rauc resign) keeps passphrase-encrypted keys, and rim-prod and
-# regsigner-prod, whose keys sign a RIM or a registration record outside
-# bitbake.
+# offline by rauc resign) keeps passphrase-encrypted keys, and rim-prod,
+# regsigner-prod and cartsigner-prod, whose keys sign a RIM, a registration
+# record or a cartridge outside bitbake.
 #
 # Hierarchy (both flavours):
 #   Root CA  ->  Signing CA  ->  Signer (leaf)
@@ -188,6 +192,23 @@ case "$FLAVOUR" in
     # As rim-prod: a record stops verifying when the Signing CA expires.
     LEAF_DAYS=1095
     ;;
+  cartsigner)
+    CA_DIR="pki/dev"
+    OUT="pki/dev"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS DEVELOPMENT Cartridge Signer - NOT FOR PRODUCTION"
+    ENC=""
+    LEAF_DAYS=730
+    ;;
+  cartsigner-prod)
+    CA_DIR="${2:-}"
+    OUT="${3:-}"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS Release Cartridge Signer"
+    ENC="-aes-256-cbc"     # passphrase required: signs cartridges offline, not in bitbake
+    # As rim-prod: bounded by the Signing CA lifetime.
+    LEAF_DAYS=1095
+    ;;
   *)
     echo "usage: $0 {dev|ima|fit|signer}" >&2
     echo "       $0 {prod|ima-prod|fit-prod|modsign-prod} DIR" >&2
@@ -195,6 +216,8 @@ case "$FLAVOUR" in
     echo "       $0 rim-prod CA_DIR DIR" >&2
     echo "       $0 regsigner" >&2
     echo "       $0 regsigner-prod CA_DIR DIR" >&2
+    echo "       $0 cartsigner" >&2
+    echo "       $0 cartsigner-prod CA_DIR DIR" >&2
     exit 1
     ;;
 esac
@@ -217,7 +240,7 @@ case "$FLAVOUR" in
     esac
     OUT="$ABS"
     ;;
-  rim-prod|regsigner-prod)
+  rim-prod|regsigner-prod|cartsigner-prod)
     if [ -z "$CA_DIR" ] || [ -z "$OUT" ]; then
       echo "ERROR: $FLAVOUR needs the Signing CA directory and an output directory:" >&2
       echo "       $0 $FLAVOUR CA_DIR DIR" >&2
@@ -333,8 +356,9 @@ EOF
   exit 0
 fi
 
-if [ "$FLAVOUR" = "regsigner" ] || [ "$FLAVOUR" = "regsigner-prod" ]; then
-  # ----------------------------------------------- AK Registration Signer
+if [ "$FLAVOUR" = "regsigner" ] || [ "$FLAVOUR" = "regsigner-prod" ] ||
+   [ "$FLAVOUR" = "cartsigner" ] || [ "$FLAVOUR" = "cartsigner-prod" ]; then
+  # ------------------------------- AK Registration Signer, Cartridge Signer
   # Signs AK registration records (tactiq-attest DDR-005 decision 6): the
   # record that ties an attestation key to a TPM's endorsement key. Issued
   # from the Signing CA like the RIM signer, so a reader verifies a record
@@ -348,10 +372,34 @@ if [ "$FLAVOUR" = "regsigner" ] || [ "$FLAVOUR" = "regsigner-prod" ]; then
   # signature): a RIM signature must not pass as a registration signature,
   # nor the other way round. No codeSigning, so RAUC refuses the key too.
   #
+  # The Cartridge Signer (tactiq-edge#3) is the same profile with a purpose
+  # of its own: it signs Edge cartridges, which the Edge daemon checks
+  # against its anchor list before loading. It is never an IMA key and never
+  # enters .ima: IMA appraisal accepts any .ima key for executables too.
+  #
   # RSA-3072 like the other leaves. The key is written to DIR, the Signing
   # CA stays in CA_DIR; CA_DIR must be writable for -CAcreateserial.
   REG_EKU_OID="2.25.205994972697553183157730487844756597568"
   RIM_EKU_OID="2.25.209288284150790823604684143005475146259"
+  CART_EKU_OID="2.25.184704202295517202911306323146494914346"
+  case "$FLAVOUR" in
+    regsigner*)
+      LEAF=reg-signer
+      EKU_OID="$REG_EKU_OID"
+      OTHER_OIDS=("$RIM_EKU_OID" "$CART_EKU_OID")
+      WHAT="registration signer"
+      SIGNS="signs registration-<device>.json"
+      REISSUE="signed registration records name the certificate that signed them."
+      ;;
+    cartsigner*)
+      LEAF=cart-signer
+      EKU_OID="$CART_EKU_OID"
+      OTHER_OIDS=("$RIM_EKU_OID" "$REG_EKU_OID")
+      WHAT="cartridge signer"
+      SIGNS="signs Edge cartridges"
+      REISSUE="signed cartridges name the certificate that signed them."
+      ;;
+  esac
   CA_DIR="$(realpath -m "$CA_DIR")"
 
   for f in signing-ca.key.pem signing-ca.pem root-ca.pem; do
@@ -361,66 +409,66 @@ if [ "$FLAVOUR" = "regsigner" ] || [ "$FLAVOUR" = "regsigner-prod" ]; then
     fi
   done
   mkdir -p "$OUT"
-  for f in reg-signer.key.pem reg-signer.pem; do
+  for f in "$LEAF.key.pem" "$LEAF.pem"; do
     if [ -e "$OUT/$f" ]; then
       echo "ERROR: $OUT/$f already exists. Refusing to reissue in place:" >&2
-      echo "       signed registration records name the certificate that signed them." >&2
+      echo "       $REISSUE" >&2
       exit 1
     fi
   done
   cd "$OUT"
 
-  cat > reg-signer.cnf <<EOF
+  cat > "$LEAF.cnf" <<EOF
 [v3_signer]
 basicConstraints       = critical, CA:FALSE
 keyUsage               = critical, digitalSignature
-extendedKeyUsage       = critical, $REG_EKU_OID
+extendedKeyUsage       = critical, $EKU_OID
 subjectKeyIdentifier   = hash
 authorityKeyIdentifier = keyid:always
 EOF
 
-  echo "[1/1] Registration signer (leaf)"
+  echo "[1/1] ${WHAT^} (leaf)"
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
-    $ENC -out reg-signer.key.pem
+    $ENC -out "$LEAF.key.pem"
   openssl req -new -sha256 \
-    -key reg-signer.key.pem \
+    -key "$LEAF.key.pem" \
     -subj "/O=$ORG/CN=$LEAF_CN" \
-    -out reg-signer.csr
+    -out "$LEAF.csr"
   openssl x509 -req -sha256 \
-    -in reg-signer.csr \
+    -in "$LEAF.csr" \
     -CA "$CA_DIR/signing-ca.pem" -CAkey "$CA_DIR/signing-ca.key.pem" \
     -CAcreateserial \
     -days "$LEAF_DAYS" \
-    -extfile reg-signer.cnf -extensions v3_signer \
-    -out reg-signer.pem
-  rm -f reg-signer.csr
+    -extfile "$LEAF.cnf" -extensions v3_signer \
+    -out "$LEAF.pem"
+  rm -f "$LEAF.csr"
 
   echo
   echo "---- verification ----------------------------------------------"
   openssl verify -CAfile "$CA_DIR/root-ca.pem" \
-    -untrusted "$CA_DIR/signing-ca.pem" reg-signer.pem
+    -untrusted "$CA_DIR/signing-ca.pem" "$LEAF.pem"
   echo
   echo "leaf key usage:"
-  openssl x509 -in reg-signer.pem -noout -text \
+  openssl x509 -in "$LEAF.pem" -noout -text \
     | grep -A1 -E 'X509v3 (Key Usage|Extended Key Usage)'
-  eku="$(openssl x509 -in reg-signer.pem -noout -ext extendedKeyUsage | sed -n '2p' | tr -d ' ')"
-  if [ "$eku" != "$REG_EKU_OID" ]; then
-    echo "ERROR: reg-signer.pem EKU is '$eku', expected exactly $REG_EKU_OID." >&2
+  eku="$(openssl x509 -in "$LEAF.pem" -noout -ext extendedKeyUsage | sed -n '2p' | tr -d ' ')"
+  if [ "$eku" != "$EKU_OID" ]; then
+    echo "ERROR: $LEAF.pem EKU is '$eku', expected exactly $EKU_OID." >&2
     exit 1
   fi
-  if openssl x509 -in reg-signer.pem -noout -text | grep -q -e 'Code Signing' -e "$RIM_EKU_OID"; then
-    echo "ERROR: reg-signer.pem carries codeSigning or the RIM purpose." >&2
+  if openssl x509 -in "$LEAF.pem" -noout -text | grep -q -e 'Code Signing' -e "${OTHER_OIDS[0]}" -e "${OTHER_OIDS[1]}"; then
+    echo "ERROR: $LEAF.pem carries codeSigning or another signer's purpose." >&2
     exit 1
   fi
   echo
-  openssl x509 -in reg-signer.pem -noout -subject -issuer -enddate
+  openssl x509 -in "$LEAF.pem" -noout -subject -issuer -enddate
 
   cat <<EOF
 
 ---- files ------------------------------------------------------
-$OUT/reg-signer.pem       PUBLIC  -> registration signer certificate
-$OUT/reg-signer.key.pem   PRIVATE -> signs registration-<device>.json
-$OUT/reg-signer.cnf       extensions used, kept for the record
+$OUT/$LEAF.pem       PUBLIC  -> $WHAT certificate
+$OUT/$LEAF.key.pem   PRIVATE -> $SIGNS
+$OUT/$LEAF.cnf       extensions used, kept for the record
 EOF
   exit 0
 fi
