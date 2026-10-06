@@ -74,7 +74,11 @@
 #   cve-${BOARD}.sbom-cve-check.yocto.json
 #   bundle-${BOARD}.raucb                            (required for IMAGE=tactiq-image)
 #   tactiq-release-${BOARD}                          (/etc/tactiq-release from the release rootfs)
-#   SHA256SUMS
+#
+# It does not write SHA256SUMS. The L3 evidence of the release is taken from
+# the reference device running this output, and the release's signed
+# SHA256SUMS must cover it; scripts/mk-release-sums.sh writes SHA256SUMS last,
+# after scripts/mk-l3-evidence.sh. The order is in mk-release-sums.sh.
 
 set -euo pipefail
 
@@ -572,15 +576,7 @@ if [[ -n "${RIM_SIGNER_CERT:-}" ]]; then
 else
     rim_no_rim "RIM left unsigned: set RIM_SIGNER_CERT, RIM_SIGNER_KEY, RIM_SIGNING_CA, RIM_ROOT_CA"
 fi
-echo "==> SHA256SUMS"
-# SHA256SUMS does not exist yet, so the glob below cannot include it.
-shopt -s nullglob; files=( * ); shopt -u nullglob
-# Copies inherit the mode of their source, which on some hosts is 0777.
-# Normalise: data 0644, the one script 0755.
-[[ ${#files[@]} -gt 0 ]] || { echo "::error:: no artifacts to hash" >&2; exit 1; }
-chmod 0644 -- "${files[@]}"
-chmod 0755 -- mk-pcr-reference.py
-sha256sum -- "${files[@]}" | LC_ALL=C sort -k2 > SHA256SUMS
-
-echo "==> done: ${OUT}  (tag ${TAG})"
+echo "==> artifacts done: ${OUT}  (tag ${TAG}); no SHA256SUMS yet"
+echo "    next: release image on the reference device, scripts/mk-l3-evidence.sh,"
+echo "    VERIFY-L3 page and script into ${OUT}, then scripts/mk-release-sums.sh"
 ls -la "$OUT"

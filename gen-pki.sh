@@ -8,6 +8,7 @@
 #   ./gen-pki.sh rim    -> pki/dev/    RIM signer leaf, existing hierarchy
 #   ./gen-pki.sh regsigner -> pki/dev/ AK registration signer leaf
 #   ./gen-pki.sh cartsigner -> pki/dev/ Edge cartridge signer leaf
+#   ./gen-pki.sh evsigner  -> pki/dev/ evidence signer leaf
 #   ./gen-pki.sh netperm   -> pki/dev/ site network permission key
 #
 #   ./gen-pki.sh prod DIR          release RAUC hierarchy, encrypted keys
@@ -23,6 +24,10 @@
 #   ./gen-pki.sh cartsigner-prod CA_DIR DIR
 #                                  release Cartridge Signer leaf, as
 #                                  regsigner-prod (tactiq-edge#3)
+#   ./gen-pki.sh evsigner-prod CA_DIR DIR
+#                                  release Evidence Signer leaf, as
+#                                  regsigner-prod: signs the SHA256SUMS of a
+#                                  release's L3 evidence archive
 #   ./gen-pki.sh netperm-prod DIR  release site network permission key
 #
 # DIR is required for every release flavour and must lie outside this
@@ -32,8 +37,8 @@
 # evmctl and the kernel build read them unattended inside bitbake; their
 # protection is the encrypted medium. Only prod (the RAUC hierarchy, used
 # offline by rauc resign) keeps passphrase-encrypted keys, and rim-prod,
-# regsigner-prod and cartsigner-prod, whose keys sign a RIM, a registration
-# record or a cartridge outside bitbake.
+# regsigner-prod, cartsigner-prod and evsigner-prod, whose keys sign a RIM,
+# a registration record, a cartridge or an evidence list outside bitbake.
 #
 # Hierarchy (both flavours):
 #   Root CA  ->  Signing CA  ->  Signer (leaf)
@@ -209,6 +214,23 @@ case "$FLAVOUR" in
     # As rim-prod: bounded by the Signing CA lifetime.
     LEAF_DAYS=1095
     ;;
+  evsigner)
+    CA_DIR="pki/dev"
+    OUT="pki/dev"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS DEVELOPMENT Evidence Signer - NOT FOR PRODUCTION"
+    ENC=""
+    LEAF_DAYS=730
+    ;;
+  evsigner-prod)
+    CA_DIR="${2:-}"
+    OUT="${3:-}"
+    ORG="TactiQ"
+    LEAF_CN="TactiQ OS Release Evidence Signer"
+    ENC="-aes-256-cbc"     # passphrase required: signs evidence lists offline, not in bitbake
+    # As rim-prod: an evidence signature stops verifying when the Signing CA expires.
+    LEAF_DAYS=1095
+    ;;
   *)
     echo "usage: $0 {dev|ima|fit|signer}" >&2
     echo "       $0 {prod|ima-prod|fit-prod|modsign-prod} DIR" >&2
@@ -218,6 +240,8 @@ case "$FLAVOUR" in
     echo "       $0 regsigner-prod CA_DIR DIR" >&2
     echo "       $0 cartsigner" >&2
     echo "       $0 cartsigner-prod CA_DIR DIR" >&2
+    echo "       $0 evsigner" >&2
+    echo "       $0 evsigner-prod CA_DIR DIR" >&2
     exit 1
     ;;
 esac
@@ -240,7 +264,7 @@ case "$FLAVOUR" in
     esac
     OUT="$ABS"
     ;;
-  rim-prod|regsigner-prod|cartsigner-prod)
+  rim-prod|regsigner-prod|cartsigner-prod|evsigner-prod)
     if [ -z "$CA_DIR" ] || [ -z "$OUT" ]; then
       echo "ERROR: $FLAVOUR needs the Signing CA directory and an output directory:" >&2
       echo "       $0 $FLAVOUR CA_DIR DIR" >&2
@@ -357,8 +381,9 @@ EOF
 fi
 
 if [ "$FLAVOUR" = "regsigner" ] || [ "$FLAVOUR" = "regsigner-prod" ] ||
-   [ "$FLAVOUR" = "cartsigner" ] || [ "$FLAVOUR" = "cartsigner-prod" ]; then
-  # ------------------------------- AK Registration Signer, Cartridge Signer
+   [ "$FLAVOUR" = "cartsigner" ] || [ "$FLAVOUR" = "cartsigner-prod" ] ||
+   [ "$FLAVOUR" = "evsigner" ] || [ "$FLAVOUR" = "evsigner-prod" ]; then
+  # ------------------ AK Registration Signer, Cartridge Signer, Evidence Signer
   # Signs AK registration records (tactiq-attest DDR-005 decision 6): the
   # record that ties an attestation key to a TPM's endorsement key. Issued
   # from the Signing CA like the RIM signer, so a reader verifies a record
@@ -377,16 +402,24 @@ if [ "$FLAVOUR" = "regsigner" ] || [ "$FLAVOUR" = "regsigner-prod" ] ||
   # against its anchor list before loading. It is never an IMA key and never
   # enters .ima: IMA appraisal accepts any .ima key for executables too.
   #
+  # The Evidence Signer is the same profile again. It signs the SHA256SUMS
+  # inside a release's L3 evidence archive: a statement that these files came
+  # from the reference device in this run. That is not a registration (this
+  # AK belongs to this EK), so it does not borrow the registration key. The
+  # release's Sigstore signature covers the archive too, but rests on the
+  # repository's workflow; this signature rests on the offline release root.
+  #
   # RSA-3072 like the other leaves. The key is written to DIR, the Signing
   # CA stays in CA_DIR; CA_DIR must be writable for -CAcreateserial.
   REG_EKU_OID="2.25.205994972697553183157730487844756597568"
   RIM_EKU_OID="2.25.209288284150790823604684143005475146259"
   CART_EKU_OID="2.25.184704202295517202911306323146494914346"
+  EV_EKU_OID="2.25.303991386130890852620485224389791976682"
   case "$FLAVOUR" in
     regsigner*)
       LEAF=reg-signer
       EKU_OID="$REG_EKU_OID"
-      OTHER_OIDS=("$RIM_EKU_OID" "$CART_EKU_OID")
+      OTHER_OIDS=("$RIM_EKU_OID" "$CART_EKU_OID" "$EV_EKU_OID")
       WHAT="registration signer"
       SIGNS="signs registration-<device>.json"
       REISSUE="signed registration records name the certificate that signed them."
@@ -394,10 +427,18 @@ if [ "$FLAVOUR" = "regsigner" ] || [ "$FLAVOUR" = "regsigner-prod" ] ||
     cartsigner*)
       LEAF=cart-signer
       EKU_OID="$CART_EKU_OID"
-      OTHER_OIDS=("$RIM_EKU_OID" "$REG_EKU_OID")
+      OTHER_OIDS=("$RIM_EKU_OID" "$REG_EKU_OID" "$EV_EKU_OID")
       WHAT="cartridge signer"
       SIGNS="signs Edge cartridges"
       REISSUE="signed cartridges name the certificate that signed them."
+      ;;
+    evsigner*)
+      LEAF=ev-signer
+      EKU_OID="$EV_EKU_OID"
+      OTHER_OIDS=("$RIM_EKU_OID" "$REG_EKU_OID" "$CART_EKU_OID")
+      WHAT="evidence signer"
+      SIGNS="signs the SHA256SUMS of an L3 evidence archive"
+      REISSUE="signed evidence lists name the certificate that signed them."
       ;;
   esac
   CA_DIR="$(realpath -m "$CA_DIR")"
@@ -456,7 +497,8 @@ EOF
     echo "ERROR: $LEAF.pem EKU is '$eku', expected exactly $EKU_OID." >&2
     exit 1
   fi
-  if openssl x509 -in "$LEAF.pem" -noout -text | grep -q -e 'Code Signing' -e "${OTHER_OIDS[0]}" -e "${OTHER_OIDS[1]}"; then
+  pat=(-e 'Code Signing'); for o in "${OTHER_OIDS[@]}"; do pat+=(-e "$o"); done
+  if openssl x509 -in "$LEAF.pem" -noout -text | grep -q "${pat[@]}"; then
     echo "ERROR: $LEAF.pem carries codeSigning or another signer's purpose." >&2
     exit 1
   fi
