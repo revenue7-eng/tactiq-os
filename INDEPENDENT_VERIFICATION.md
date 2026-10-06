@@ -9,8 +9,7 @@ The procedure has two layers. The first (§1) verifies the release
 without rebuilding anything: signatures, transparency log, artifact
 integrity, SBOM structure. It completes in under an hour on a laptop.
 The second (§2) rebuilds the release from source on the verifier's own
-infrastructure and compares hashes. It requires a build host and takes
-several hours.
+infrastructure and compares hashes. It requires a build host.
 
 Either layer can be executed independently. The first is sufficient to
 show that the release was produced by the declared workflow from the
@@ -78,8 +77,8 @@ resulting artifacts have the same content as the published release.
 
 ### 2.1. Build host requirements
 
-- 16 vCPU, 64 GB RAM, 500 GB free disk. Smaller hosts work; a build
-  on 8 vCPU / 32 GB takes six to ten hours instead of three to four.
+- 16 vCPU, 64 GB RAM, 500 GB free disk. Smaller hosts work, more
+  slowly.
 - Ubuntu 24.04 LTS or equivalent, with the Yocto host prerequisites
   installed (see the Yocto Project documentation for the current
   package list).
@@ -148,12 +147,9 @@ source ../layers/openembedded-core/oe-init-build-env ./build
 bitbake tactiq-image
 ```
 
-Measured cold-build wall-time on a 32 vCPU / 64 GB host with empty
-`DL_DIR` and `SSTATE_DIR`, 5,254 tasks: 33 m 23 s (2026-07-30), and
-41 m 41 s and 43 m 59 s for the two independent builds of 2026-08-02.
-The three-to-four-hour figure previously given here was an estimate
-for a 16 vCPU host, not a measurement. Subsequent builds that reuse
-the same build directory take minutes.
+Build time is not stated here. The figures previously given were taken
+on hosts running other work at the same time and do not describe a
+build on a dedicated host.
 
 ### 2.5. Compare
 
