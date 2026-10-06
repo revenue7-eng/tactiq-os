@@ -38,8 +38,9 @@ appraise func=BPRM_CHECK
 # TactiQ: appraise reads of files labeled tactiq_vault_data_t. The type is
 # defined in tactiq_vault.te and assigned by restorecon; the data partition is
 # mounted with fscontext=, so labels come from the xattr and more than one type
-# lives there. This one covers delivered artifacts only -- model weights,
-# reference values, update bundles -- everything that arrives signed.
+# lives there. This one covers delivered artifacts signed under the .ima
+# key -- reference values, update bundles. Cartridges (model weights) are not
+# here: they carry their own signature and have their own type, below.
 appraise func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t
 
 # ---------------------------------------------------------------------------
@@ -77,6 +78,15 @@ measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t pcr=11
 # (tactiq_netperm.te); this line and that module must ship together, since
 # a rule naming a type the loaded policy lacks is rejected.
 measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_site_perm_t pcr=11
+
+# Cartridges (model weights) under /data/cartridges, same class as the site
+# permission: measured into PCR 11, never appraised. The cartridge carries its
+# own signature, checked by the Edge daemon against its anchor list; a key in
+# .ima would also validate executables. The kernel measurement is independent
+# of the daemon, which reports the active cartridge separately (PCR 14). The
+# type is defined in the SELinux layer (tactiq_edge_daemon.te); this line and
+# that module ship together.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_cartridge_t pcr=11
 
 # Device identity into a PCR of its own. keys and counter are produced on the
 # device, so nothing signs them and they are never appraised; each is a single
