@@ -1,0 +1,70 @@
+Upstream-Status: Backport [https://github.com/u-boot/u-boot/commit/e73328612534e81b41d0363fad9a7b4385cd3d39]
+Advisory: BRLY-2026-039
+Note: test/py/tests/test_vboot.py hunk dropped: not part of the bootloader build
+
+From e73328612534e81b41d0363fad9a7b4385cd3d39 Mon Sep 17 00:00:00 2001
+From: Anton Ivanov <anton@binarly.io>
+Date: Tue, 2 Jun 2026 19:29:25 +0100
+Subject: [PATCH] image-fit-sig: Validate hashed-strings region size
+
+fit_config_check_sig() reads the hashed-strings property and uses
+its size value without validation when building the region list for
+signature verification. A crafted FIT image can specify an arbitrary
+size, causing the hash calculation to read beyond the end of the FIT
+image. The property length is also not checked, so a truncated
+hashed-strings property causes strings[1] to be read past the end of
+the property. This may result in the out-of-bounds read during signature
+verification of an untrusted FIT.
+
+Validate both the property length and that the declared strings region
+fits within bounds before adding it to the region list.
+
+Signed-off-by: Anton Ivanov <anton@binarly.io>
+---
+ boot/image-fit-sig.c        | 19 +++++++++++++++++--
+ test/py/tests/test_vboot.py | 26 ++++++++++++++++++++++++++
+ 2 files changed, 43 insertions(+), 2 deletions(-)
+
+diff --git a/boot/image-fit-sig.c b/boot/image-fit-sig.c
+index 433df202..9b5ab754 100644
+--- a/boot/image-fit-sig.c
++++ b/boot/image-fit-sig.c
+@@ -452,6 +452,8 @@ static int fit_config_check_sig(const void *fit, int noffset, int conf_noffset,
+ 	int max_regions;
+ 	char path[200];
+ 	int count;
++	int len;
++	uint32_t size;
+ 
+ 	debug("%s: fdt=%p, conf='%s', sig='%s'\n", __func__, key_blob,
+ 	      fit_get_name(fit, noffset, NULL),
+@@ -506,14 +508,27 @@ static int fit_config_check_sig(const void *fit, int noffset, int conf_noffset,
+ 	}
+ 
+ 	/* Add the strings */
+-	strings = fdt_getprop(fit, noffset, "hashed-strings", NULL);
++	strings = fdt_getprop(fit, noffset, "hashed-strings", &len);
+ 	if (strings) {
++		if (len < (int)(2 * sizeof(fdt32_t))) {
++			*err_msgp = "Invalid hashed-strings property";
++			return -1;
++		}
++		size = fdt32_to_cpu(strings[1]);
++		/*
++		 * The offset should be already validated by fdt_check_header();
++		 * validate the size here.
++		 */
++		if (size > fdt_size_dt_strings(fit)) {
++			*err_msgp = "Strings region is out of bounds";
++			return -1;
++		}
+ 		/*
+ 		 * The strings region offset must be a static 0x0.
+ 		 * This is set in tool/image-host.c
+ 		 */
+ 		fdt_regions[count].offset = fdt_off_dt_strings(fit);
+-		fdt_regions[count].size = fdt32_to_cpu(strings[1]);
++		fdt_regions[count].size = size;
+ 		count++;
+ 	}
+ 
