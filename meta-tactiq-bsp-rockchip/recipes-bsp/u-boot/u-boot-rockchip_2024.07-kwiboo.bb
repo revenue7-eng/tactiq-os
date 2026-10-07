@@ -184,3 +184,7 @@ do_compile:append() {
 # cve-check: this recipe is upstream U-Boot (kwiboo rk3xxx-2024.07 branch)
 CVE_PRODUCT = "denx:u-boot"
 CVE_VERSION = "2024.07"
+
+# Per-recipe CVE report: the bootloader is not part of the rootfs SBOM
+inherit sbom-cve-check-recipe
+SBOM_CVE_CHECK_SCAN_SCOPE = "target"
