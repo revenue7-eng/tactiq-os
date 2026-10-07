@@ -24,6 +24,7 @@ SRC_URI += "file://0005-configs-rock5a-declare-writeable-env-variables.patch"
 SRC_URI += "file://0006-arm64-dts-rk3588s-rock-5a-reserve-tpm-event-log.patch"
 SRC_URI += "file://0007-rockchip-rk3588s-rock-5a-measure-SPL-loaded-images.patch"
 SRC_URI += "file://0008-rockchip-add-vm-uuid-derived-from-the-SoC-cpuid.patch"
+SRC_URI += "file://0009-boot-fit-build-signed-node-list-CVE-2026-46728.patch"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
 SRC_URI += "file://env-lockdown.cfg"
@@ -179,3 +180,7 @@ do_compile:append() {
     grep -qa "key-${TACTIQ_FIT_KEY_NAME}" "${B}/u-boot.itb" || \
         bbfatal "key did not reach u-boot.itb after repack"
 }
+
+# cve-check: this recipe is upstream U-Boot (kwiboo rk3xxx-2024.07 branch)
+CVE_PRODUCT = "denx:u-boot"
+CVE_VERSION = "2024.07"
