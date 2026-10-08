@@ -126,38 +126,42 @@ manifest:
       - id: spl-unmeasured-otp
         text: "SPL is the unmeasured root of the measurement chain and RK3588 OTP is not fused, so the BootROM does not authenticate SPL; a replaced SPL could extend the expected values. The reference describes the chain from SPL on, not from the BootROM"
       - id: pcr-computed-not-observed
-        text: "the final PCR values of the release chain are computed, not observed: the complete chain was read on hardware for the development loader only, and the production image has no console by design. Not re-measured for rc13"
+        text: "the PCR values of this release are computed, not yet observed. For rc13 a quote from the reference device after a power cycle matched the release reference (VERIFY-L3-rc13.md); values after a warm reboot with a release loader have not been observed, and the production image has no console by design"
       - id: no-attestation-envelope
-        text: "no signed attestation envelope from a device running this release has been checked against its RIM yet; rc13 is the first release whose image runs the agent at boot, and the check is made on the reference device after the tag"
-      - id: tpm-not-reset-warm-reboot
-        text: "the TPM of the reference platform is not reset by a warm reboot, so the expected values hold only for a boot that follows a power cycle; correction to rc11, which stated that SPL resets the TPM (disclosed in the RIM)"
+        text: "for rc13 an envelope from the reference device, after a power cycle, verified against the rc13 RIM by the published procedure (VERIFY-L3-rc13.md), with an AK registered by TactiQ under the development image (ak-registration-bench-only). The gate stays open while pcr-computed-not-observed is open; the check for this release is made after the tag"
+      - id: tpm-reset-line
+        text: "SPL pulses the TPM reset line before measuring, so a warm reboot starts the TPM like a power cycle; observed with the development loader, not with the release loader. The line is a GPIO the running system can also drive, so a TPM reset is not by itself evidence of a reboot (disclosed in the RIM; replaces tpm-not-reset-warm-reboot)"
       - id: ima-off-production
-        text: "IMA is off in the production image (tactiq-image does not apply ima-evm-rootfs, BOOT_CHAIN.md); IMA appraisal exists only in the development image"
+        text: "IMA is off in the production image (tactiq-image does not apply ima-evm-rootfs, BOOT_CHAIN.md). IMA appraisal and IMA measurement, including the rule that measures reads of Edge cartridges (tactiq_cartridge_t) into PCR 11, exist only in the development image; in this release cartridge reads are not measured"
+      - id: agent-quote-pcr-0-9
+        text: "tactiq-agent quotes PCR 0 to 9 only (TACTIQ_PCR_SPEC, the selection of the RIM) and its envelope carries no IMA log, so runtime measurements in PCR 10 and above are not part of the evidence the agent produces. Quotes over PCR 10 to 12 in the measurement records were taken by hand with tpm2_quote, not by the agent"
       - id: rootfs-not-verity
-        text: "the running rootfs is not verity-protected; dm-verity covers the update bundle only (EX-0005)"
+        text: "the image is built for dm-verity on the FIT path: rootfs_a is written from the .ext4.verity artefact and the root hash is carried in the signed slot device tree (#217). Booting the root through verity was observed on the reference device with the development image only, and the refusal of a modified root block has not been recorded"
       - id: kernel-pin
-        text: "kernel pin bump: still 6.18.24+git; the layer set offers one linux-yocto version, a bump means a new openembedded-core base, a full rebuild and a fresh CVE baseline. Carried forward with its reason"
+        text: "[AFTER BUILD] kernel version from the release build; carried forward with its reason"
       - id: cve-db-date-rust
         text: "date of the local CVE database used by sbom-cve-check not recorded (see cve.regression_cause); Rust crate dependencies not checked (see cve.scope_limit_rust)"
       - id: no-rtc
-        text: "no RTC on the board: a device without a time source rejects a bundle whose signer certificate is newer than the device clock; use-bundle-signing-time and min-bundle-version not set. Not re-examined for rc13"
+        text: "no RTC on the board. rc14 sets a clock floor at the release date and version limits from release-rev.inc (#237); on the development image a signed bundle installed without setting the clock, and a bundle with a lower version was refused before any slot was touched. Still open: a bundle whose signer certificate is newer than the clock floor"
       - id: layer-set-evidence
-        text: "layer set verification evidence not shipped: integration/LAYERS.lock fixes every Yocto layer by upstream revision and meta-rauc by tree hash, and scripts/check-layers.sh --check verifies an assembled set against it, but no release has yet carried the output of that run, so the layer set consumed by this build is asserted rather than proven"
+        text: "[AFTER BUILD] carried unchanged unless the release ships the output of scripts/check-layers.sh --check"
       - id: independent-rebuild
         text: "no third party has rebuilt a release and compared it with the published artifacts; signed artifacts cannot be rebuilt byte for byte by anyone without the keys, and no procedure yet names which unsigned artifacts a rebuild is compared on"
       - id: agent-evidence-unbounded
-        text: "tactiq-agent attests every 30 s from boot; each cycle advances the TPM NV counter and adds an envelope to /data/tactiq/audit, and neither the counter wear nor the audit directory is bounded"
-      - id: agent-skip-switch-unseen
-        text: "systemd (init_t) is denied search on /etc/tactiq (tactiq_agent_conf_t), so ConditionPathExists=!/etc/tactiq/skip-tpm in tactiq-agent.service never sees the switch and the agent starts regardless; observed on the development image with prover 0.3.0"
+        text: "tactiq-attest b853253 adds an epoch counter and a bounded audit directory (DDR-006, #233), and this release pins the agent at a later attest revision; the bound over the device's service life is not yet stated in ATTESTATION.md"
       - id: ak-registration-bench-only
-        text: "AK registration against the EK certificate (DDR-005) exists for the reference device only: made by TactiQ under the development image before this release was installed, and the record is unsigned until the Registration Signer leaf exists. A release device has no registration path of its own"
+        text: "AK registration against the EK certificate (DDR-005) exists for the reference device only: made by TactiQ under the development image, and the record is unsigned until the Registration Signer leaf exists. A release device has no registration path of its own"
       - id: attestation-docs-stale
         text: "ATTESTATION.md still describes a verifier-initiated mTLS protocol with Ed25519 keys that is not implemented, and THREAT_MODEL.md still names the agent a stub; the implemented agent writes signed envelope files under a restricted ECDSA P-256 AK"
       - id: tpm-owner-auth-empty
         text: "the owner, endorsement and lockout authorizations of the reference TPM are empty, so a root process can evict the persistent AK (0x81010100) and take the device out of attestation until it is registered again; it cannot make another AK pass, because the registration record names the AK. From rc14 the bootloader disables the platform hierarchy and sets disableClear, so root can no longer clear the TPM or use platform authority (observed on the reference device, 2026-10-08)"
       - id: ima-tmpfs-unappraised
         text: "the IMA policy does not appraise files on tmpfs, so root can mount a tmpfs and run an unsigned binary from it; observed on the development image on 2026-10-08, where the Infineon TPM update tool ran from a tmpfs because /data is mounted noexec"
-    resolved: []
+    resolved:
+      - id: tpm-not-reset-warm-reboot
+        text: "withdrawn as wrong: the development loader resets the TPM on a warm reboot (measurements/tpm-quotes-dev-20261002.md, #224, rc13 errata section 1); replaced by tpm-reset-line"
+      - id: agent-skip-switch-unseen
+        text: "the runtime skip switch is removed: the agent unit no longer reads /etc/tactiq/skip-tpm, and autostart on QEMU is disabled at build time (#231)"
   generated_utc: "TBD at release"
 
 reference_frameworks:
