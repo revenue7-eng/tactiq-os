@@ -72,10 +72,13 @@ the repository on purpose. Anyone can therefore sign a bundle this image
 accepts, which is what makes the check reproducible from outside. It
 establishes availability of the update path, not authenticity.
 
-**Tracked.** Production RAUC keyring rotation from the in-tree
-development certificate to a keyring provisioned from CI secrets at
-build time. RK3588 OTP-fused secure-boot root. FIT image signing.
-Binding the agent's attestation key to the TPM endorsement key. All tracked in
+**In place since v2.1.0-rc11.** Release builds use a release RAUC
+keyring and a release FIT signing key, separate from the in-tree
+development hierarchy. The release keys are held offline on encrypted
+removable media, not as CI secrets (`RELEASE_INTEGRITY.md` §2.3).
+
+**Tracked.** RK3588 OTP-fused secure-boot root. Binding the agent's
+attestation key to the TPM endorsement key. All tracked in
 `SUPPLY_CHAIN.md`.
 
 ## Boot and runtime integrity

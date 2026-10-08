@@ -261,9 +261,11 @@ a keyring that does:
    produce its certificate body and sign it with the release root.
    The signed certificate body becomes a file in the repository.
 4. **Add the GitHub Actions secret** containing the per-product
-   private half.
+   private half. *Superseded: the release keys are held offline, not
+   as CI secrets; see §2.3.*
 5. **Update `recipes-core/rauc/`** to consume `RAUC_KEYRING_FILE`
-   from CI secrets when building production images, retaining
+   from outside the tree when building production images (as
+   implemented: `RAUC_KEYRING_FILE_EXTERNAL`), retaining
    `pki/dev/root-ca.pem` as the default for development builds. Note that
    the signer's `check-purpose` in `system.conf` must match the extended
    key usage of whichever signer the production hierarchy issues.
@@ -1056,7 +1058,9 @@ operational procedure.
 The areas in §2–§6 have dependencies. In dependency order:
 
 1. **§2.6** — Generate release root, first per-product key, configure
-   CI secret. No other step is possible without this.
+   CI secret. No other step is possible without this. *Done for
+   v2.1.0-rc11, with the keys held offline instead of as a CI secret
+   (§2.3).*
 2. **§4** — Confirm no-initramfs posture; remove any latent
    `INITRAMFS_IMAGE` references; ensure storage and filesystem
    modules are built-in. This is a kernel config audit, not new
