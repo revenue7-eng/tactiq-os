@@ -67,6 +67,15 @@ manifest reports both unpatched and patched CVEs — patched ones
 are not hidden, so a consumer can verify what fixes are in the
 release rather than only what is still open.
 
+The image manifest covers what is installed in the root filesystem.
+Components that are not installed there, the bootloader and the
+Rockchip firmware blobs, were not covered by any manifest up to and
+including v2.1.0-rc13 (see
+[`docs/advisories/2026-10-08-u-boot-fit-verification.md`](docs/advisories/2026-10-08-u-boot-fit-verification.md)).
+From rc14 the U-Boot recipe produces its own manifest through
+`sbom-cve-check-recipe`. The firmware blobs have no upstream CPE and
+remain uncovered.
+
 **Triage.** Every CVE that appears in the manifest goes through a
 triage step before action is taken on it. The triage decides
 three things in this order:
