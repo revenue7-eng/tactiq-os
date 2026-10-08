@@ -31,6 +31,7 @@ SRC_URI += "file://0012-fdt_region-check-fdt_get_property_by_offset.patch"
 SRC_URI += "file://0013-image-fit-limit-fdt_check_no_at-depth.patch"
 SRC_URI += "file://0014-image-fit-validate-external-data-bounds.patch"
 SRC_URI += "file://0015-ext4-fix-integer-overflow-in-ext4fs_read_symlink-CVE-2024-57256.patch"
+SRC_URI += "file://0016-boot-lock-the-TPM-platform-hierarchy-before-the-OS.patch"
 SRC_URI += "file://net-off.cfg"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
@@ -38,6 +39,7 @@ SRC_URI += "file://env-lockdown.cfg"
 SRC_URI += "file://fit-signature.cfg"
 SRC_URI += "file://tpm-spi.cfg"
 SRC_URI += "file://measured-boot.cfg"
+SRC_URI += "file://tpm-lock.cfg"
 SRC_URI += "file://spl-measured-boot.cfg"
 SRC_URI += "file://machine-id.cfg"
 SRC_URI += "file://console-lockdown.cfg"
@@ -93,7 +95,7 @@ do_configure() {
     fi
     lockdown=""
     [ "${TACTIQ_UBOOT_CONSOLE}" = "1" ] || lockdown="${UNPACKDIR}/console-lockdown.cfg"
-    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/spl-measured-boot.cfg ${UNPACKDIR}/machine-id.cfg ${UNPACKDIR}/net-off.cfg ${lockdown}
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/tpm-lock.cfg ${UNPACKDIR}/spl-measured-boot.cfg ${UNPACKDIR}/machine-id.cfg ${UNPACKDIR}/net-off.cfg ${lockdown}
     dtb="${TACTIQ_FIT_DTB}"
     sed -e "s|@FIT_CONF_A@|conf-${dtb}|g" -e "s|@FIT_CONF_B@|conf-${dtb%.dtb}-b.dtb|g" \
         ${UNPACKDIR}/${TACTIQ_UBOOT_ENV} > ${S}/tactiq-boot.env
@@ -108,6 +110,8 @@ do_configure() {
         bbfatal "CONFIG_MEASURED_BOOT did not survive olddefconfig"
     grep -q '^CONFIG_TPM_V2=y$' ${B}/.config || \
         bbfatal "CONFIG_TPM_V2 did not survive olddefconfig"
+    grep -q '^CONFIG_MEASURED_BOOT_LOCK_PLATFORM=y$' ${B}/.config || \
+        bbfatal "CONFIG_MEASURED_BOOT_LOCK_PLATFORM did not survive olddefconfig: the OS would get the TPM platform hierarchy"
     if [ "${TACTIQ_UBOOT_CONSOLE}" != "1" ]; then
         grep -q '^CONFIG_BOOTDELAY=-2$' ${B}/.config || \
             bbfatal "console lockdown: CONFIG_BOOTDELAY is not -2"

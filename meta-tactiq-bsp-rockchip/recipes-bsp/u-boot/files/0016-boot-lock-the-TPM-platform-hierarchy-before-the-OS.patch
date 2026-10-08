@@ -1,0 +1,161 @@
+Upstream-Status: Inappropriate [TactiQ OS policy: lock the TPM platform hierarchy before the OS]
+
+From 84295a46f82f9a30bb9527f5eaa1d5c1699e76bb Mon Sep 17 00:00:00 2001
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Thu, 8 Oct 2026 04:27:46 +0000
+Subject: [PATCH] boot: lock the TPM platform hierarchy before starting the OS
+
+U-Boot leaves the TPM platform hierarchy enabled with an empty
+platformAuth when it hands over to Linux, because TPM2_Startup(CLEAR)
+resets platformAuth to the empty buffer and nothing in the bootm path
+changes it. Any root process can then act with platform authority:
+clear the TPM, reallocate the PCR banks, disable other hierarchies.
+
+Add CONFIG_MEASURED_BOOT_LOCK_PLATFORM. When set, bootm_measure(), after
+the measurements and the separators, sends TPM2_ClearControl(YES) under
+platform authorization and then disables the platform hierarchy with
+the existing tpm2_disable_platform_hierarchy(). A failure is printed and
+the boot continues.
+
+disableClear is persistent in the TPM; the platform hierarchy comes back
+at the next TPM2_Startup(CLEAR).
+---
+ boot/Kconfig     | 15 +++++++++++++++
+ boot/bootm.c     | 18 ++++++++++++++++++
+ include/tpm-v2.h | 14 ++++++++++++++
+ lib/tpm-v2.c     | 25 +++++++++++++++++++++++++
+ 4 files changed, 72 insertions(+)
+
+diff --git a/boot/Kconfig b/boot/Kconfig
+index 6f3096c1..6f8ddaf6 100644
+--- a/boot/Kconfig
++++ b/boot/Kconfig
+@@ -744,6 +744,21 @@ config MEASURED_BOOT
+ 	  to use some attestation tools on your system.
+ 
+ if MEASURED_BOOT
++	config MEASURED_BOOT_LOCK_PLATFORM
++	bool "Lock the TPM platform hierarchy before starting the OS"
++	default n
++	help
++	  After the boot measurements, set disableClear under platform
++	  authorization and then disable the platform hierarchy, so that
++	  the operating system cannot clear the TPM, change the PCR banks
++	  or otherwise act with platform authority. The platform hierarchy
++	  stays disabled until the next TPM2_Startup(CLEAR), that is, until
++	  the next boot. disableClear is persistent in the TPM: it survives
++	  reboots and only platform authorization can clear it again, so
++	  clearing the TPM needs a bootloader built without this option. A
++	  TPM firmware update from the OS needs the platform hierarchy and
++	  is not possible on a boot that ran this lock.
++
+ 	config MEASURE_DEVICETREE
+ 	bool "Measure the devicetree image"
+ 	default y if MEASURED_BOOT
+diff --git a/boot/bootm.c b/boot/bootm.c
+index 032f5a4a..d33621e9 100644
+--- a/boot/bootm.c
++++ b/boot/bootm.c
+@@ -922,6 +922,21 @@ int bootm_process_cmdline_env(int flags)
+ 	return 0;
+ }
+ 
++static void bootm_lock_tpm_platform(struct udevice *dev)
++{
++	u32 rc;
++
++	rc = tpm2_clear_control(dev, true);
++	if (rc)
++		printf("TPM: ClearControl failed (0x%x)\n", rc);
++
++	rc = tpm2_disable_platform_hierarchy(dev);
++	if (rc)
++		printf("TPM: platform hierarchy left enabled (0x%x)\n", rc);
++	else
++		printf("TPM: platform hierarchy disabled\n");
++}
++
+ int bootm_measure(struct bootm_headers *images)
+ {
+ 	int ret = 0;
+@@ -986,6 +1001,9 @@ unmap_initrd:
+ unmap_image:
+ 		unmap_sysmem(image_buf);
+ 		tcg2_measurement_term(dev, &elog, ret != 0);
++
++		if (IS_ENABLED(CONFIG_MEASURED_BOOT_LOCK_PLATFORM))
++			bootm_lock_tpm_platform(dev);
+ 	}
+ 
+ 	return ret;
+diff --git a/include/tpm-v2.h b/include/tpm-v2.h
+index c9d5cb6d..f793fda8 100644
+--- a/include/tpm-v2.h
++++ b/include/tpm-v2.h
+@@ -329,6 +329,7 @@ enum tpm2_command_codes {
+ 	TPM2_CC_SELF_TEST	= 0x0143,
+ 	TPM2_CC_HIER_CONTROL	= 0x0121,
+ 	TPM2_CC_CLEAR		= 0x0126,
++	TPM2_CC_CLEAR_CONTROL	= 0x0127,
+ 	TPM2_CC_CLEARCONTROL	= 0x0127,
+ 	TPM2_CC_HIERCHANGEAUTH	= 0x0129,
+ 	TPM2_CC_NV_DEFINE_SPACE	= 0x012a,
+@@ -951,6 +952,19 @@ u32 tpm2_write_lock(struct udevice *dev, u32 index);
+  */
+ u32 tpm2_disable_platform_hierarchy(struct udevice *dev);
+ 
++/**
++ * tpm2_clear_control() - Set or clear disableClear under platform authorization
++ *
++ * Sends TPM2_ClearControl authorized by the platform hierarchy with an empty
++ * password. With @disable true, TPM2_Clear is refused until a holder of
++ * platform authorization clears the flag again.
++ *
++ * @dev: TPM device
++ * @disable: true to set disableClear, false to clear it
++ * Return: code of the operation
++ */
++u32 tpm2_clear_control(struct udevice *dev, bool disable);
++
+ /**
+  * submit user specified data to the TPM and get response
+  *
+diff --git a/lib/tpm-v2.c b/lib/tpm-v2.c
+index a0ec90ce..60a83b2f 100644
+--- a/lib/tpm-v2.c
++++ b/lib/tpm-v2.c
+@@ -1460,6 +1460,31 @@ u32 tpm2_write_lock(struct udevice *dev, u32 index)
+ 	return tpm_sendrecv_command(dev, command_v2, NULL, NULL);
+ }
+ 
++u32 tpm2_clear_control(struct udevice *dev, bool disable)
++{
++	u8 command_v2[COMMAND_BUFFER_SIZE] = {
++		/* header 10 bytes */
++		tpm_u16(TPM2_ST_SESSIONS),	/* TAG */
++		tpm_u32(10 + 4 + 13 + 1),	/* Length */
++		tpm_u32(TPM2_CC_CLEAR_CONTROL),	/* Command code */
++
++		/* 4 bytes */
++		tpm_u32(TPM2_RH_PLATFORM),	/* Authorizing hierarchy */
++
++		/* session header 9 bytes */
++		tpm_u32(9),			/* Header size */
++		tpm_u32(TPM2_RS_PW),		/* Password authorisation */
++		tpm_u16(0),			/* nonce_size */
++		0,				/* session_attrs */
++		tpm_u16(0),			/* auth_size */
++
++		/* payload 1 byte */
++		disable ? 1 : 0,		/* TPMI_YES_NO disable */
++	};
++
++	return tpm_sendrecv_command(dev, command_v2, NULL, NULL);
++}
++
+ u32 tpm2_disable_platform_hierarchy(struct udevice *dev)
+ {
+ 	struct tpm_chip_priv *priv = dev_get_uclass_priv(dev);
+-- 
+2.43.0
+
