@@ -138,13 +138,13 @@ manifest:
       - id: rootfs-not-verity
         text: "the image is built for dm-verity on the FIT path: rootfs_a is written from the .ext4.verity artefact and the root hash is carried in the signed slot device tree (#217). Booting the root through verity was observed on the reference device with the development image only, and the refusal of a modified root block has not been recorded"
       - id: kernel-pin
-        text: "[AFTER BUILD] kernel version from the release build; carried forward with its reason"
+        text: "kernel pin bump: still 6.18.24+git; the layer set offers one linux-yocto version, a bump means a new openembedded-core base, a full rebuild and a fresh CVE baseline. Carried forward with its reason"
       - id: cve-db-date-rust
         text: "date of the local CVE database used by sbom-cve-check not recorded (see cve.regression_cause); Rust crate dependencies not checked (see cve.scope_limit_rust)"
       - id: no-rtc
         text: "no RTC on the board. rc14 sets a clock floor at the release date and version limits from release-rev.inc (#237); on the development image a signed bundle installed without setting the clock, and a bundle with a lower version was refused before any slot was touched. Still open: a bundle whose signer certificate is newer than the clock floor"
       - id: layer-set-evidence
-        text: "[AFTER BUILD] carried unchanged unless the release ships the output of scripts/check-layers.sh --check"
+        text: "layer set verification evidence not shipped: integration/LAYERS.lock fixes every Yocto layer by upstream revision and meta-rauc by tree hash, and scripts/check-layers.sh --check verifies an assembled set against it, but no release has yet carried the output of that run, so the layer set consumed by this build is asserted rather than proven"
       - id: independent-rebuild
         text: "no third party has rebuilt a release and compared it with the published artifacts; signed artifacts cannot be rebuilt byte for byte by anyone without the keys, and no procedure yet names which unsigned artifacts a rebuild is compared on"
       - id: agent-evidence-unbounded
