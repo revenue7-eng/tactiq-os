@@ -11,10 +11,11 @@ model), `ATTESTATION.md` (attestation framework),
 disclosure policy), and `VERIFY.md` (consumer verification
 procedure).
 
-This is a v0.1 document. It iterates as stages move from current
-state to fully verified.
+This document iterates as stages move from current state to fully
+verified. The per-stage table is updated row by row as each stage
+changes.
 
-Last reviewed: 2026-04-25.
+Last reviewed: 2026-10-08 (key custody and roadmap steps 1 to 3).
 
 ## Status
 
@@ -115,9 +116,8 @@ In the current TactiQ OS bring-up, the OTP fuses on the reference
 development hardware are not burned. This is intentional at this
 stage: OTP burn is a one-way operation, and the production keyring
 that would be embedded in the OTP root must reach a stable state
-first. The production keyring itself is tracked separately in the
-supply-chain area as a transition from the in-tree development RAUC
-keyring to a CI-secret-provisioned production keyring.
+first. The release keyring has been in use since v2.1.0-rc11; its keys are
+held offline, not as CI secrets (`RELEASE_INTEGRITY.md` §2.3).
 
 The order of operations is therefore: production keyring first,
 then verification of the keyring through extended deployment, then
@@ -234,20 +234,20 @@ state.
 The transitions that move the chain from current state to fully
 verified, in dependency order:
 
-1. **Production keyring through CI secrets.** Replace the in-tree
-   `pki/dev/root-ca.pem` with a keyring loaded from CI-managed
-   secrets at build time. Tracked in the supply-chain area; this is
-   a prerequisite for everything downstream because OTP burn binds
-   to whatever keyring is canonical at burn time.
+1. **Release keyring.** Done in v2.1.0-rc11. Release builds use a
+   release hierarchy instead of `pki/dev/root-ca.pem`. The keys are
+   held offline on encrypted removable media, not as CI secrets
+   (`RELEASE_INTEGRITY.md` §2.3). This remains a prerequisite for step 6, because OTP burn
+   binds to whatever keyring is canonical at burn time.
 
-2. **FIT image signing in the build pipeline.** Add signing of the
-   composite kernel-plus-DTB-plus-initramfs image to the Yocto
-   build, using the production keyring from step 1.
+2. **FIT image signing in the build pipeline.** Done. The build signs
+   the FIT; release images are signed with the offline release FIT
+   key (`RELEASE_INTEGRITY.md` §2.3).
 
-3. **U-Boot configuration for FIT signature verification.** Enable
-   the U-Boot options that make the bootloader actually verify the
-   FIT signature before loading. Without this, signed images can be
-   produced but the bootloader does not check them.
+3. **U-Boot configuration for FIT signature verification.** Enabled.
+   The U-Boot row above records what has been verified on the
+   reference hardware and with which key, and what is still not
+   covered (`extlinux.conf`, an unsigned FIT, SPL).
 
 4. **Anti-rollback generation counter enforcement.** Wire the
    generation counter from RAUC bundle metadata through to a

@@ -248,18 +248,17 @@ SELinux enforcing in `measurements/selinux-enforcing-boot-prod-20260717.log`.
 Through rc5 the bundle recipe packaged the *development* rootfs; from rc6 it
 carries the production image.
 
-**Keyring management: current state.** The build currently uses the
+**Keyring management: current state.** Development builds use the
 in-tree development root `pki/dev/root-ca.pem` as the RAUC keyring, the
 same hierarchy used for kernel module signing. Its private keys are in
 the repository on purpose, so that the verification can be reproduced
 from outside without access to anything held privately.
-Production builds require a separate keyring loaded from CI
-secrets at build time, so that the production verification key is
-not present in the public source tree. The transition from the
-in-tree development keyring to a CI-secret-provisioned production
-keyring is tracked as a near-term roadmap item; it is the same
-keyring transition that gates the FIT signing path described
-above.
+Release builds since v2.1.0-rc11 use a separate release hierarchy,
+supplied to the build through `RAUC_KEYRING_FILE_EXTERNAL`; without it
+a non-development build stops at parse time. The release keys are not
+CI secrets: they are held offline on encrypted removable media, and
+release images are built and signed on a workstation disconnected from
+the network (`RELEASE_INTEGRITY.md` §2.3).
 
 **Anti-rollback.** RAUC bundle metadata supports a generation
 counter, and the bootloader can be configured to refuse to boot a
@@ -348,7 +347,7 @@ image, pending migration of the image build into a hosted builder.**
    `do_rootfs` (mkfs UUID pinning, inode timestamp normalization,
    deterministic machine-id and random-seed) to push filesystem-image
    reproducibility from per-file content to bit-identity.
-4. Replace the development RAUC keyring in the production build path with
-   a keyring loaded from CI secrets at build time.
+4. Done in v2.1.0-rc11: release builds use a release RAUC keyring held
+   offline, not a CI secret (`RELEASE_INTEGRITY.md` §2.3).
 5. Stand up IMA appraisal with a minimal policy covering `/opt/tactiq/`
    and `/usr/lib/systemd/system/tactiq-*`.

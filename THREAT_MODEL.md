@@ -352,10 +352,10 @@ requires a hosted hermetic builder; the current image build is local
 (WSL2 + Docker). Two-independent-builds bit-for-bit diff is not yet a
 required CI gate. Filesystem-image bit-identity (vs per-file content
 identity) requires elimination of remaining non-deterministic sources
-in `do_image_ext4`. Production RAUC keyring rotation from in-tree
-development root (`pki/dev/root-ca.pem`) to CI-secret-provisioned
-keyring is tracked. FIT image signing is not implemented. Full
-roadmap in `SUPPLY_CHAIN.md`.
+in `do_image_ext4`. Release builds since v2.1.0-rc11 use a release
+RAUC keyring and a release FIT signing key instead of the in-tree
+development root (`pki/dev/root-ca.pem`); the release keys are held
+offline, not as CI secrets (`RELEASE_INTEGRITY.md` §2.3). Full roadmap in `SUPPLY_CHAIN.md`.
 
 ## Trusted Computing Base
 
