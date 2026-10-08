@@ -163,6 +163,7 @@ fi
 # ---------------------------------------------------------------------------
 COV_SRC="${SCRIPT_DIR}/../security/coverage-${BOARD}.${TAG}.yaml"
 [[ -e "$COV_SRC" ]] || { echo "::error:: coverage manifest not found: $COV_SRC" >&2; exit 1; }
+! grep -q '^draft: true' "$COV_SRC" || { echo "::error:: coverage manifest is still a draft (draft: true): $COV_SRC" >&2; exit 1; }
 
 cov_field() {  # echo a 2-space-indented scalar from the top-level manifest: block
     awk -v k="$1" '
