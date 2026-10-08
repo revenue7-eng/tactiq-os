@@ -41,6 +41,12 @@
 # Step 8 printing nothing is a failure (rc13 errata, section 2): v1 to v5
 # dropped its NOT ESTABLISHED lines silently when the fragment raised.
 #
+# Step 6a reads firmwareVersion from every quote and fails a quote whose TPM
+# firmware is below TPM_FW_MIN. The value is read as Infineon encodes it
+# (major.minor in the high word, build.patch in the low word); step 4 is
+# what establishes that the TPM is an Infineon part. Below 7.87 the SLB 9670
+# is affected by CVE-2025-2884 and CVE-2026-6726 according to Infineon.
+#
 # Needs: bash, curl, OpenSSL 3.x, Python 3 (standard library), sha256sum,
 # tpm2-tools (tpm2_checkquote, tpm2_print). No TPM is needed.
 #
@@ -203,6 +209,27 @@ if [ "$rc" -ne 0 ] && case "$out" in *"Error validating nonce"*) true;; *) false
 else bad "tampered record not rejected for the expected reason (tpm2_checkquote exit $rc: $(why "$out"))"; fi
 ne "origin of the TPM reset before this boot: resetCount is signed, but SPL drives the TPM reset line and the running system can drive it too, so a reset is not by itself evidence of a reboot (disclosure as corrected in revenue7-eng/tactiq-os#224; the rc13 RIM text on warm reboot is superseded; the RIM of this release carries the corrected text)"
 ne "freshness: qualifying data is the hash of the agent's own record, not a challenge chosen by the reviewer"
+
+echo "== step 6a: TPM firmware"
+TPM_FW_MIN=0x0007005700000000   # Infineon 7.87; the same value is written on VERIFY-L3-rc14.md
+for q in $QUOTES; do
+  fw=$(python3 - "$q.attest" <<'PY'
+import struct, sys
+b = open(sys.argv[1], 'rb').read()
+o = 6
+o += 2 + struct.unpack('>H', b[o:o+2])[0]          # qualifiedSigner
+o += 2 + struct.unpack('>H', b[o:o+2])[0]          # extraData
+o += 17                                            # clockInfo
+v = struct.unpack('>Q', b[o:o+8])[0]
+hi, lo = v >> 32, v & 0xffffffff
+print(f"{v:#018x} {hi >> 16}.{hi & 0xffff}.{lo >> 8}.{lo & 0xff}")
+PY
+)
+  fwv=${fw%% *}; fwd=${fw#* }
+  if [ -z "$fw" ]; then bad "TPM firmware in quote $q: firmwareVersion could not be read"
+  elif [ $((fwv)) -ge $((TPM_FW_MIN)) ] 2>/dev/null; then ok "TPM firmware in quote $q: $fwd (minimum 7.87)"
+  else bad "TPM firmware in quote $q: $fwd is below the minimum 7.87; Infineon lists SLB 9670 firmware below 7.87 as affected by CVE-2025-2884 and CVE-2026-6726"; fi
+done
 
 echo "== step 7: boot state against the RIM"
 out=$(openssl cms -verify -binary -inform DER -in rim-rock5a.json.p7s -content rim-rock5a.json -CAfile release-root-r2.pem -purpose any -signer rim-signer.pem -out /dev/null 2>&1)
