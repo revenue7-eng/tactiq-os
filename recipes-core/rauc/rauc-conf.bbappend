@@ -41,3 +41,13 @@ do_install:append() {
         bbfatal "min-bundle-version not set in $conf"
     ! grep -q "@TACTIQ_" "$conf" || bbfatal "unresolved placeholder in $conf"
 }
+
+# Rock 5T: its own compatible string, so RAUC on a 5T refuses a Rock 5A
+# bundle and the other way round. Override only: the Rock 5A task is not
+# touched.
+do_install:append:tactiq-rock5t() {
+    conf=${D}${sysconfdir}/rauc/system.conf
+    sed -i -e 's|^compatible=TactiQ OS Rock5A$|compatible=TactiQ OS Rock5T|' "$conf"
+    grep -q '^compatible=TactiQ OS Rock5T$' "$conf" || \
+        bbfatal "RAUC compatible is not set for the Rock 5T in $conf"
+}

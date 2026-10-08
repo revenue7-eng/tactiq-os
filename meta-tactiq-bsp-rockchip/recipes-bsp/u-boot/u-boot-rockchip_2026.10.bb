@@ -201,3 +201,56 @@ SBOM_CVE_CHECK_SCAN_SCOPE = "target"
 # Run with every loader build, so the release always has a report for the
 # loader it ships (the image build pulls this recipe through do_deploy).
 addtask sbom_cve_check_recipe after do_create_recipe_sbom before do_deploy
+
+# --- Rock 5T, stage 1: boots the signed FIT, no TPM, no measured boot ---
+# Everything below is an override for MACHINE=tactiq-rock5t. The Rock 5A
+# datastore does not apply these overrides, so its tasks keep their
+# signatures and its loader is not rebuilt.
+#
+# Left out on the 5T: the Rock 5A devicetree and defconfig patches (0001,
+# 0003, 0004, 0005), the TPM and measurement fragments, and the vm,uuid
+# fixup (0006, machine-id.cfg). 0006 defines ft_board_setup() in
+# mach-rockchip, and the 5B/5T board file defines its own (it enables the
+# FUSB302 USB-PD controller), so the two do not link together. Until the
+# fixup is moved to a hook both boards can share, the 5T boots with a random
+# machine-id. TPM, measurement and vm,uuid come back in stage 2.
+SRC_URI:remove:tactiq-rock5t = " \
+    file://0001-arm64-dts-rk3588s-rock-5a-add-TPM-2.0-on-spi4-for-U-.patch \
+    file://0003-configs-rock5a-rk3588s-declare-writeable-environment.patch \
+    file://0004-arm64-dts-rk3588s-rock-5a-reserve-a-TPM-event-log-ar.patch \
+    file://0005-rockchip-rk3588s-rock-5a-measure-the-images-SPL-load.patch \
+    file://0006-rockchip-add-vm-uuid-derived-from-the-SoC-cpuid.patch \
+    file://tpm-spi.cfg file://measured-boot.cfg file://tpm-lock.cfg \
+    file://spl-measured-boot.cfg file://machine-id.cfg"
+SRC_URI:append:tactiq-rock5t = " file://rock5t.cfg"
+
+TACTIQ_FIT_CONTROL_DTB:tactiq-rock5t = "${B}/dts/upstream/src/arm64/rockchip/rk3588-rock-5t.dtb"
+
+do_configure:tactiq-rock5t() {
+    oe_runmake -C ${S} O=${B} ${UBOOT_MACHINE}
+    if [ "${TACTIQ_UBOOT_CONSOLE}" = "1" ] && [ "${TACTIQ_FIT_KEY_NAME}" != "dev-fit" ]; then
+        bbfatal "TACTIQ_UBOOT_CONSOLE=1 with FIT key '${TACTIQ_FIT_KEY_NAME}': the console is for development loaders only"
+    fi
+    lockdown=""
+    [ "${TACTIQ_UBOOT_CONSOLE}" = "1" ] || lockdown="${UNPACKDIR}/console-lockdown.cfg"
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tools.cfg ${UNPACKDIR}/net-off.cfg ${UNPACKDIR}/rock5t.cfg ${lockdown}
+    dtb="${TACTIQ_FIT_DTB}"
+    sed -e "s|@FIT_CONF_A@|conf-${dtb}|g" -e "s|@FIT_CONF_B@|conf-${dtb%.dtb}-b.dtb|g" \
+        ${UNPACKDIR}/${TACTIQ_UBOOT_ENV} > ${S}/tactiq-boot.env
+    if grep -q "@FIT_CONF_" ${S}/tactiq-boot.env; then
+        bbfatal "unresolved FIT configuration placeholder in ${TACTIQ_UBOOT_ENV}"
+    fi
+    oe_runmake -C ${S} O=${B} olddefconfig
+    grep -q '^CONFIG_OF_LIST="rockchip/rk3588-rock-5t"$' ${B}/.config || \
+        bbfatal "CONFIG_OF_LIST is not pinned to the 5T devicetree: the FIT key could land in a tree the board does not use"
+    grep -q '^CONFIG_FIT_SIGNATURE=y$' ${B}/.config || \
+        bbfatal "CONFIG_FIT_SIGNATURE did not survive olddefconfig"
+    grep -q '^CONFIG_ENV_FLAGS_LIST_STATIC="BOOT_ORDER:sw,BOOT_A_LEFT:dw,BOOT_B_LEFT:dw"$' ${B}/.config || \
+        bbfatal "CONFIG_ENV_FLAGS_LIST_STATIC is not the A/B list: with ENV_WRITEABLE_LIST nothing would be imported from the saved environment"
+    ! grep -q '^CONFIG_NET=y$' ${B}/.config || \
+        bbfatal "CONFIG_NET is still set: net-off.cfg did not apply"
+    if [ "${TACTIQ_UBOOT_CONSOLE}" != "1" ]; then
+        grep -q '^CONFIG_BOOTDELAY=-2$' ${B}/.config || \
+            bbfatal "console lockdown: CONFIG_BOOTDELAY is not -2"
+    fi
+}

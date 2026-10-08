@@ -17,6 +17,7 @@ inherit bundle
 S = "${UNPACKDIR}"
 
 RAUC_BUNDLE_COMPATIBLE = "TactiQ OS Rock5A"
+RAUC_BUNDLE_COMPATIBLE:tactiq-rock5t = "TactiQ OS Rock5T"
 RAUC_BUNDLE_FORMAT = "verity"
 require recipes-core/tactiq-release/release-derived.inc
 RAUC_BUNDLE_VERSION = "${TACTIQ_RAUC_VERSION}"
