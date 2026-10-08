@@ -374,7 +374,21 @@ if [[ -z "$ITB_VER" || -z "$REP_VER" || "$REP_VER" != "$ITB_VER"* ]]; then
     echo "::error:: rerun bitbake -c sbom_cve_check_recipe for the loader this release ships." >&2
     exit 1
 fi
-cp -L "$LOADER_CVE" "cve-loader-${BOARD}.sbom-cve-check.yocto.json"
+# The recipe scan also lists the build toolchain of the recipe (glibc, libgcc,
+# gcc-runtime, linux-libc-headers). U-Boot is a freestanding binary and links
+# none of them, so the published report keeps the u-boot-rockchip package
+# only; the excluded package names are printed here for the release log.
+python3 - "$LOADER_CVE" "cve-loader-${BOARD}.sbom-cve-check.yocto.json" <<'PY' || { echo "::error:: could not filter the loader CVE report" >&2; exit 1; }
+import json, sys
+d = json.load(open(sys.argv[1]))
+keep = [p for p in d["package"] if p.get("name") == "u-boot-rockchip"]
+drop = sorted(p.get("name", "?") for p in d["package"] if p.get("name") != "u-boot-rockchip")
+if len(keep) != 1:
+    sys.exit("expected exactly one u-boot-rockchip package, found %d" % len(keep))
+d["package"] = keep
+json.dump(d, open(sys.argv[2], "w"), indent=2, sort_keys=True)
+print("    loader CVE report: left out the build toolchain packages " + (", ".join(drop) or "(none)"))
+PY
 echo "    + cve-loader-${BOARD}.sbom-cve-check.yocto.json  (u-boot-rockchip ${REP_VER})"
 cp -L "$BOOT_ENV" "tactiq-boot-${BOARD}.env";               echo "    + tactiq-boot-${BOARD}.env"
 cp -L "${SCRIPT_DIR}/mk-pcr-reference.py" "mk-pcr-reference.py"; echo "    + mk-pcr-reference.py"

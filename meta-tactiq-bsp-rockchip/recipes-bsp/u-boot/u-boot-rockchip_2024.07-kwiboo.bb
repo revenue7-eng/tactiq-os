@@ -32,6 +32,8 @@ SRC_URI += "file://0013-image-fit-limit-fdt_check_no_at-depth.patch"
 SRC_URI += "file://0014-image-fit-validate-external-data-bounds.patch"
 SRC_URI += "file://0015-ext4-fix-integer-overflow-in-ext4fs_read_symlink-CVE-2024-57256.patch"
 SRC_URI += "file://0016-boot-lock-the-TPM-platform-hierarchy-before-the-OS.patch"
+SRC_URI += "file://0017-dlmalloc-fix-integer-overflow-in-sbrk-CVE-2024-57258.patch"
+SRC_URI += "file://0018-dlmalloc-fix-integer-overflow-in-request2size-CVE-2024-57258.patch"
 SRC_URI += "file://net-off.cfg"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
@@ -112,6 +114,8 @@ do_configure() {
         bbfatal "CONFIG_TPM_V2 did not survive olddefconfig"
     grep -q '^CONFIG_MEASURED_BOOT_LOCK_PLATFORM=y$' ${B}/.config || \
         bbfatal "CONFIG_MEASURED_BOOT_LOCK_PLATFORM did not survive olddefconfig: the OS would get the TPM platform hierarchy"
+    ! grep -qE '^CONFIG_(NET|FS_SQUASHFS|CMD_SQUASHFS)=y$' ${B}/.config || \
+        bbfatal "network or squashfs support is enabled: the CVE_STATUS entries of this recipe would be false"
     if [ "${TACTIQ_UBOOT_CONSOLE}" != "1" ]; then
         grep -q '^CONFIG_BOOTDELAY=-2$' ${B}/.config || \
             bbfatal "console lockdown: CONFIG_BOOTDELAY is not -2"
@@ -195,6 +199,16 @@ do_compile:append() {
 # cve-check: this recipe is upstream U-Boot (kwiboo rk3xxx-2024.07 branch)
 CVE_PRODUCT = "denx:u-boot"
 CVE_VERSION = "2024.07"
+
+# CVEs in code this loader does not build. do_configure fails if either
+# option comes back, so these statuses cannot outlive the configuration
+# they describe. CVE-2024-57258 is reached through squashfs but sits in the
+# allocator, which this loader does build: it is fixed by 0017 and 0018.
+CVE_STATUS_GROUPS += "CVE_STATUS_UBOOT_SQUASHFS CVE_STATUS_UBOOT_NET"
+CVE_STATUS_UBOOT_SQUASHFS = "CVE-2024-57254 CVE-2024-57255 CVE-2024-57257 CVE-2024-57259"
+CVE_STATUS_UBOOT_SQUASHFS[status] = "not-applicable-config: squashfs support is not built (CONFIG_FS_SQUASHFS and CONFIG_CMD_SQUASHFS are not set)"
+CVE_STATUS_UBOOT_NET = "CVE-2024-42040 CVE-2026-29007 CVE-2026-29008 CVE-2026-29009"
+CVE_STATUS_UBOOT_NET[status] = "not-applicable-config: the network stack is not built (net-off.cfg; CONFIG_NET is not set)"
 
 # Per-recipe CVE report: the bootloader is not part of the rootfs SBOM
 inherit sbom-cve-check-recipe
