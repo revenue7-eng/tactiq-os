@@ -72,6 +72,8 @@
 #   manifest-${BOARD}.txt, testdata-${BOARD}.json, buildinfo-${BOARD}.json
 #   sbom-${BOARD}.spdx.json                          (SPDX 3.0.1)
 #   cve-${BOARD}.sbom-cve-check.yocto.json
+#   cve-loader-${BOARD}.sbom-cve-check.yocto.json   (CVE report of the U-Boot recipe;
+#       the bootloader is not in the rootfs, so the image report does not cover it)
 #   bundle-${BOARD}.raucb                            (required for IMAGE=tactiq-image)
 #   tactiq-release-${BOARD}                          (/etc/tactiq-release from the release rootfs)
 #
@@ -357,6 +359,23 @@ cp "${BOOTX}/recipe-fitImage"      "fitImage-${BOARD}";      echo "    + fitImag
 cp "${BOOTX}/recipe-extlinux.conf" "extlinux-${BOARD}.conf"; echo "    + extlinux-${BOARD}.conf"
 copy "idbloader.img"                "idbloader-${BOARD}.img"
 copy "u-boot.itb"                   "u-boot-${BOARD}.itb"
+
+# CVE report of the bootloader recipe (sbom-cve-check-recipe). The image report
+# covers the rootfs only; up to rc13 no report covered the bootloader at all
+# (docs/advisories/2026-10-08-u-boot-fit-verification.md). The report file has
+# no build timestamp, so it is tied to the loader by version instead: the
+# U-Boot version in u-boot.itb must be the version the report describes.
+LOADER_CVE="${DEPLOY}/u-boot-rockchip-recipe-sbom.sbom-cve-check.yocto.json"
+[[ -e "$LOADER_CVE" ]] || { echo "::error:: missing loader CVE report: $LOADER_CVE" >&2; exit 1; }
+ITB_VER="$(grep -ao 'U-Boot 20[0-9][0-9]\.[0-9][0-9]' "u-boot-${BOARD}.itb" | head -n 1 | cut -d' ' -f2)"
+REP_VER="$(python3 -c 'import json,sys; print(next((p["version"] for p in json.load(open(sys.argv[1]))["package"] if p["name"]=="u-boot-rockchip"),""))' "$LOADER_CVE")"
+if [[ -z "$ITB_VER" || -z "$REP_VER" || "$REP_VER" != "$ITB_VER"* ]]; then
+    echo "::error:: loader CVE report describes u-boot-rockchip '${REP_VER:-<none>}', u-boot.itb is U-Boot '${ITB_VER:-<unknown>}'." >&2
+    echo "::error:: rerun bitbake -c sbom_cve_check_recipe for the loader this release ships." >&2
+    exit 1
+fi
+cp -L "$LOADER_CVE" "cve-loader-${BOARD}.sbom-cve-check.yocto.json"
+echo "    + cve-loader-${BOARD}.sbom-cve-check.yocto.json  (u-boot-rockchip ${REP_VER})"
 cp -L "$BOOT_ENV" "tactiq-boot-${BOARD}.env";               echo "    + tactiq-boot-${BOARD}.env"
 cp -L "${SCRIPT_DIR}/mk-pcr-reference.py" "mk-pcr-reference.py"; echo "    + mk-pcr-reference.py"
 

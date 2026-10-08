@@ -191,3 +191,6 @@ CVE_VERSION = "2026.10"
 # Per-recipe CVE report: the bootloader is not part of the rootfs SBOM
 inherit sbom-cve-check-recipe
 SBOM_CVE_CHECK_SCAN_SCOPE = "target"
+# Run with every loader build, so the release always has a report for the
+# loader it ships (the image build pulls this recipe through do_deploy).
+addtask sbom_cve_check_recipe after do_create_recipe_sbom before do_deploy
