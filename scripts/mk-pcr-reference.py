@@ -9,8 +9,9 @@ runs bootm with an explicit configuration per slot. Slots and configurations
 are read from the default environment compiled into u-boot.itb, which is what
 the loader executes (CONFIG_ENV_WRITEABLE_LIST imports only BOOT_ORDER and the
 BOOT_x_LEFT counters from storage). The kernel command line lives in /chosen of
-each configuration's devicetree, so it is covered by the devicetree digest in
-PCR 0; U-Boot's bootargs variable is empty and PCR 1 is one value for every
+each configuration's devicetree, so it is covered by the devicetree digest
+(PCR 0 or PCR 1, see below); U-Boot's bootargs variable is empty and its
+measurement in PCR 1 is the same for every
 slot. The script refuses a boot_ab that calls sysboot or sets bootargs, a
 bootcmd other than `run boot_ab`, and a compiled-in writable list that admits
 bootargs, bootcmd, boot_ab or preboot: each would let an unsigned command line
@@ -33,6 +34,10 @@ loadable, with the U-Boot devicetree right after U-Boot):
 U-Boot proper then measures:
   PCR 0  S-CRTM version, then the kernel devicetree    bootm: one value per slot
   PCR 1  bootargs variable, NUL-terminated               bootm: empty, one value
+The kernel devicetree goes to PCR 0 in U-Boot 2024.07 and to PCR 1 (before
+bootargs) in 2026.10 (boot/bootm.c, EV_TABLE_OF_DEVICES). FDT_PCR maps each
+U-Boot version this script knows to that PCR; any other version is refused
+until its boot/bootm.c has been read.
                                                          extlinux: one per slot
   PCR 8  kernel                                         bootm: per configuration
   PCR 9  "initrd" NUL                                   no initrd
@@ -330,6 +335,12 @@ def read_boot_ab(path):
 
 
 BOOTCMD_RE = re.compile(rb"\0bootcmd=([^\0]*)\0")
+# PCR that U-Boot proper's bootm measures the kernel devicetree into, by
+# version (boot/bootm.c). 2024.07: tcg2_measure_data(..., 0, ...,
+# EV_TABLE_OF_DEVICES). 2026.10: the same event into PCR 1. Observed on the
+# reference board on 2026-10-08 for 2026.10 by the event log.
+FDT_PCR = {(2024, 7): 0, (2026, 10): 1}
+
 FORBIDDEN_WRITABLE = ("bootargs", "bootcmd", "boot_ab", "preboot")
 
 
@@ -435,6 +446,11 @@ def main():
             die(f"SPL version {spl_ver!r} differs from U-Boot version {ver!r}")
 
     crtm = sha(ver + b"\0")
+    m = re.match(rb"U-Boot (\d{4})\.(\d{2})", ver)
+    fdt_pcr = FDT_PCR.get((int(m.group(1)), int(m.group(2)))) if m else None
+    if fdt_pcr is None:
+        die(f"U-Boot version {ver!r} is not in FDT_PCR: read boot/bootm.c of "
+            "that version for the PCR it measures the kernel devicetree into")
     spl_conf, spl = None, []
     spl_chain = {i: [] for i in range(0, 10)}
     if not a.no_spl_measure:
@@ -456,7 +472,7 @@ def main():
         chain[0].append(crtm)
         chain[8].append(kernel)
         chain[9].append(sha(b"initrd\0"))
-        chain[0].append(fdt)
+        chain[fdt_pcr].append(fdt)
         out = {}
         for i in range(0, 10):
             if i == 1:
@@ -492,7 +508,10 @@ def main():
             if i == 1:
                 continue
             pcr[str(i)] = one_or_per_slot({s_: v[str(i)] for s_, v in per.items()})
-        pcr["1"] = hx(value([sha(b"\0"), SEP]))
+        pcr["1"] = one_or_per_slot({
+            s_: hx(value(([f["fdt_sha256"]] if fdt_pcr == 1 else [])
+                         + [sha(b"\0"), SEP]))
+            for s_, f in confs.items()})
         doc = {
             "format": "tactiq-pcr-reference/2",
             "bank": "sha256",
@@ -507,12 +526,12 @@ def main():
                 "SPL is neither measured nor verified by the boot ROM until the "
                 "SoC OTP key is fused, and a replaced SPL can extend these same "
                 "values",
-                "bootargs is empty at bootm, so PCR 1 is one value for every "
-                "slot; any other PCR 1 means a command line outside the "
-                "signed configuration reached U-Boot",
+                "bootargs is empty at bootm; a PCR 1 other than the one given "
+                "means a command line outside the signed configuration reached "
+                "U-Boot",
                 "the kernel command line, including the dm-verity root hash, is "
                 "in /chosen of each configuration's devicetree and is covered "
-                "by the devicetree digest in PCR 0",
+                f"by the devicetree digest in PCR {fdt_pcr}",
                 "the boot partition of each slot carries the fitImage named "
                 "under inputs",
                 "no initrd is loaded",
@@ -539,6 +558,7 @@ def main():
                         "fdt_sha256": f["fdt_sha256"].hex(),
                     } for s_, f in confs.items()},
                 "bootargs": "",
+                "kernel_devicetree_pcr": fdt_pcr,
                 "spl_configuration": spl_conf,
                 "spl_measurements": spl_list,
             },
@@ -551,7 +571,8 @@ def main():
         slots = read_slots(a.boot_env)
         pcr = pcrs_for(fit["kernel_sha256"], fit["fdt_sha256"])
         cmdlines = {s_: cmdline_for(append, s_, p_) for s_, p_ in sorted(slots.items())}
-        pcr["1"] = {s_: hx(value([sha(c.encode() + b"\0"), SEP]))
+        pcr["1"] = {s_: hx(value(([fit["fdt_sha256"]] if fdt_pcr == 1 else [])
+                                 + [sha(c.encode() + b"\0"), SEP]))
                     for s_, c in cmdlines.items()}
         doc = {
             "format": "tactiq-pcr-reference/1",
