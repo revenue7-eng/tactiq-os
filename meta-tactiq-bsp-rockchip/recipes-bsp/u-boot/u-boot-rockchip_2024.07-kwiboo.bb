@@ -2,11 +2,16 @@ SUMMARY = "U-Boot bootloader for Rockchip RK35xx (Kwiboo fork)"
 DESCRIPTION = "Builds Kwiboo's U-Boot fork (rk3xxx-2024.07 branch) for Rockchip \
 RK35xx targets. This fork contains RK3588 patches not yet merged into mainline. \
 Same commit (8cdf606e) used by meta-rockchip bbappend for RK3588 boards. \
-Pure mainline u-boot does not boot on RK3588 family — see Gentoo wiki, yrzr blog. \
+Mainline did not boot RK3588 when this recipe was written; v2026.10 does. \
 Source: https://github.com/Kwiboo/u-boot-rockchip/tree/rk3xxx-2024.07"
 
 LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://Licenses/README;md5=2ca5f2c35c8cc335f0a19756634782f1"
+
+# Fallback only, from rc14 on: u-boot-rockchip_2026.10.bb is the default.
+# Kept for one release so that a release build can go back to it with
+# PREFERRED_VERSION_u-boot-rockchip = "2024.07-kwiboo"; to be removed after rc14.
+DEFAULT_PREFERENCE = "-1"
 
 # Pinned to Kwiboo commit 8cdf606e616baa36751f3b4adcfaefc781126c8c (rk3xxx-2024.07).
 SRC_URI = "${TACTIQ_MIRROR}/u-boot-rockchip-8cdf606e616baa36751f3b4adcfaefc781126c8c.tar.gz"

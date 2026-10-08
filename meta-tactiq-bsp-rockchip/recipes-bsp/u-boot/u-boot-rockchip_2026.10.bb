@@ -7,9 +7,10 @@ CVE-2024-57256 and BRLY-2026-037..042 found against that fork."
 LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://Licenses/README;md5=2ca5f2c35c8cc335f0a19756634782f1"
 
-# Not selected until the board has booted it: the Kwiboo recipe stays the
-# provider for every build until this line is removed in a separate commit.
-DEFAULT_PREFERENCE = "-1"
+# The default bootloader from rc14 on. Booted and checked on the reference
+# Rock 5A on 2026-10-08: FIT signature check, TPM platform lock, PCR values
+# equal to mk-pcr-reference, A/B environment written from Linux and imported
+# by U-Boot. The Kwiboo recipe is kept one release as a fallback.
 
 # Release tag v2026.10 (commit 5508406582f6f7120dce0c4b3059819a41788db2),
 # GitHub archive of the tag, mirrored like the other BSP sources.
