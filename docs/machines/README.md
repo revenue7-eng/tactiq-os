@@ -16,7 +16,7 @@ makes it change. Intent does not belong in this table.
 | `tactiq-generic-arm64` | `conf/machine/tactiq-generic-arm64.conf` | no | Template for ARM64 boards. Kernel pinned `6.6%` in the machine config. |
 | `tactiq-rock5a` | `meta-tactiq-bsp-rockchip/conf/machine/tactiq-rock5a.conf` | yes | RK3588S. Reference hardware for measurements. |
 | `tactiq-rock5a-npu` | `meta-tactiq-bsp-rockchip/conf/machine/tactiq-rock5a-npu.conf` | no | Derives from `tactiq-rock5a`, adds the `npu` override. Never released. |
-| `tactiq-rock5t` | `meta-tactiq-bsp-rockchip/conf/machine/tactiq-rock5t.conf` | no | RK3588. Boots on the Rock 5B DTB until a Rock 5T DTS lands. |
+| `tactiq-rock5t` | `meta-tactiq-bsp-rockchip/conf/machine/tactiq-rock5t.conf` | no | RK3588. Own devicetree (`rk3588-rock-5t`), U-Boot v2026.10. Boots from eMMC without a TPM; see `measurements/rock5t-stage1-boot-20261009.md`. |
 
 ## TPM
 
@@ -71,6 +71,11 @@ carry a TEE at all is an open design question, not a build defect.
 `measurements/`, and `SUPPLY_CHAIN.md` § "Measurement evidence:
 integrity and image scope" for which image profile each measurement
 used. No workflow in `.github/workflows/` names a MACHINE, so no
-platform has CI coverage that can be checked from this tree. Bring-up
-state for `tactiq-generic-arm64`, `tactiq-rock5t` and `tactiq-qemu-x86`:
+platform has CI coverage that can be checked from this tree.
+
+`tactiq-rock5t` boots to the login prompt with a dm-verity root and SELinux
+enforcing, without a TPM, so without measured boot and without the
+attestation agent: `measurements/rock5t-stage1-boot-20261009.md`.
+
+Bring-up state for `tactiq-generic-arm64` and `tactiq-qemu-x86`:
 `not established`.
