@@ -47,7 +47,8 @@ rm -f SHA256SUMS SHA256SUMS.p7s
 ls *.attest >/dev/null 2>&1 || { echo "::error:: no quote (*.attest) in $EVD" >&2; exit 1; }
 [[ $(ls registration-*.json 2>/dev/null | wc -l) -eq 1 ]] || { echo "::error:: $EVD must hold exactly one registration-*.json" >&2; exit 1; }
 chmod 0644 -- *
-LC_ALL=C sha256sum -- $(LC_ALL=C ls) > SHA256SUMS
+mapfile -t files < <(LC_ALL=C ls)
+LC_ALL=C sha256sum -- "${files[@]}" > SHA256SUMS
 openssl cms -sign -binary -noattr -md sha256 \
     -in SHA256SUMS -signer "$EVIDENCE_SIGNER_CERT" -inkey "$EVIDENCE_SIGNER_KEY" \
     -certfile "$EVIDENCE_SIGNING_CA" -outform DER -out SHA256SUMS.p7s
