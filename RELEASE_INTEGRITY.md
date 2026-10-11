@@ -96,7 +96,7 @@ materialization rules, and defined revocation procedure.
 |-------------------|---------------------------------|--------------|----------------------------------------------------|---------------------------------------------|
 | Release root      | Air-gapped material under TactiQ Engineering control. **Never enters any CI runner under any condition.** | Years (rotated on incident or scheduled audit) | Air-gapped signing host; signature artifacts committed to repository | Per-product key certificates; revocation list entries |
 | Per-product key   | GitHub Actions encrypted secret per repository                | Annual rotation, on-incident replacement | Materialized into CI runner memory at start of tag-triggered workflow; removed at end | Release artifacts of that product (FIT images) |
-| Per-build identity| Ephemeral Sigstore Fulcio cert (keyless OIDC)               | Per-tag (~minutes)                       | Issued by Fulcio at signing time; private key never persists | `SHA256SUMS` of one specific release, and through it the SBOM and RIM (§5.5) |
+| Per-build identity| Ephemeral Sigstore Fulcio cert (keyless OIDC)               | Per-tag (~minutes)                       | Issued by Fulcio at signing time; private key never persists | `SHA256SUMS` of one specific release, and through it the SBOM, the RIM (§5.5) and the L3 evidence archive (§5.9) |
 
 **Critical clarification over v0.1:** the release root is **air-gapped
 without exception**. It is not "usually offline" or "stored as a
@@ -625,8 +625,15 @@ differs from that of the bundle signer, so RAUC does not accept it as
 a bundle signer, and the bundle signer does not sign RIMs. The same
 holds for the Registration Signer (tactiq-attest DDR-005 decision 6), a
 third leaf under the same Signing CA: it signs AK registration records,
-not RIMs, and has an extended key usage of its own. The signing
-key is held and used offline like the other release keys. A verifier
+not RIMs, and has an extended key usage of its own. From
+`v2.1.0-rc14` two more leaves are issued under the same Signing CA,
+each with a single critical extended key usage of its own: the
+Evidence Signer (§5.9) and the Cartridge Signer, which signs Edge
+cartridges and has no role in the open OS release. Every leaf carries
+only its own purpose OID, so a verifier that checks the purpose of the
+signer (below) does not accept one leaf's signature in place of
+another's. The signing key is held and used offline like the other
+release keys. A verifier
 checks the signature against the release root it has pinned, offline,
 with no dependency on any online service.
 
@@ -722,6 +729,78 @@ A verifier appraising a device against a RIM:
   only through a quote, which requires the attestation agent.
 - Not yet produced: the RIM itself and its schema. The RIM signer has
   not yet been issued.
+
+### 5.9 L3 evidence and release order (from v2.1.0-rc14)
+
+A release also publishes the evidence that the release image was run
+on the reference device and attested there: the quotes and their
+envelopes, the attestation key, the EK certificate and its Infineon
+issuers, and the AK registration record with its signature. This is
+the L3 evidence archive, `l3-evidence-<rcN>.tar.gz`, checked by
+`VERIFY-L3-<rcN>.md` and the script that follows it,
+`verify-l3-<rcN>.sh`.
+
+Up to `v2.1.0-rc13` the archive sat outside the signed set of the
+release: it was not listed in `SHA256SUMS`, and its own list of files
+was unsigned. A reader could check the files inside against that list,
+but nothing tied the list to TactiQ AI. From `v2.1.0-rc14` the archive
+is covered twice, by two independent mechanisms.
+
+**Evidence Signer.** The archive carries its own `SHA256SUMS` and a
+detached signature over it, `SHA256SUMS.p7s`: CMS SignedData, DER,
+SHA-256, no signed attributes, carrying the leaf and the Signing CA
+certificate, the same form as the RIM signature (§5.5). The signer is
+the Evidence Signer, a leaf of the release hierarchy whose only
+extended key usage is
+`2.25.303991386130890852620485224389791976682` (critical). It is
+issued and used offline like the other release keys. A verifier checks
+the signature against the release root it has pinned and then the
+purpose of the signer, as in §5.5; `verify-l3-<rcN>.sh` does both.
+This signature rests on the release root and survives adversary A3
+(§7.3).
+
+**Release `SHA256SUMS`.** The archive, `VERIFY-L3-<rcN>.md` and
+`verify-l3-<rcN>.sh` are listed in the release's `SHA256SUMS`, which
+the release workflow signs with Sigstore. As for the RIM, this gives
+transparency and is not the trust anchor.
+
+The archive can only be made after the release image has run on the
+reference device, and the release `SHA256SUMS` must list it. The
+release is therefore assembled in this order:
+
+1. `scripts/mk-release.sh <tag> <dir>`: build artifacts, SBOM, CVE
+   reports, RIM. It does not write `SHA256SUMS`.
+2. The release image on the reference device, cold start, envelopes
+   taken from the device.
+3. `scripts/mk-l3-evidence.sh <tag> <evidence-dir> <dir>`: writes the
+   archive's list of files, signs it with the Evidence Signer, checks
+   the signature against the release root and packs the archive into
+   `<dir>`. It runs offline, where the key is, and refuses to
+   overwrite an existing archive.
+4. `VERIFY-L3-<rcN>.md` and `verify-l3-<rcN>.sh` copied into `<dir>`.
+5. `scripts/mk-release-sums.sh <tag> <dir>`: checks that the three L3
+   files are present and that the archive's list verifies to the
+   release root with the Evidence Signer purpose, writes `SHA256SUMS`
+   over everything in `<dir>`, then runs `verify-l3-<rcN>.sh` on the
+   assembled release and removes `SHA256SUMS` again if the script
+   does not exit 0. It writes `SHA256SUMS` once and refuses to
+   overwrite it.
+6. The tag and the Sigstore signature over `SHA256SUMS`.
+
+`ALLOW_NO_L3=1` lets step 5 run without the L3 files, for testing the
+mechanics only; its output is not a valid release.
+
+`verify-l3-<rcN>.sh` checks that the archive, the RIM and the script
+itself match their lines in `SHA256SUMS`. It does not check the
+Sigstore signature over `SHA256SUMS`; `scripts/verify-release.sh`
+does, and the L3 script says so in a NOT ESTABLISHED line.
+
+**Keys outside the hierarchy.** The site network permission key,
+which signs `/data/site/network-allow` for `tactiq-netperm`, is a bare
+ECDSA P-256 key pair outside every hierarchy on purpose: its public
+half is pinned in the image (`TACTIQ_NETPERM_PUBKEY`), and no chain
+means no other signer can be made to count. It is not a release
+signing key and plays no part in the order above.
 
 ## 6. TPM class disclosure
 
@@ -1229,3 +1308,16 @@ OTP state) in the file (§5.4).
 **§2.3 current implementation.** Records that the FIT signing key of
 v2.1.0-rc11 is self-signed and held offline, not a CI secret certified
 by the release root.
+
+## Appendix C: Changes for v2.1.0-rc14
+
+**L3 evidence inside the signed set.** The L3 evidence archive of
+`v2.1.0-rc13` was outside the release's `SHA256SUMS`, and its own list
+of files was unsigned. §5.9 adds the Evidence Signer, a fourth purpose
+leaf under the Signing CA that signs the archive's list, and a release
+order in which `SHA256SUMS` is written last, after the archive, the
+L3 procedure and its script are in the release directory.
+
+**Purpose leaves.** §5.5 names the Evidence Signer and the Cartridge
+Signer next to the RIM and Registration Signers. §5.9 records that the
+site network permission key stays outside the hierarchy.
