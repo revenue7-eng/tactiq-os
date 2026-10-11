@@ -104,13 +104,27 @@ SRC_URI:append:npu = " file://0001-arm64-dts-rk3588s-rock-5a-enable-npu.patch"
 #
 # A development key is pinned in-tree, mirroring the RAUC development keyring
 # and the rest of pki/dev/ (see pki/README.md: these private keys are public by
-# design). Production builds override TACTIQ_MODULE_SIG_KEY from CI secrets.
-# Signatures are deterministic because CONFIG_MODULE_SIG_KEY_TYPE_RSA=y selects
-# PKCS#1 v1.5. The key is delivered through SRC_URI so bitbake tracks it in the
-# task hash; a silent swap cannot happen.
+# design). Signatures are deterministic because CONFIG_MODULE_SIG_KEY_TYPE_RSA=y
+# selects PKCS#1 v1.5. The development key is delivered through SRC_URI, so
+# bitbake tracks its content in the task hash.
+#
+# A release build sets TACTIQ_MODULE_SIG_KEY to a path outside the tree: the
+# release keys are held offline on encrypted media and attached only for the
+# build (pki/README.md, RELEASE_INTEGRITY.md §2.3), not taken from CI secrets.
+# Such a path is not in SRC_URI, and a variable holding a path puts only the
+# path string into the task hash, not the file. The anonymous function below
+# adds the file itself to do_configure[file-checksums] whenever TACTIQ_KEYRING
+# is not "dev", so a different key under the same path changes the hash and
+# rebuilds the kernel instead of reusing a kernel signed with the old key.
 FILESEXTRAPATHS:prepend := "${LAYERDIR_tactiq-os}/pki/dev/module-signing:"
 SRC_URI += "file://module-signing-dev.pem"
 TACTIQ_MODULE_SIG_KEY ?= "${UNPACKDIR}/module-signing-dev.pem"
+
+python () {
+    if d.getVar('TACTIQ_KEYRING') != 'dev':
+        d.appendVarFlag('do_configure', 'file-checksums',
+                        ' %s:True' % d.getVar('TACTIQ_MODULE_SIG_KEY'))
+}
 
 do_configure:append() {
     install -d ${B}/certs
