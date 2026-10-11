@@ -1,0 +1,47 @@
+From aa94e29647f88cf04858b401a745aa7b97bb6a88 Mon Sep 17 00:00:00 2001
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Wed, 7 Oct 2026 23:24:59 +0000
+Subject: [PATCH 7/7] tpm: tcg2: gate SM3 per build phase
+
+MEASURED_BOOT selects SM3 for U-Boot proper, and lib/Makefile builds
+sm3.o per phase (CONFIG_$(PHASE_)SM3), but the TCG2 code tests the
+symbol with IS_ENABLED(CONFIG_SM3). An SPL that links the TCG2 code for
+measured boot then references sm3_hash() without sm3.o and fails to
+link. Use CONFIG_IS_ENABLED(SM3) so SPL leaves SM3 out unless the phase
+enables it; U-Boot proper is unchanged.
+
+Upstream-Status: Pending
+---
+ include/tpm-v2.h | 2 +-
+ lib/tpm_tcg2.c   | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/tpm-v2.h b/include/tpm-v2.h
+index a776d24d..bceafec8 100644
+--- a/include/tpm-v2.h
++++ b/include/tpm-v2.h
+@@ -350,7 +350,7 @@ static const struct digest_info hash_algo_list[] = {
+ 		TPM2_ALG_SM3_256,
+ 		TCG2_BOOT_HASH_ALG_SM3_256,
+ 		TPM2_SM3_256_DIGEST_SIZE,
+-#if IS_ENABLED(CONFIG_SM3)
++#if CONFIG_IS_ENABLED(SM3)
+ 		true,
+ #else
+ 		false,
+diff --git a/lib/tpm_tcg2.c b/lib/tpm_tcg2.c
+index 49fe1eb6..953aee60 100644
+--- a/lib/tpm_tcg2.c
++++ b/lib/tpm_tcg2.c
+@@ -145,7 +145,7 @@ int tcg2_create_digest(struct udevice *dev, const u8 *input, u32 length,
+ 			len = TPM2_SHA512_DIGEST_SIZE;
+ 			break;
+ #endif
+-#if IS_ENABLED(CONFIG_SM3)
++#if CONFIG_IS_ENABLED(SM3)
+ 		case TPM2_ALG_SM3_256:
+ 			sm3_hash(input, length, final);
+ 			len = TPM2_SM3_256_DIGEST_SIZE;
+-- 
+2.43.0
+

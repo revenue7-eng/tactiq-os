@@ -1,0 +1,64 @@
+Upstream-Status: Backport [https://github.com/u-boot/u-boot/commit/7304d569e61521e04625bfbded894f2e5fbe4409]
+Advisory: BRLY-2026-040
+
+From 7304d569e61521e04625bfbded894f2e5fbe4409 Mon Sep 17 00:00:00 2001
+From: Anton Ivanov <anton@binarly.io>
+Date: Tue, 2 Jun 2026 19:30:17 +0100
+Subject: [PATCH] fdt_region: Check return value of
+ fdt_get_property_by_offset() calls
+
+fdt_get_property_by_offset() returns NULL for FDT with version
+less than 0x10. fdt_find_regions() dereferences the result without
+checking, leading to a NULL pointer dereference during signature
+verification of an untrusted FIT. fdt_add_alias_regions() and
+fdt_next_region() also lack validation.
+
+Add NULL checks before accessing the returned property pointer.
+Also add a missing NULL check for fdt_string() in
+fdt_add_alias_regions() and fdt_next_region().
+
+Signed-off-by: Anton Ivanov <anton@binarly.io>
+---
+ boot/fdt_region.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/boot/fdt_region.c b/boot/fdt_region.c
+index 295ea08a..0a9d47bb 100644
+--- a/boot/fdt_region.c
++++ b/boot/fdt_region.c
+@@ -69,6 +69,8 @@ int fdt_find_regions(const void *fdt, char * const inc[], int inc_count,
+ 			include = want >= 2;
+ 			stop_at = offset;
+ 			prop = fdt_get_property_by_offset(fdt, offset, NULL);
++			if (!prop)
++				return -FDT_ERR_BADSTRUCTURE;
+ 			str = fdt_string(fdt, fdt32_to_cpu(prop->nameoff));
+ 			if (!str)
+ 				return -FDT_ERR_BADSTRUCTURE;
+@@ -271,7 +273,11 @@ int fdt_add_alias_regions(const void *fdt, struct fdt_region *region, int count,
+ 		int target, next;
+ 
+ 		prop = fdt_get_property_by_offset(fdt, offset, NULL);
++		if (!prop)
++			return -FDT_ERR_BADSTRUCTURE;
+ 		name = fdt_string(fdt, fdt32_to_cpu(prop->nameoff));
++		if (!name)
++			return -FDT_ERR_BADSTRUCTURE;
+ 		target = fdt_path_offset(fdt, name);
+ 		if (!region_list_contains_offset(info, fdt, target))
+ 			continue;
+@@ -520,7 +526,11 @@ int fdt_next_region(const void *fdt,
+ 		case FDT_PROP:
+ 			stop_at = offset;
+ 			prop = fdt_get_property_by_offset(fdt, offset, NULL);
++			if (!prop)
++				return -FDT_ERR_BADSTRUCTURE;
+ 			str = fdt_string(fdt, fdt32_to_cpu(prop->nameoff));
++			if (!str)
++				return -FDT_ERR_BADSTRUCTURE;
+ 			val = h_include(priv, fdt, last_node, FDT_IS_PROP, str,
+ 					    strlen(str) + 1);
+ 			if (val == -1) {
+-- 
+2.43.0
+

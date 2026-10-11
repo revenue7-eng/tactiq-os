@@ -81,6 +81,7 @@ IMAGE_INSTALL:append = " \
     tactiq-agent \
     tactiq-config \
     tactiq-netperm \
+    tactiq-cartridge-anchor \
     agentgateway \
     agentgateway-config \
 "

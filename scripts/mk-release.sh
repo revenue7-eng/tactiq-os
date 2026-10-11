@@ -72,9 +72,15 @@
 #   manifest-${BOARD}.txt, testdata-${BOARD}.json, buildinfo-${BOARD}.json
 #   sbom-${BOARD}.spdx.json                          (SPDX 3.0.1)
 #   cve-${BOARD}.sbom-cve-check.yocto.json
+#   cve-loader-${BOARD}.sbom-cve-check.yocto.json   (CVE report of the U-Boot recipe;
+#       the bootloader is not in the rootfs, so the image report does not cover it)
 #   bundle-${BOARD}.raucb                            (required for IMAGE=tactiq-image)
 #   tactiq-release-${BOARD}                          (/etc/tactiq-release from the release rootfs)
-#   SHA256SUMS
+#
+# It does not write SHA256SUMS. The L3 evidence of the release is taken from
+# the reference device running this output, and the release's signed
+# SHA256SUMS must cover it; scripts/mk-release-sums.sh writes SHA256SUMS last,
+# after scripts/mk-l3-evidence.sh. The order is in mk-release-sums.sh.
 
 set -euo pipefail
 
@@ -157,6 +163,7 @@ fi
 # ---------------------------------------------------------------------------
 COV_SRC="${SCRIPT_DIR}/../security/coverage-${BOARD}.${TAG}.yaml"
 [[ -e "$COV_SRC" ]] || { echo "::error:: coverage manifest not found: $COV_SRC" >&2; exit 1; }
+! grep -q '^draft: true' "$COV_SRC" || { echo "::error:: coverage manifest is still a draft (draft: true): $COV_SRC" >&2; exit 1; }
 
 cov_field() {  # echo a 2-space-indented scalar from the top-level manifest: block
     awk -v k="$1" '
@@ -353,6 +360,37 @@ cp "${BOOTX}/recipe-fitImage"      "fitImage-${BOARD}";      echo "    + fitImag
 cp "${BOOTX}/recipe-extlinux.conf" "extlinux-${BOARD}.conf"; echo "    + extlinux-${BOARD}.conf"
 copy "idbloader.img"                "idbloader-${BOARD}.img"
 copy "u-boot.itb"                   "u-boot-${BOARD}.itb"
+
+# CVE report of the bootloader recipe (sbom-cve-check-recipe). The image report
+# covers the rootfs only; up to rc13 no report covered the bootloader at all
+# (docs/advisories/2026-10-08-u-boot-fit-verification.md). The report file has
+# no build timestamp, so it is tied to the loader by version instead: the
+# U-Boot version in u-boot.itb must be the version the report describes.
+LOADER_CVE="${DEPLOY}/u-boot-rockchip-recipe-sbom.sbom-cve-check.yocto.json"
+[[ -e "$LOADER_CVE" ]] || { echo "::error:: missing loader CVE report: $LOADER_CVE" >&2; exit 1; }
+ITB_VER="$(grep -ao 'U-Boot 20[0-9][0-9]\.[0-9][0-9]' "u-boot-${BOARD}.itb" | head -n 1 | cut -d' ' -f2)"
+REP_VER="$(python3 -c 'import json,sys; print(next((p["version"] for p in json.load(open(sys.argv[1]))["package"] if p["name"]=="u-boot-rockchip"),""))' "$LOADER_CVE")"
+if [[ -z "$ITB_VER" || -z "$REP_VER" || "$REP_VER" != "$ITB_VER"* ]]; then
+    echo "::error:: loader CVE report describes u-boot-rockchip '${REP_VER:-<none>}', u-boot.itb is U-Boot '${ITB_VER:-<unknown>}'." >&2
+    echo "::error:: rerun bitbake -c sbom_cve_check_recipe for the loader this release ships." >&2
+    exit 1
+fi
+# The recipe scan also lists the build toolchain of the recipe (glibc, libgcc,
+# gcc-runtime, linux-libc-headers). U-Boot is a freestanding binary and links
+# none of them, so the published report keeps the u-boot-rockchip package
+# only; the excluded package names are printed here for the release log.
+python3 - "$LOADER_CVE" "cve-loader-${BOARD}.sbom-cve-check.yocto.json" <<'PY' || { echo "::error:: could not filter the loader CVE report" >&2; exit 1; }
+import json, sys
+d = json.load(open(sys.argv[1]))
+keep = [p for p in d["package"] if p.get("name") == "u-boot-rockchip"]
+drop = sorted(p.get("name", "?") for p in d["package"] if p.get("name") != "u-boot-rockchip")
+if len(keep) != 1:
+    sys.exit("expected exactly one u-boot-rockchip package, found %d" % len(keep))
+d["package"] = keep
+json.dump(d, open(sys.argv[2], "w"), indent=2, sort_keys=True)
+print("    loader CVE report: left out the build toolchain packages " + (", ".join(drop) or "(none)"))
+PY
+echo "    + cve-loader-${BOARD}.sbom-cve-check.yocto.json  (u-boot-rockchip ${REP_VER})"
 cp -L "$BOOT_ENV" "tactiq-boot-${BOARD}.env";               echo "    + tactiq-boot-${BOARD}.env"
 cp -L "${SCRIPT_DIR}/mk-pcr-reference.py" "mk-pcr-reference.py"; echo "    + mk-pcr-reference.py"
 
@@ -572,15 +610,7 @@ if [[ -n "${RIM_SIGNER_CERT:-}" ]]; then
 else
     rim_no_rim "RIM left unsigned: set RIM_SIGNER_CERT, RIM_SIGNER_KEY, RIM_SIGNING_CA, RIM_ROOT_CA"
 fi
-echo "==> SHA256SUMS"
-# SHA256SUMS does not exist yet, so the glob below cannot include it.
-shopt -s nullglob; files=( * ); shopt -u nullglob
-# Copies inherit the mode of their source, which on some hosts is 0777.
-# Normalise: data 0644, the one script 0755.
-[[ ${#files[@]} -gt 0 ]] || { echo "::error:: no artifacts to hash" >&2; exit 1; }
-chmod 0644 -- "${files[@]}"
-chmod 0755 -- mk-pcr-reference.py
-sha256sum -- "${files[@]}" | LC_ALL=C sort -k2 > SHA256SUMS
-
-echo "==> done: ${OUT}  (tag ${TAG})"
+echo "==> artifacts done: ${OUT}  (tag ${TAG}); no SHA256SUMS yet"
+echo "    next: release image on the reference device, scripts/mk-l3-evidence.sh,"
+echo "    VERIFY-L3 page and script into ${OUT}, then scripts/mk-release-sums.sh"
 ls -la "$OUT"

@@ -86,6 +86,10 @@ measure func=FILE_CHECK mask=MAY_READ pcr=12 obj_type=tactiq_agent_state_t
 
 ## What this does not establish
 
+- That the attestation agent reports PCR 10 to 12. The agent of this image
+  quotes PCR 0 to 9 (`TACTIQ_PCR_SPEC` in its systemd unit, the selection of
+  the release RIM), and its envelope carries no IMA log. PCR 10 to 12 here
+  come from the manual quote described under Setup, not from the agent.
 - How the rc13 release loader behaves on a warm reboot. Not observed.
 - Why the TPM reset. SPL drives the TPM reset line, and the running system
   can drive the same GPIO, so a reset is not by itself evidence of a reboot.
@@ -121,3 +125,7 @@ a flipped bit there passed, because `tpm2_checkquote` does not read it
 either. Both are fixed, and the TPM clock order and the `boot_aggregate` tie
 are now reported. All four points come from an independent check of these
 files by Capt Anil Sharma.
+
+2026-10-06. Added under "What this does not establish": the attestation agent
+of this image quotes PCR 0 to 9 only, so PCR 10 to 12 in this record come
+from the manual quote, not from the agent. No measured value changed.

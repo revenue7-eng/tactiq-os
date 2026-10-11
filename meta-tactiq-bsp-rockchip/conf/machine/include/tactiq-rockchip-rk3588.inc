@@ -57,8 +57,8 @@ WKS_FILE = "tactiq-ab-rockchip.wks.in"
 # in tactiq-ab-rockchip.wks.in:
 #     idbloader.img @ sector 64    (TPL + SPL)
 #     u-boot.itb    @ sector 16384 (ATF BL31 + U-Boot proper)
-# No TEE is passed to the FIT: u-boot-rockchip_2024.07-kwiboo.bb sets BL31=
-# only. Boot logs under measurements/ show BL31 reporting no OPTEE from BL2.
+# No TEE is passed to the FIT: both U-Boot recipes (2026.10, and the
+# 2024.07-kwiboo fallback) set BL31= only. Boot logs under measurements/ show BL31 reporting no OPTEE from BL2.
 # These live BEFORE the GPT primary header — required by RK3588 BootROM contract.
 
 # ---- extlinux: RK3588 serial console override ----

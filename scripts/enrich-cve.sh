@@ -19,7 +19,6 @@ set -euo pipefail
 REL_DIR="${1:?usage: enrich-cve.sh <release-dir> [build-dir] [vulns-dir]}"
 BUILD_DIR="${2:-$HOME/build-rock5a-wrynose}"
 VULNS_DIR="${3:-$HOME/vulns-master}"
-KVER="6.18.24"
 
 IMPROVE="${IMPROVE:-$(dirname "$(command -v oe-pkgdata-util)")/contrib/improve_kernel_cve_report.py}"
 RAW="$REL_DIR/cve-rock5a.sbom-cve-check.yocto.json"
@@ -35,6 +34,23 @@ for f in "$IMPROVE" "$RAW" "$SPDX"; do
 done
 [ -d "$VULNS_DIR" ] || { echo "ERROR: missing vulns datadir: $VULNS_DIR" >&2; exit 1; }
 
+# The kernel version is the one the raw report carries for its linux_kernel
+# package. improve_kernel_cve_report.py takes it from there whenever an old
+# report is given and ignores --kernel-version, so a version written into
+# this script would only be recorded in provenance, not used, and would go
+# stale with the next openembedded-core bump (it read 6.18.24 while the
+# tree moved to 6.18.52). The suffix after "-" is dropped, as that script does.
+KVER="$(python3 - "$RAW" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1], encoding="ISO-8859-1"))
+v = [p["version"] for p in doc["package"]
+     if any(x.get("product") == "linux_kernel" for x in p.get("products", []))]
+if len(v) != 1:
+    sys.exit(f"expected one linux_kernel package in the raw report, found {len(v)}")
+print(v[0].split("-")[0])
+PY
+)"
+
 echo "==> enriching CVE report (kver=$KVER)"
 echo "    raw=$RAW"
 echo "    spdx=$SPDX"
@@ -42,7 +58,7 @@ echo "    vulns=$VULNS_DIR ($(find "$VULNS_DIR" -name 'CVE-*.json' | wc -l) CVE 
 
 python3 "$IMPROVE" \
   --spdx "$SPDX" --datadir "$VULNS_DIR" \
-  --old-cve-report "$RAW" --kernel-version "$KVER" \
+  --old-cve-report "$RAW" \
   --new-cve-report "$OUT"
 
 # The snapshot this enrichment was computed against now travels inside the

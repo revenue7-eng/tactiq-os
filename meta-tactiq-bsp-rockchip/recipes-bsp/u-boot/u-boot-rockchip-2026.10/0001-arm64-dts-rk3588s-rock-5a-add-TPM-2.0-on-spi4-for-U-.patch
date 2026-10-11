@@ -1,0 +1,40 @@
+From 436c99992bf8750437e24dd6974fa99b10e6c0df Mon Sep 17 00:00:00 2001
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Wed, 7 Oct 2026 23:20:21 +0000
+Subject: [PATCH 1/7] arm64: dts: rk3588s-rock-5a: add TPM 2.0 on spi4 for
+ U-Boot
+
+Enable spi4 (0xfecb0000) with the SPI4_M2 pin group and describe the Infineon SLB9670 TPM 2.0 module on it. The chip select is driven as a GPIO (GPIO1_A3, the same pad as SPI4_CS0_M2): the Rockchip SPI driver in U-Boot cannot hold the native chip select across the multi-part transfers that TPM TIS requires.
+
+Rebased onto U-Boot v2026.10, where the board -u-boot.dtsi carries only the sdhci and LED overrides; the node is appended at the end.
+
+Upstream-Status: Inappropriate [board-specific hardware configuration]
+---
+ arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
+index a75ae296..ed4d96ed 100644
+--- a/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
++++ b/arch/arm/dts/rk3588s-rock-5a-u-boot.dtsi
+@@ -17,3 +17,17 @@
+ 	cap-mmc-highspeed;
+ 	mmc-hs200-1_8v;
+ };
++
++&spi4 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi4m2_pins>;
++	cs-gpios = <&gpio1 RK_PA3 GPIO_ACTIVE_LOW>;
++	num-cs = <1>;
++
++	tpm@0 {
++		compatible = "tcg,tpm_tis-spi", "infineon,slb9670";
++		reg = <0>;
++		spi-max-frequency = <500000>;
++	};
++};
+-- 
+2.43.0
+

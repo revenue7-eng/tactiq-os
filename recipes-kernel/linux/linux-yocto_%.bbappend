@@ -1,10 +1,10 @@
 # TactiQ OS — linux-yocto bbappend (core layer, vendor-agnostic).
 #
-# Owns three concerns, kept together because they all target linux-yocto
+# Owns two concerns, kept together because they all target linux-yocto
 # regardless of which BSP is active:
 #   1. Security kernel fragment delivery (tactiq-security.cfg)
-#   2. Supply-chain version pinning (PREFERRED_VERSION)
 #   3. extlinux configuration via tactiq-extlinux-deploy.bbclass
+# (Section 2, the kernel pin, is not here; see below.)
 #
 # Per-vendor adjustments (serial console etc.) are made by overriding
 # individual UBOOT_EXTLINUX_* variables in BSP layer includes
@@ -23,16 +23,15 @@ SRC_URI += "file://tactiq-lockup.cfg"
 SRC_URI += "file://tactiq-pstore.cfg"
 
 # ===========================================================================
-# 2. Supply-chain pinning (SLSA L2 posture)
+# 2. Kernel pin: not in this file
 # ===========================================================================
-# Pin linux-yocto to an exact LTS point release series instead of a
-# rolling wildcard so two independent builds resolve to the same kernel tree.
-# Review this pin together with a CVE scan before bumping.
-PREFERRED_VERSION_linux-yocto = "6.18%"
-
-# TODO(slsa-l2): Add explicit SRCREV_machine / SRCREV_meta pins once the first
-# reproducible image is archived with hashes captured from the reference
-# wrynose build. Tracking: internal issue "supply-chain pinning".
+# A bbappend cannot choose which linux-yocto recipe is built: version
+# selection happens before any recipe is parsed, so PREFERRED_VERSION set
+# here had no effect. The series is chosen in conf/distro/tactiq.conf. The
+# exact kernel source is fixed by the openembedded-core pin in
+# integration/LAYERS.lock: linux-yocto_6.18.bb there sets SRCREV_machine and
+# SRCREV_meta, so a separate SRCREV pin here would only duplicate it. A
+# kernel bump is an openembedded-core bump, reviewed with a CVE scan.
 
 # ===========================================================================
 # 3. extlinux configuration (tactiq-extlinux-deploy.bbclass)

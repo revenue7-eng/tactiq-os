@@ -1,0 +1,46 @@
+From 6a56835eef73ac4f047f1c05d6b529a3503d42e6 Mon Sep 17 00:00:00 2001
+From: Andrey Lazarev <lazarev@tactiqedge.com>
+Date: Mon, 7 Sep 2026 20:08:24 +0000
+Subject: [PATCH 3/7] configs: rock5a-rk3588s: declare writeable environment
+ variables
+
+CONFIG_ENV_WRITEABLE_LIST permits writes and imports only for variables
+carrying the w flag, and takes that list from the compile-time constant
+ENV_FLAGS_LIST_STATIC (env/flags.c), not from the .flags variable in the
+environment, so that the access list cannot be supplied by the
+environment it governs. In this version the board part of that constant
+is the Kconfig string CONFIG_ENV_FLAGS_LIST_STATIC (include/env_flags.h),
+which defaults to an empty string: with the option enabled and no board
+value, no variable is writeable and nothing is imported from the saved
+environment at all.
+
+Declare the three RAUC A/B state variables in the board defconfig, as
+other boards do for the same scheme. Without them the boot_ab script
+cannot decrement the try counter, automatic rollback to the other slot
+never happens, and fw_setenv BOOT_ORDER has no effect after a reboot.
+
+bootargs and bootcmd are deliberately left out: keeping them
+non-importable is what prevents the kernel command line from being
+changed from a running system.
+
+The 2024.07 tree defines CFG_ENV_FLAGS_LIST_STATIC in the board header
+instead; in this version that macro is no longer read, and a board
+header define is silently ignored.
+
+Upstream-Status: Inappropriate [depends on the TactiQ default environment; the variable names come from tactiq-boot.env]
+---
+ configs/rock5a-rk3588s_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/configs/rock5a-rk3588s_defconfig b/configs/rock5a-rk3588s_defconfig
+index 24b2eef3..78f02b4c 100644
+--- a/configs/rock5a-rk3588s_defconfig
++++ b/configs/rock5a-rk3588s_defconfig
+@@ -68,3 +68,4 @@ CONFIG_USB_OHCI_GENERIC=y
+ CONFIG_USB_DWC3=y
+ CONFIG_USB_DWC3_GENERIC=y
+ CONFIG_ERRNO_STR=y
++CONFIG_ENV_FLAGS_LIST_STATIC="BOOT_ORDER:sw,BOOT_A_LEFT:dw,BOOT_B_LEFT:dw"
+-- 
+2.43.0
+
