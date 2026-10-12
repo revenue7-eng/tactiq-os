@@ -186,9 +186,29 @@ chk "record root_sha256" "$rs" "$(echo "$fp" | tr -d ':' | tr 'A-F' 'a-f')"
 rec=$(python3 -c "import json,hashlib; d=json.load(open('$REG')); print(hashlib.sha256(bytes.fromhex(d['ek_certificate'])).hexdigest(), hashlib.sha256(bytes.fromhex(d['ak_public'])).hexdigest())")
 fil="$(sha256sum ek.der | cut -d' ' -f1) $(sha256sum ak.pub | cut -d' ' -f1)"
 chk "ek.der and ak.pub are the signed ones" "$rec" "$fil"
+# Record format 2 carries the CRLs the registrar checked (tactiq-attest
+# DDR-005 boundary D, amended): the EK against the issuing CA's CRL, the
+# issuing CA against the root's CRL, at chain_checked_unix. They are
+# re-checked here from the signed record, not taken on the record's word.
+rf=$(python3 -c "import json; print(json.load(open('$REG')).get('format'))")
 rv=$(python3 -c "import json; print(json.load(open('$REG')).get('revocation_checked'))")
-if [ "$rv" = "True" ]; then ok "EK revocation checked at registration"
-else ne "EK certificate not revoked: record says revocation_checked=$rv"; fi
+if [ "$rf" = "tactiq-ak-registration/2" ] && [ "$rv" = "True" ]; then
+  python3 -c "import json; d=json.load(open('$REG')); open('ek-crl.der','wb').write(bytes.fromhex(d['ek_crl'])); open('int-crl.der','wb').write(bytes.fromhex(d['intermediate_crl']))"
+  chk "EK CRL signed by the issuing CA" "$(openssl crl -inform DER -in ek-crl.der -CAfile mfr034.pem -noout 2>&1)" "verify OK"
+  chk "issuing CA CRL signed by the root" "$(openssl crl -inform DER -in int-crl.der -CAfile root.pem -noout 2>&1)" "verify OK"
+  cc=$(python3 -c "import json; print(json.load(open('$REG'))['chain_checked_unix'])")
+  for pair in "ek-crl.der:ek.pem:EK certificate" "int-crl.der:mfr034.pem:issuing CA"; do
+    c="${pair%%:*}"; rest="${pair#*:}"; cert="${rest%%:*}"; what="${rest#*:}"
+    ser=$(openssl x509 -in "$cert" -noout -serial | cut -d= -f2)
+    if openssl crl -inform DER -in "$c" -noout -text | grep -qi "Serial Number: *${ser}\$"; then bad "$what: REVOKED in its CRL (serial $ser)"
+    else ok "$what not listed in its CRL"; fi
+    lu=$(date -u -d "$(openssl crl -inform DER -in "$c" -noout -lastupdate | cut -d= -f2)" +%s)
+    nu=$(date -u -d "$(openssl crl -inform DER -in "$c" -noout -nextupdate | cut -d= -f2)" +%s)
+    if [ "$lu" -le "$cc" ] && [ "$cc" -le "$nu" ]; then ok "$what CRL current at the chain check time"
+    else bad "$what CRL not current at the chain check time ($lu..$nu, checked $cc)"; fi
+  done
+  ne "revocation after the registration: the CRLs are those current at the chain check time; a later revocation is not covered by these files"
+else ne "EK certificate not revoked: record format $rf says revocation_checked=$rv"; fi
 
 echo "== step 5: AK name"
 n="000b$(tail -c +3 ak.pub | sha256sum | cut -d' ' -f1)"
