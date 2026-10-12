@@ -1,7 +1,7 @@
 # coverage-rock5a.v2.1.0-rc14.yaml: TactiQ OS threat-coverage manifest (PINNED)
 # ---------------------------------------------------------------------------
 # Generated instance for v2.1.0-rc14. Values verified against the release
-# artifact set of build 20261012034452 and the repository tree at the tagged
+# artifact set of build 20261012174949 and the repository tree at the tagged
 # commit. Rows not re-examined for rc14 say so.
 #
 # Integration: place this file into the release artifact set BEFORE generating
@@ -18,18 +18,20 @@
 # network stack removed, and the TPM platform hierarchy locked with
 # TPM2_Clear disabled before the OS starts. The L3 evidence of the release is
 # signed under the release root by a new Evidence Signer leaf and listed in
-# SHA256SUMS. No row changes status: DE-0007/DE-0008 moves only when an
-# envelope from a device running this release has been checked against its
-# RIM, and that is measured after the tag.
+# SHA256SUMS. The release image and the release loader ran on the reference
+# device before the tag (measurements/rel14-coldboot-20261012.md). No row
+# changes status: DE-0007/DE-0008 moves only when an envelope from a device
+# running this release has been checked against its RIM, and that is
+# measured after the tag.
 # ---------------------------------------------------------------------------
 
 schema_version: "0.3"
 
 manifest:
   os_release: "v2.1.0-rc14"
-  source_commit: "ae25f0819273c43009b70efc3bb25d0c6345b663"   # the commit the image was built from; the tag sits on the commit that adds this file
+  source_commit: "fd1e31d8786c2af2dbb2230a6075a59a4767073f"   # the commit the image was built from; the tag sits on the commit that adds this file
   distro_version: "2.1.0"          # unchanged since rc6
-  build_id: "20261012034452"
+  build_id: "20261012174949"
   platform: "Radxa Rock 5A (RK3588S)"
   toolchain: "Yocto wrynose (6.0), kernel 6.18.52+git"
   sbom:
@@ -62,9 +64,11 @@ manifest:
       must not be quoted as the posture.
     regression_cause: >-
       The drop from rc13 comes from the build, not from the kernel CNA
-      snapshot. The same build enriched with the rc13 snapshot (ffaa1b4,
-      2026-09-21) gives the same 81 (42 kernel, 39 userspace), recipe for
-      recipe. The kernel count falls with the kernel bump from 6.18.24+git to
+      snapshot. Build 20261012034452, which differs from this build only in
+      release-rev.inc, enriched with the rc13 snapshot (ffaa1b4, 2026-09-21)
+      gave the same 81 (42 kernel, 39 userspace), recipe for recipe; this
+      build enriched with the rc14 snapshot gives 81 with the same split. The
+      kernel count falls with the kernel bump from 6.18.24+git to
       6.18.52+git; the userspace count falls with the recipe versions of the
       new openembedded-core base. The raw sbom-cve-check pass ran with
       BB_NO_NETWORK against the userspace databases pinned by
@@ -151,51 +155,58 @@ manifest:
       That measurement describes the rc7 tree. It is carried here as the last
       reproducibility result on record, not as a property of this build.
     scope_limit: >-
-      Unchanged from rc11: determinism under fixed inputs was shown, fixation
-      of the inputs was not (known issue layer-set-evidence).
+      Determinism under fixed inputs was shown on rc7. From rc14 the release
+      carries check-layers-rc14.txt, the output of
+      `scripts/check-layers.sh --check` over the layer directory the build
+      used: every layer of integration/LAYERS.lock at its pinned commit with
+      a clean working tree, and the meta-rauc tree hash verified. It was run
+      on the build host after the build, so it shows the set as it stood
+      then; it is not a hermetic build.
   known_issues:
     previous: "v2.1.0-rc13"
     deferred:
       - id: spl-unmeasured-otp
         text: "SPL is the unmeasured root of the measurement chain and RK3588 OTP is not fused, so the BootROM does not authenticate SPL; a replaced SPL could extend the expected values. The reference describes the chain from SPL on, not from the BootROM"
       - id: pcr-computed-not-observed
-        text: "the PCR values of this release are computed, not yet observed. rc14 changes the loader to U-Boot v2026.10, which measures the kernel devicetree into PCR 1 instead of PCR 0; the release loader's values are checked after the tag by a quote from the reference device (VERIFY-L3-rc14.md). For rc13 such a quote after a power cycle matched its reference; values after a warm reboot with a release loader have not been observed, and the production image has no console by design"
+        text: "the PCR values of this release are computed, not yet observed. rc14 changes the loader to U-Boot v2026.10, which measures the kernel devicetree into PCR 1 instead of PCR 0; the release loader's values are checked after the tag by a quote from the reference device (VERIFY-L3-rc14.md). The release loader ran on the reference device before the tag (measurements/rel14-coldboot-20261012.md), but PCR values were not read in that run. For rc13 such a quote after a power cycle matched its reference; values after a warm reboot with a release loader have not been observed, and the production image has no console by design"
       - id: no-attestation-envelope
-        text: "for rc13 an envelope from the reference device, after a power cycle, verified against the rc13 RIM by the published procedure (VERIFY-L3-rc13.md), with an AK registered by TactiQ under the development image (ak-registration-bench-only). The gate stays open while pcr-computed-not-observed is open; the check for this release is made after the tag"
+        text: "the agent of this release ran on the reference device after a power cycle (measurements/rel14-coldboot-20261012.md); its envelopes are checked against this RIM after the tag by the published procedure (VERIFY-L3-rc14.md), with an AK registered by TactiQ (ak-registration-bench-only). For rc13 an envelope from the reference device, after a power cycle, verified against the rc13 RIM (VERIFY-L3-rc13.md). The gate stays open while pcr-computed-not-observed is open"
       - id: tpm-reset-line
-        text: "SPL pulses the TPM reset line before measuring, so a warm reboot starts the TPM like a power cycle; observed with the development loader, not with the release loader. The line is a GPIO the running system can also drive, so a TPM reset is not by itself evidence of a reboot (disclosed in the RIM; replaces tpm-not-reset-warm-reboot)"
+        text: "SPL pulses the TPM reset line before measuring, so a warm reboot starts the TPM like a power cycle; observed with the development loader on a warm reboot, and with the rc14 release loader at a cold start (measurements/rel14-coldboot-20261012.md). A warm reboot with the release loader has not been observed. The line is a GPIO the running system can also drive, so a TPM reset is not by itself evidence of a reboot (disclosed in the RIM; replaces tpm-not-reset-warm-reboot)"
       - id: ima-off-production
         text: "IMA is off in the production image (tactiq-image does not apply ima-evm-rootfs, BOOT_CHAIN.md). IMA appraisal and IMA measurement, including the rule that measures reads of Edge cartridges (tactiq_cartridge_t) into PCR 11, exist only in the development image; in this release cartridge reads are not measured"
       - id: agent-quote-pcr-0-9
         text: "tactiq-agent quotes PCR 0 to 9 only (TACTIQ_PCR_SPEC, the selection of the RIM) and its envelope carries no IMA log, so runtime measurements in PCR 10 and above are not part of the evidence the agent produces. Quotes over PCR 10 to 12 in the measurement records were taken by hand with tpm2_quote, not by the agent"
       - id: rootfs-not-verity
-        text: "the image is built for dm-verity on the FIT path: rootfs_a is written from the .ext4.verity artefact and the root hash is carried in the signed slot device tree (#217). Booting the root through verity was observed on the reference device with the development image only, and the refusal of a modified root block has not been recorded"
+        text: "the image is built for dm-verity on the FIT path: rootfs_a is written from the .ext4.verity artefact and the root hash is carried in the signed slot device tree (#217). Booting the root through verity was observed on the reference device with the development image and with the release image of this build, root hash as built (measurements/rel14-coldboot-20261012.md); the refusal of a modified root block has not been recorded"
       - id: cve-db-date-rust
         text: "Rust crate dependencies not checked (see cve.scope_limit_rust). The date of the userspace CVE databases is now recorded (cve.regression_cause): they are the revisions pinned by openembedded-core, committed 2026-09-11, so userspace issues published after that date are not counted"
       - id: no-rtc
         text: "no RTC on the board. rc14 sets a clock floor at the release date and version limits from release-rev.inc (#237); on the development image a signed bundle installed without setting the clock, and a bundle with a lower version was refused before any slot was touched. Still open: a bundle whose signer certificate is newer than the clock floor"
-      - id: layer-set-evidence
-        text: "layer set verification evidence not shipped: integration/LAYERS.lock fixes every Yocto layer by upstream revision and meta-rauc by tree hash, and scripts/check-layers.sh --check verifies an assembled set against it, but no release has yet carried the output of that run, so the layer set consumed by this build is asserted rather than proven"
       - id: independent-rebuild
         text: "no third party has rebuilt a release and compared it with the published artifacts; signed artifacts cannot be rebuilt byte for byte by anyone without the keys, and no procedure yet names which unsigned artifacts a rebuild is compared on"
       - id: agent-evidence-unbounded
         text: "tactiq-attest b853253 adds an epoch counter and a bounded audit directory (DDR-006, #233), and this release pins the agent at a later attest revision; the bound over the device's service life is not yet stated in ATTESTATION.md"
       - id: ak-registration-bench-only
-        text: "AK registration against the EK certificate (DDR-005) exists for the reference device only: made by TactiQ under the development image, and the record is unsigned until the Registration Signer leaf exists. A release device has no registration path of its own"
+        text: "AK registration against the EK certificate (DDR-005) exists for the reference device only, made by TactiQ. For rc14 the record is format 2, signed by the Registration Signer leaf, with the CRLs of the EK chain it was checked against; the record and its signature are in the L3 evidence. A release device has no registration path of its own"
       - id: attestation-docs-stale
         text: "ATTESTATION.md still describes a verifier-initiated mTLS protocol with Ed25519 keys that is not implemented, and THREAT_MODEL.md still names the agent a stub; the implemented agent writes signed envelope files under a restricted ECDSA P-256 AK"
       - id: tpm-owner-auth-empty
         text: "the owner, endorsement and lockout authorizations of the reference TPM are empty, so a root process can evict the persistent AK (0x81010100) and take the device out of attestation until it is registered again; it cannot make another AK pass, because the registration record names the AK. From rc14 the bootloader disables the platform hierarchy and sets disableClear, so root can no longer clear the TPM or use platform authority (observed on the reference device, 2026-10-08)"
       - id: ima-tmpfs-unappraised
         text: "the IMA policy does not appraise files on tmpfs, so root can mount a tmpfs and run an unsigned binary from it; observed on the development image on 2026-10-08, where the Infineon TPM update tool ran from a tmpfs because /data is mounted noexec"
+      - id: netperm-dev-permission
+        text: "on the reference device the release image refused the site network permission left in /data by development work, and the agent ran without network (measurements/rel14-coldboot-20261012.md). The permission is signed with the development netperm key and the release image pins the release key (TACTIQ_NETPERM_PUBKEY), so the refusal is the intended behaviour. A permission signed with the release key has not been tested on this release"
     resolved:
       - id: kernel-pin
         text: "the rc14 layer set moves to a new openembedded-core base and the kernel to 6.18.52+git, with a fresh CVE baseline (manifest.cve)"
+      - id: layer-set-evidence
+        text: "the release carries check-layers-rc14.txt, the output of scripts/check-layers.sh --check over the layer directory the build used: every layer of integration/LAYERS.lock at its pinned commit with a clean tree, and the meta-rauc tree hash verified. Run on the build host after the build (reproducibility.scope_limit)"
       - id: tpm-not-reset-warm-reboot
         text: "withdrawn as wrong: the development loader resets the TPM on a warm reboot (measurements/tpm-quotes-dev-20261002.md, #224, rc13 errata section 1); replaced by tpm-reset-line"
       - id: agent-skip-switch-unseen
         text: "the runtime skip switch is removed: the agent unit no longer reads /etc/tactiq/skip-tpm, and autostart on QEMU is disabled at build time (#231)"
-  generated_utc: "2026-10-12T16:03:25Z"
+  generated_utc: "2026-10-12T20:43:56Z"
 
 reference_frameworks:
   - "SPARTA v3.2 (Aerospace Corp)"
@@ -229,7 +240,7 @@ techniques:
       carrying the certificate, the transparency-log inclusion proof and its
       timestamp, so it verifies from the release assets after the ten-minute
       certificate has expired. NOT covered: any binding between the published
-      binaries and commit ae25f0819273c43009b70efc3bb25d0c6345b663. The image
+      binaries and commit fd1e31d8786c2af2dbb2230a6075a59a4767073f. The image
       is built on one offline host and SLSA provenance covers the source
       archive, not the binaries. A compromise of the build host would still
       yield artifacts that pass every consumer-side check. Reproducibility was
@@ -266,6 +277,7 @@ techniques:
     mechanism: ["SELinux enforcing", "LSM: lockdown,capability,selinux,integrity"]
     evidence:
       - { type: "measurement", ref: "measurements/selinux-enforcing-boot-prod-20260717.log" }
+      - { type: "measurement", ref: "measurements/rel14-coldboot-20261012.md: rc14 production image, enforcing, no AVC denial in the journal of the boot" }
       - { type: "doc", ref: "BOOT_CHAIN.md: IMA LOG (dev) / OFF (production)" }
     note: >-
       Correction to rc10, which listed "IMA in log mode" as a mechanism of
@@ -274,9 +286,14 @@ techniques:
       IMA appraisal in log mode exists in the development image only. The
       SELinux side rests on the rc6 hardware measurement of the production
       image (enforcing, zero AVC denials on the boot path to the login
-      prompt). It was not re-measured on the rc11, rc12, rc13 or rc14 production image,
-      which has no console by design. The bootkit side depends on measured
-      boot, see EX-0004. Unchanged from rc11.
+      prompt) and, for rc14, on a cold start of the production image on the
+      reference device: the kernel log over UART shows the switch to
+      enforcing, and the journal of that boot, read from the data partition
+      exported after the run, has no AVC denial
+      (measurements/rel14-coldboot-20261012.md). The rc11, rc12 and rc13
+      production images were not re-measured; the production image has no
+      console by design. The bootkit side depends on measured boot, see
+      EX-0004.
     nist: ["SI-7", "SI-3"]
     sentinel: { signal: "unexpected_ima_entry", meaning: "execution outside expected IMA set" }
     provenance: FACT
@@ -291,6 +308,7 @@ techniques:
       - { type: "reference", ref: "pcr-reference-rock5a.json + inputs + mk-pcr-reference.py in the release set" }
       - { type: "doc", ref: "BOOT_CHAIN.md" }
       - { type: "measurement", ref: "development loader, U-Boot v2026.10, on hardware: event log placement of the kernel devicetree in PCR 1 (2026-10-08)" }
+      - { type: "measurement", ref: "rc14 release loader on the reference device, cold start: SPL TPM reset and measurement of the u-boot.itb images, FIT accepted with release-fit, TPM platform hierarchy disabled (measurements/rel14-coldboot-20261012.md)" }
       - { type: "verification", ref: "rc14 release loader, build host: fit_check_sign with the release control devicetree accepts the release kernel FIT (sha256,rsa2048:release-fit+) and refuses a development FIT (required signature key-release-fit)" }
     note: >-
       rc14 replaces the loader: U-Boot v2026.10 is the default, with
@@ -299,12 +317,17 @@ techniques:
       stack, and locks the TPM platform hierarchy with TPM2_Clear disabled
       before the OS starts. v2026.10 measures the kernel devicetree into
       PCR 1 rather than PCR 0; mk-pcr-reference.py models both and refuses a
-      U-Boot version whose placement it does not know. The rc14 release loader
-      has not run on hardware before the tag; on the build host it accepts
-      only a FIT signed with release-fit. Correction to rc13: this row said
-      that the TPM is not reset by a warm reboot. That was withdrawn in the
-      rc13 errata (known issue tpm-reset-line): SPL pulses the TPM reset line,
-      observed with the development loader. SPL measures the images of
+      U-Boot version whose placement it does not know. The rc14 release
+      loader ran on the reference device before the tag: SPL pulsed the TPM
+      reset line and measured the images of u-boot.itb, and U-Boot accepted
+      the kernel FIT with release-fit and disabled the TPM platform hierarchy
+      (measurements/rel14-coldboot-20261012.md). PCR values were not read in
+      that run. On the build host the loader accepts only a FIT signed with
+      release-fit. Correction to rc13: this row said that the TPM is not
+      reset by a warm reboot. That was withdrawn in the rc13 errata (known
+      issue tpm-reset-line): SPL pulses the TPM reset line, observed with the
+      development loader on a warm reboot and with the rc14 release loader at
+      a cold start. SPL measures the images of
       u-boot.itb (TF-A into PCR 0, U-Boot proper into PCR 4, the control
       devicetree with the FIT key into PCR 6); U-Boot adds the S-CRTM version
       to PCR 0, the kernel devicetree and command line to PCR 1, the kernel to
@@ -351,7 +374,8 @@ techniques:
     mechanism: ["dm-verity over the RAUC update bundle", "CMS signature verified before mount"]
     evidence:
       - { type: "policy", ref: "tactiq_rauc.te: dedicated fs type, mount/read confined to the update domain" }
-      - { type: "verification", ref: "bundle-rock5a.raucb of build 20261012034452, re-signed by scripts/resign-bundle.sh: verifies against the Release Root CA (r2) with the image's system.conf (check-purpose=codesign-rauc) and is refused against the development root; verity format" }
+      - { type: "verification", ref: "bundle-rock5a.raucb of build 20261012174949, re-signed by scripts/resign-bundle.sh: verifies against the Release Root CA (r2) with the image's system.conf (check-purpose=codesign-rauc) and is refused against the development root; verity format" }
+      - { type: "measurement", ref: "rc14 release image on the reference device: root mounted through dm-verity with the root hash of build 20261012174949 (measurements/rel14-coldboot-20261012.md)" }
     note: >-
       dm-verity protects the update bundle, verified at every read, with the
       CMS signature checked before mount. The bundle is signed by the r2
@@ -359,11 +383,12 @@ techniques:
       said the running rootfs is not verity-protected: the image is built for
       dm-verity on the FIT path, rootfs_a is written from the .ext4.verity
       artefact and the root hash is carried in the signed slot device tree.
-      Booting through verity was observed with the development image only,
-      and the refusal of a modified root block has not been recorded (known
-      issue rootfs-not-verity), so rootfs_hash_mismatch is not claimed as
-      detected. IPE is not in use. The published boot reference covers the
-      chain up to the kernel and does not cover the root filesystem.
+      Booting through verity was observed with the development image and
+      with the release image of this build, and the refusal of a modified
+      root block has not been recorded (known issue rootfs-not-verity), so
+      rootfs_hash_mismatch is not claimed as detected. IPE is not in use. The
+      published boot reference covers the chain up to the kernel and does
+      not cover the root filesystem.
     nist: ["SI-7"]
     sentinel: { signal: "rootfs_hash_mismatch", meaning: "rootfs hash != expected" }
     provenance: INFERENCE
@@ -376,8 +401,8 @@ techniques:
     mechanism: ["release signing hierarchy (Release Root CA -> Release Signing CA -> leaf keys), CA keys in a separate container used only in a live-USB session without network", "TACTIQ_KEYRING build gate", "U-Boot FIT key check", "mk-release.sh refusal of a development-signed FIT", "mk-release.sh pins of the RAUC keyring, the RIM root and the module signing key (since rc14)"]
     evidence:
       - { type: "verification", ref: "bundle chain: TactiQ Release Signer -> Release Signing CA -> Release Root CA" }
-      - { type: "measurement", ref: "release loader on hardware: kernel FIT accepted with release-fit" }
-      - { type: "measurement", ref: "release kernel on hardware (rc11): release module signing key, Release Root CA, Release Signing CA and Release IMA Signer loaded" }
+      - { type: "measurement", ref: "release loader on hardware: kernel FIT accepted with release-fit (rc11; rc14, measurements/rel14-coldboot-20261012.md)" }
+      - { type: "measurement", ref: "release kernel on hardware (rc11, and rc14 in measurements/rel14-coldboot-20261012.md): release module signing key, Release Root CA, Release Signing CA and Release IMA Signer loaded, no development certificate" }
       - { type: "verification", ref: "rc14 build host: kernel modules signed by the release module key (modinfo sig_key 66:2F:3A:D2:...:2C:DE:DA), checked for every module by mk-release.sh; the module key file is part of the kernel configure task hash" }
     note: >-
       rc14: the release pipeline checks keys against pinned values instead of
@@ -449,12 +474,13 @@ techniques:
 #   covered : none. IA-0001 is split, and only its integrity_binding half is
 #             covered.
 #   partial : IA-0001 (integrity binding only), EX-0009 (honest CVE),
-#             EX-0010 (SELinux enforcing; no IMA in production),
+#             EX-0010 (SELinux enforcing, observed on the rc14 production
+#             image; no IMA in production),
 #             EX-0004 (measured boot with a published reference; SPL root
-#             unauthenticated, release loader values not observed before the
-#             tag),
-#             EX-0005 (bundle-level dm-verity; root verity built, refusal not
-#             recorded),
+#             unauthenticated, release loader ran on hardware, its PCR
+#             values not observed before the tag),
+#             EX-0005 (bundle-level dm-verity; root verity booted on the
+#             release image, refusal not recorded),
 #             PER-0004/PER-0002 (release keys pinned in the pipeline; no
 #             hardware token, no fused OTP)
 #   planned : DE-0007/DE-0008 (RIM and L3 evidence signed; no envelope from
@@ -463,12 +489,15 @@ techniques:
 #
 # Change vs rc13. No status change. New: openembedded-core base with kernel
 # 6.18.52+git, U-Boot v2026.10 as the default loader, Evidence Signer for the
-# L3 evidence, release key pins in mk-release.sh. Corrections to rc13 text in
-# EX-0004 (TPM reset) and EX-0005 (root verity). Known issues against rc13:
-# 12 carried (pcr-computed-not-observed and cve-db-date-rust reworded),
-# 3 resolved (tpm-not-reset-warm-reboot, agent-skip-switch-unseen,
-# kernel-pin), 4 new (tpm-reset-line, agent-quote-pcr-0-9,
-# tpm-owner-auth-empty, ima-tmpfs-unappraised).
+# L3 evidence, release key pins in mk-release.sh, layer set check output in
+# the release, release image and loader run on the reference device before
+# the tag. Corrections to rc13 text in EX-0004 (TPM reset) and EX-0005 (root
+# verity). Known issues against rc13: 11 carried (pcr-computed-not-observed,
+# no-attestation-envelope, rootfs-not-verity, cve-db-date-rust and
+# ak-registration-bench-only reworded), 4 resolved (layer-set-evidence,
+# tpm-not-reset-warm-reboot, agent-skip-switch-unseen, kernel-pin), 5 new
+# (tpm-reset-line, agent-quote-pcr-0-9, tpm-owner-auth-empty,
+# ima-tmpfs-unappraised, netperm-dev-permission).
 #
 # OPEN ISSUE: rekor_index self-reference, unchanged since rc5: the index is
 # pinned in the release notes after signing.
