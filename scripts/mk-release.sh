@@ -57,6 +57,18 @@
 #                        without security/rim-disclosures-<board>.txt. For
 #                        mechanics testing ONLY; the output is NOT a valid
 #                        release.
+#   RELEASE_BUNDLE       the RAUC bundle re-signed with the release key by
+#                        scripts/resign-bundle.sh. Required for
+#                        IMAGE=tactiq-image: the bundle in the deploy tree
+#                        carries the development signature
+#                        (conf/bundle-devsign.conf).
+#   RAUC, SYSTEM_CONF    the rauc binary of the build and the system.conf
+#                        installed in the image, as for resign-bundle.sh;
+#                        required with RELEASE_BUNDLE, to check it
+#   ALLOW_UNPINNED_KEYS=1  let IMAGE=tactiq-image go when a key in the image
+#                        or the bundle is not the pinned release key (see
+#                        "Release key pins" below). For mechanics testing
+#                        ONLY; the output is NOT a valid release.
 #
 # Produces in <output-dir>:
 #   image-${BOARD}.wic.gz, image-${BOARD}.wic.bmap   (compressed image + bmap;
@@ -299,11 +311,16 @@ copy "${PREFIX}.sbom-cve-check.yocto.json"  "cve-${BOARD}.sbom-cve-check.yocto.j
 printf '%s\n' "$IDENTITY" > "tactiq-release-${BOARD}"
 echo "    + tactiq-release-${BOARD}  (/etc/tactiq-release from ${PREFIX}.ext4)"
 
-# RAUC OTA bundle. Taken through the per-machine "latest" link and held to the
-# same build as the image: a bundle from another build would install bytes the
-# rest of this release does not describe. Missing is an error for the release
-# image and a warning otherwise.
+# RAUC OTA bundle. The release bundle is the deploy bundle of build ${T}
+# re-signed offline by scripts/resign-bundle.sh, passed as RELEASE_BUNDLE.
+# It must verify against the pinned release root, must not verify against the
+# development root, and must carry the same images as the deploy bundle of
+# build ${T}: a bundle from another build would install bytes the rest of this
+# release does not describe. Without RELEASE_BUNDLE the deploy bundle is taken
+# as it is, which is an error for the release image (it is development-signed)
+# and a warning otherwise.
 RAUCB_LINK="${DEPLOY}/tactiq-bundle-${MACHINE}.raucb"
+RAUCB=""
 if [[ -e "$RAUCB_LINK" ]]; then
     RAUCB="$(readlink -f "$RAUCB_LINK")"
     if [[ "$(basename "$RAUCB")" != "tactiq-bundle-${MACHINE}-${T}.raucb" ]]; then
@@ -311,13 +328,41 @@ if [[ -e "$RAUCB_LINK" ]]; then
         [[ "${ALLOW_MIXED_BUILD:-0}" == 1 ]] || exit 1
         echo "::warning:: proceeding (ALLOW_MIXED_BUILD=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
     fi
-    cp -L "$RAUCB" "bundle-${BOARD}.raucb"
-    echo "    + bundle-${BOARD}.raucb  (from $(basename "$RAUCB"))"
+fi
+if [[ -n "${RELEASE_BUNDLE:-}" ]]; then
+    for v in RAUC SYSTEM_CONF; do
+        [[ -n "${!v:-}" && -r "${!v}" ]] || { echo "::error:: RELEASE_BUNDLE is set but ${v} is not, or is unreadable." >&2; exit 1; }
+    done
+    [[ -r "$RELEASE_BUNDLE" ]] || { echo "::error:: RELEASE_BUNDLE ${RELEASE_BUNDLE} is unreadable." >&2; exit 1; }
+    [[ -n "$RAUCB" ]] || { echo "::error:: no deploy bundle of build ${T} to compare RELEASE_BUNDLE with." >&2; exit 1; }
+    [[ -n "${RIM_ROOT_CA:-}" && -r "${RIM_ROOT_CA}" ]] || { echo "::error:: RELEASE_BUNDLE is checked against RIM_ROOT_CA, which is not set or unreadable." >&2; exit 1; }
+    BW="$(mktemp -d)"
+    mkdir "$BW/data"
+    sed "s|^data-directory=.*$|data-directory=$BW/data|" "$SYSTEM_CONF" > "$BW/system.conf"
+    bundle_images() {  # bundle_images <keyring> <bundle>: the image entries of the verified manifest, sorted; fails if it does not verify
+        "$RAUC" -c "$BW/system.conf" info --output-format=json --keyring="$1" "$2" 2>"$BW/err" \
+            | python3 -c 'import json,sys; m=json.load(sys.stdin); i=m["images"]; assert i; print(json.dumps(sorted(i, key=lambda x: json.dumps(x, sort_keys=True)), sort_keys=True))'
+    }
+    rel_imgs="$(bundle_images "$RIM_ROOT_CA" "$RELEASE_BUNDLE")" \
+        || { cat "$BW/err" >&2; rm -rf "$BW"; echo "::error:: RELEASE_BUNDLE does not verify against the release root." >&2; exit 1; }
+    if "$RAUC" -c "$BW/system.conf" info --keyring="${SCRIPT_DIR}/../pki/dev/root-ca.pem" "$RELEASE_BUNDLE" >/dev/null 2>&1; then
+        rm -rf "$BW"; echo "::error:: RELEASE_BUNDLE verifies against the development root in pki/dev/." >&2; exit 1
+    fi
+    dev_imgs="$(bundle_images "${SCRIPT_DIR}/../pki/dev/root-ca.pem" "$RAUCB")" \
+        || { cat "$BW/err" >&2; rm -rf "$BW"; echo "::error:: the deploy bundle of build ${T} does not verify against the development root." >&2; exit 1; }
+    rm -rf "$BW"
+    [[ -n "$rel_imgs" && "$rel_imgs" == "$dev_imgs" ]] \
+        || { echo "::error:: RELEASE_BUNDLE does not carry the images of the deploy bundle of build ${T}." >&2; exit 1; }
+    cp -L "$RELEASE_BUNDLE" "bundle-${BOARD}.raucb"
+    echo "    + bundle-${BOARD}.raucb  (release signature; same images as $(basename "$RAUCB"))"
 elif [[ "$IMAGE" == "tactiq-image" ]]; then
-    echo "::error:: no RAUC bundle at ${RAUCB_LINK}; the release ships one." >&2
+    echo "::error:: the release ships the re-signed bundle: set RELEASE_BUNDLE (scripts/resign-bundle.sh), RAUC and SYSTEM_CONF." >&2
     exit 1
+elif [[ -n "$RAUCB" ]]; then
+    cp -L "$RAUCB" "bundle-${BOARD}.raucb"
+    echo "    + bundle-${BOARD}.raucb  (from $(basename "$RAUCB"), deploy signature)"
 else
-    echo "::warning:: no RAUC bundle at ${RAUCB_LINK} — OTA bundle skipped." >&2
+    echo "::warning:: no RAUC bundle at ${RAUCB_LINK}; OTA bundle skipped." >&2
 fi
 
 # ---------------------------------------------------------------------------
@@ -412,6 +457,60 @@ if [[ "$IMAGE" == "tactiq-image" && "$FIT_KEY" == "dev-fit" ]]; then
         echo "::error:: point TACTIQ_FIT_KEY_DIR at the release key, or set ALLOW_DEV_FIT_KEY=1 to test mechanics." >&2
         exit 1
     fi
+fi
+
+# ---------------------------------------------------------------------------
+# Release key pins.
+#
+# The check above refuses one known development key. A release built without
+# conf/release-keys.conf is signed throughout with the development keys and is
+# otherwise consistent, so refusing known-bad values is not enough. For the
+# release image every key below must equal the pinned release value:
+#   - the RAUC keyring installed in the rootfs: the r2 release root;
+#   - RIM_ROOT_CA, when given: the r2 release root;
+#   - every kernel module in the rootfs: signed by the release module signing
+#     key (modinfo sig_key, the serial of its certificate).
+# The pins change only with a key ceremony recorded in the key log.
+# ---------------------------------------------------------------------------
+RELEASE_ROOT_FP="8E:10:04:1E:BB:FC:CB:A0:36:62:1B:2E:45:36:87:D2:9A:50:D7:15:65:F2:99:CB:41:28:B4:CE:B9:65:FF:E8"
+RELEASE_MODSIGN_KEYID="66:2F:3A:D2:09:C2:14:8F:D4:B8:A2:29:BF:9E:CE:B3:64:2C:DE:DA"
+if [[ "$IMAGE" == "tactiq-image" ]]; then
+    echo "==> release key pins"
+    pin_fail() {
+        if [[ "${ALLOW_UNPINNED_KEYS:-0}" == 1 ]]; then
+            echo "::warning:: $1 (ALLOW_UNPINNED_KEYS=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+        else
+            echo "::error:: $1" >&2
+            exit 1
+        fi
+    }
+    fp_of() { openssl x509 -in "$1" -noout -fingerprint -sha256 2>/dev/null | sed 's/^[^=]*=//'; }
+    PW="$(mktemp -d)"
+    DEBUGFS_PAGER=__none__ debugfs -R "dump /etc/rauc/root-ca.pem $PW/keyring.pem" "$ROOTFS_EXT4" >/dev/null 2>&1 || true
+    kfp="$(fp_of "$PW/keyring.pem")"
+    [[ "$kfp" == "$RELEASE_ROOT_FP" ]] || pin_fail "RAUC keyring in the rootfs is not the release root (fingerprint ${kfp:-unreadable})."
+    echo "    RAUC keyring: release root"
+    if [[ -n "${RIM_ROOT_CA:-}" ]]; then
+        rfp="$(fp_of "$RIM_ROOT_CA")"
+        [[ "$rfp" == "$RELEASE_ROOT_FP" ]] || pin_fail "RIM_ROOT_CA is not the release root (fingerprint ${rfp:-unreadable})."
+        echo "    RIM_ROOT_CA: release root"
+    fi
+    command -v modinfo >/dev/null 2>&1 || { rm -rf "$PW"; echo "::error:: modinfo not on PATH (kmod), needed to check module signatures." >&2; exit 1; }
+    mkdir "$PW/mods"
+    DEBUGFS_PAGER=__none__ debugfs -R "rdump /usr/lib/modules $PW/mods" "$ROOTFS_EXT4" >/dev/null 2>&1 || true
+    nmod=0; nbad=0; bad=""
+    while IFS= read -r -d '' ko; do
+        nmod=$((nmod + 1))
+        kid="$(modinfo -F sig_key "$ko" 2>/dev/null | tr -d '[:space:]')"
+        if [[ "$kid" != "$RELEASE_MODSIGN_KEYID" ]]; then
+            nbad=$((nbad + 1))
+            [[ "$nbad" -le 5 ]] && bad="${bad} $(basename "$ko")=${kid:-unsigned}"
+        fi
+    done < <(find "$PW/mods" -name '*.ko*' -type f -print0)
+    rm -rf "$PW"
+    [[ "$nmod" -gt 0 ]] || pin_fail "no kernel modules found under /usr/lib/modules in ${PREFIX}.ext4."
+    [[ "$nbad" -eq 0 ]] || pin_fail "${nbad} of ${nmod} kernel modules are not signed by the release module key:${bad}"
+    echo "    kernel modules: ${nmod}, all signed by the release module key"
 fi
 
 # buildinfo — full bitbake datastore snapshot (distro / layers / versions /
