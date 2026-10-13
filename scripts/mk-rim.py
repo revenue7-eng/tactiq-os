@@ -10,9 +10,16 @@ The RIM is the statement a verifier matches a device against:
   witness     facts about the build that take no part in selection (full tag
               SHA, build label), given with --witness key=value
   pcr         for every selected PCR its set of expected sha256 values, copied
-              from pcr-reference-<board>.json (PCR 1 keyed by slot), and the
-              kernel command line of each slot in clear so PCR 1 can be
-              recomputed rather than trusted (RELEASE_INTEGRITY.md 5.3, 5.4)
+              from pcr-reference-<board>.json (a value that differs between
+              slots is keyed by slot), and the kernel command line of each
+              slot in clear so it is checked rather than trusted
+              (RELEASE_INTEGRITY.md 5.3, 5.4). Reference format 1 (extlinux
+              path) carries the command lines in components.cmdline. Format 2
+              (bootm path) names each slot's FIT configuration under
+              components.slots; the command line is then read here from
+              /chosen bootargs of that configuration's devicetree in the FIT,
+              whose digest must be the one the reference names, and must
+              equal the command line the reference records
   keys        sha256 of the SubjectPublicKeyInfo of every FIT verification key
               in the control device tree inside u-boot.itb, of every
               certificate in the RAUC keyring and, where one is installed, the
@@ -50,6 +57,8 @@ import sys
 sys.dont_write_bytecode = True  # mk-rim.py runs from the repo tree; leave no __pycache__ there
 HERE = os.path.dirname(os.path.abspath(__file__))
 FORMAT = "tactiq-rim/1"
+REF_EXTLINUX = "tactiq-pcr-reference/1"
+REF_BOOTM = "tactiq-pcr-reference/2"
 base = os.path.basename
 
 
@@ -304,6 +313,39 @@ def check_input(ref, ref_path, path):
         die(f"{base(path)} differs from the file {base(ref_path)} was computed from")
 
 
+def bootm_cmdlines(ref, ref_path, fit_path):
+    """Slot -> kernel command line on the bootm path, read from the FIT.
+
+    Each slot of components.slots names the FIT configuration it boots and the
+    digest of that configuration's devicetree. The command line is /chosen
+    bootargs of that devicetree, taken here from the FIT itself rather than
+    from the reference, and the reference must record the same string.
+    """
+    slots = ref.get("components", {}).get("slots")
+    if not isinstance(slots, dict) or not slots:
+        die(f"{base(ref_path)}: components.slots names no slot")
+    out = {}
+    for sl, info in sorted(slots.items()):
+        if not isinstance(info, dict):
+            die(f"{base(ref_path)}: components.slots.{sl} is not an object")
+        cname = info.get("fit_configuration")
+        if not isinstance(cname, str) or not cname:
+            die(f"{base(ref_path)}: slot {sl} names no FIT configuration")
+        f = P.read_fit(fit_path, cname)
+        if f["fdt_sha256"].hex() != info.get("fdt_sha256"):
+            die(f"slot {sl}: the devicetree of {cname} in {base(fit_path)} is not "
+                f"the one {base(ref_path)} names")
+        c = P.chosen_bootargs(f["fdt_data"])
+        if not c:
+            die(f"slot {sl}: the devicetree of {cname} in {base(fit_path)} has no "
+                "/chosen bootargs")
+        if info.get("cmdline") != c:
+            die(f"slot {sl}: the command line {base(ref_path)} records differs from "
+                f"/chosen bootargs of {cname} in {base(fit_path)}")
+        out[sl] = c
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Build the TactiQ OS RIM (JSON, unsigned).")
     ap.add_argument("--identity", required=True, help="tactiq-release-<board> from the release set")
@@ -329,8 +371,12 @@ def main():
     a = ap.parse_args()
 
     ref = json.loads(read(a.pcr_reference))
-    if ref.get("format") != "tactiq-pcr-reference/1":
-        die(f"{base(a.pcr_reference)}: unknown format {ref.get('format')!r}")
+    ref_format = ref.get("format")
+    if ref_format not in (REF_EXTLINUX, REF_BOOTM):
+        die(f"{base(a.pcr_reference)}: unknown format {ref_format!r}")
+    if ref_format == REF_BOOTM and ref.get("boot_path") != "bootm":
+        die(f"{base(a.pcr_reference)}: format {ref_format} with boot_path "
+            f"{ref.get('boot_path')!r}, expected 'bootm'")
     if ref.get("bank") != "sha256":
         die(f"{base(a.pcr_reference)}: bank {ref.get('bank')!r}, expected sha256")
     check_input(ref, a.pcr_reference, a.fit)
@@ -354,17 +400,25 @@ def main():
     for i in selection:
         v = norm_hex(ref["pcr"][str(i)], f"PCR {i}")
         values[str(i)] = v if isinstance(v, dict) else [v]
-    cmdline = ref.get("components", {}).get("cmdline")
-    slots = values.get("1")
-    if slots is not None:
-        if not isinstance(slots, dict):
-            die(f"{base(a.pcr_reference)}: PCR 1 is not keyed by slot")
-        if not isinstance(cmdline, dict) or sorted(cmdline) != sorted(slots):
-            die(f"{base(a.pcr_reference)}: components.cmdline does not name the slots of PCR 1 "
-                f"({sorted(slots)})")
-        for sl, c in cmdline.items():
-            if not isinstance(c, str) or not c:
-                die(f"{base(a.pcr_reference)}: empty command line for slot {sl}")
+    if ref_format == REF_EXTLINUX:
+        cmdline = ref.get("components", {}).get("cmdline")
+        slots = values.get("1")
+        if slots is not None:
+            if not isinstance(slots, dict):
+                die(f"{base(a.pcr_reference)}: PCR 1 is not keyed by slot")
+            if not isinstance(cmdline, dict) or sorted(cmdline) != sorted(slots):
+                die(f"{base(a.pcr_reference)}: components.cmdline does not name the slots of PCR 1 "
+                    f"({sorted(slots)})")
+            for sl, c in cmdline.items():
+                if not isinstance(c, str) or not c:
+                    die(f"{base(a.pcr_reference)}: empty command line for slot {sl}")
+        rim_cmdline = cmdline if slots is not None else None
+    else:
+        rim_cmdline = bootm_cmdlines(ref, a.pcr_reference, a.fit)
+        for i, v in values.items():
+            if isinstance(v, dict) and sorted(v) != sorted(rim_cmdline):
+                die(f"{base(a.pcr_reference)}: PCR {i} is keyed by {sorted(v)}, "
+                    f"components.slots names {sorted(rim_cmdline)}")
     assumptions = ref.get("assumptions")
     if not isinstance(assumptions, list) or not assumptions or \
             not all(isinstance(x, str) and x for x in assumptions):
@@ -416,8 +470,8 @@ def main():
             },
         },
     }
-    if slots is not None:
-        doc["pcr"]["cmdline"] = cmdline
+    if rim_cmdline is not None:
+        doc["pcr"]["cmdline"] = rim_cmdline
     if a.ima_cert:
         doc["keys"]["ima"] = {"path": a.ima_cert_path, "certificates": certs(a.ima_cert)}
     if a.release_root:
