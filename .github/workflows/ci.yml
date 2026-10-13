@@ -201,6 +201,11 @@ jobs:
         run: python3 -m pip install 'jsonschema==4.26.0'
       - name: Run RIM generator tests
         run: python3 tests/rim/test_mk_rim.py
+      - name: Run PCR reference tests (bootm path)
+        # The RIM takes its values and the slots' command lines from the PCR
+        # reference; on the bootm path each slot's devicetree carries its
+        # command line in /chosen and must otherwise equal the kernel's tree.
+        run: python3 tests/pcrref/test_mk_pcr_reference.py
       - name: RIM leaf posture (pki/dev)
         run: |
           # mk-release.sh signs the RIM only with a leaf whose sole EKU is the

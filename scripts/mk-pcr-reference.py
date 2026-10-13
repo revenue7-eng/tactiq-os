@@ -44,8 +44,16 @@ until its boot/bootm.c has been read.
 --no-spl-measure computes the values for a loader whose SPL measures nothing.
 
 kernel and fdt are the payloads of the FIT configuration each slot boots (the
-default configuration on the extlinux path). Their digests are checked against the hash nodes inside the FIT, and against loose
-Image / .dtb files when those are given. Any mismatch aborts.
+default configuration on the extlinux path). Their digests are checked against
+the hash nodes inside the FIT, and against loose Image / .dtb files when those
+are given. On the extlinux path the loose .dtb must equal the FIT devicetree.
+On the bootm path each slot boots a devicetree of its own: the kernel's tree
+with the slot's command line (dm-verity table included) written into
+/chosen bootargs. There every slot's devicetree must carry a non-empty
+/chosen bootargs, the loose .dtb must equal it once /chosen bootargs is set
+aside on both sides, and the loose Image must equal the kernel of every slot.
+The command line of each slot is recorded under components.slots. Any
+mismatch aborts.
 
 No third-party modules and no u-boot-tools: the FIT is parsed here so that a
 reader holding only the published files can rerun the computation. The output
@@ -169,6 +177,26 @@ def fit_payload(buf, totalsize, img, label):
     return data, digest
 
 
+def chosen_bootargs(fdt_bytes):
+    """The /chosen bootargs string of a devicetree, or None."""
+    root, _ = parse_fdt(fdt_bytes)
+    chosen = root["nodes"].get("chosen")
+    return pstr(chosen, "bootargs") if chosen is not None else None
+
+
+def tree_without_bootargs(fdt_bytes):
+    """Parsed devicetree with /chosen bootargs removed (and /chosen itself,
+    if nothing else was in it), for comparing a slot's tree with the
+    kernel's tree it was made from."""
+    root, _ = parse_fdt(fdt_bytes)
+    chosen = root["nodes"].get("chosen")
+    if chosen is not None:
+        chosen["props"].pop("bootargs", None)
+        if not chosen["props"] and not chosen["nodes"]:
+            del root["nodes"]["chosen"]
+    return root
+
+
 def read_fit(path, want=None):
     buf = read(path)
     root, totalsize = parse_fdt(buf)
@@ -188,7 +216,7 @@ def read_fit(path, want=None):
     if kname is None or fname is None:
         die(f"configuration {default} lacks kernel or fdt")
     kernel, kdig = fit_payload(buf, totalsize, images["nodes"][kname], kname)
-    _fdt, fdig = fit_payload(buf, totalsize, images["nodes"][fname], fname)
+    fdt_data, fdig = fit_payload(buf, totalsize, images["nodes"][fname], fname)
     sigs = [n for k, n in conf["nodes"].items() if k.startswith("signature")]
     hints = sorted({pstr(n, "key-name-hint") or "" for n in sigs})
     return {
@@ -196,6 +224,7 @@ def read_fit(path, want=None):
         "configurations": sorted(confs["nodes"]),
         "kernel_sha256": kdig,
         "fdt_sha256": fdig,
+        "fdt_data": fdt_data,
         "key_name_hint": hints,
         "load": pu32(images["nodes"][kname], "load")
         if "load" in images["nodes"][kname]["props"] else None,
@@ -427,10 +456,10 @@ def main():
     a = ap.parse_args()
 
     fit = read_fit(a.fit)
-    if a.image and sha(read(a.image)) != fit["kernel_sha256"]:
+    loose_image = sha(read(a.image)) if a.image else None
+    loose_dtb = read(a.dtb) if a.dtb else None
+    if loose_image is not None and loose_image != fit["kernel_sha256"]:
         die("loose Image differs from the kernel inside the FIT")
-    if a.dtb and sha(read(a.dtb)) != fit["fdt_sha256"]:
-        die("loose DTB differs from the FDT inside the FIT")
     if a.require_key and fit["key_name_hint"] != [a.require_key]:
         die(f"FIT signed with {fit['key_name_hint']}, required {a.require_key}")
 
@@ -438,6 +467,10 @@ def main():
         die("--extlinux and --boot-env go together (extlinux path); "
             "give neither for the bootm path")
     mode = "extlinux" if a.extlinux else "bootm"
+    # extlinux: the default configuration's devicetree is the kernel's own.
+    # bootm: each slot's devicetree is checked against the loose one below.
+    if mode == "extlinux" and loose_dtb is not None and sha(loose_dtb) != fit["fdt_sha256"]:
+        die("loose DTB differs from the FDT inside the FIT")
 
     ver = uboot_version(a.uboot)
     if a.idbloader:
@@ -499,9 +532,25 @@ def main():
         env_flags, env_writable = read_env_lockdown(a.uboot)
         per = {}
         confs = {}
+        cmdlines = {}
+        loose_tree = tree_without_bootargs(loose_dtb) if loose_dtb is not None else None
         for s_, cname in sorted(slots.items()):
             f = fit if cname == fit["configuration"] else read_fit(a.fit, cname)
+            where = f"configuration {cname} (slot {s_})"
+            if a.require_key and f["key_name_hint"] != [a.require_key]:
+                die(f"{where} is signed with {f['key_name_hint']}, required {a.require_key}")
+            if loose_image is not None and loose_image != f["kernel_sha256"]:
+                die(f"loose Image differs from the kernel of {where}")
+            c = chosen_bootargs(f["fdt_data"])
+            if not c:
+                die(f"devicetree of {where} has no /chosen bootargs: with bootargs "
+                    "empty at bootm the kernel would start without the signed "
+                    "command line")
+            if loose_tree is not None and tree_without_bootargs(f["fdt_data"]) != loose_tree:
+                die(f"devicetree of {where} differs from the loose DTB in more "
+                    "than /chosen bootargs")
             confs[s_] = f
+            cmdlines[s_] = c
             per[s_] = pcrs_for(f["kernel_sha256"], f["fdt_sha256"])
         pcr = {}
         for i in range(0, 10):
@@ -556,6 +605,7 @@ def main():
                         "kernel_load": None if f["load"] is None
                         else f"0x{f['load']:08x}",
                         "fdt_sha256": f["fdt_sha256"].hex(),
+                        "cmdline": cmdlines[s_],
                     } for s_, f in confs.items()},
                 "bootargs": "",
                 "kernel_devicetree_pcr": fdt_pcr,
