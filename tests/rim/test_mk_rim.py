@@ -186,6 +186,52 @@ def pcr_ref(fit_name, fit, itb_name, itb):
     }
 
 
+# --- the bootm path (reference format 2) -------------------------------------
+# Each slot boots a FIT configuration of its own; its devicetree carries the
+# slot's command line in /chosen bootargs.
+
+CMD_A = "root=/dev/dm-0 ro rauc.slot=A"
+CMD_B = "root=/dev/dm-0 ro rauc.slot=B"
+
+
+def slot_dtb(cmdline):
+    props = [("bootargs", s(cmdline))] if cmdline is not None else []
+    return fdt(([("model", s("test board"))], [("chosen", (props, []))]))
+
+
+def make_fit_bootm(hint="test", cmd_a=CMD_A, cmd_b=CMD_B):
+    sig = [("signature-1", ([("algo", s("sha256,rsa3072")), ("key-name-hint", s(hint))], []))]
+    root = ([], [
+        ("images", ([], [
+            ("kernel-1", image(b"KERNEL" * 100, extra=[("load", u32(0x2000000))])),
+            ("fdt-a", image(slot_dtb(cmd_a))),
+            ("fdt-b", image(slot_dtb(cmd_b))),
+        ])),
+        ("configurations", ([("default", s("conf-a"))], [
+            ("conf-a", ([("kernel", s("kernel-1")), ("fdt", s("fdt-a"))], sig)),
+            ("conf-b", ([("kernel", s("kernel-1")), ("fdt", s("fdt-b"))], sig)),
+        ])),
+    ])
+    return fdt(root)
+
+
+def pcr_ref_bootm(fit_name, fit, itb_name, itb, cmd_a=CMD_A, cmd_b=CMD_B):
+    vals = {str(i): hashlib.sha256(f"pcr{i}".encode()).hexdigest().upper() for i in range(10)}
+    vals["1"] = {"A": "AA" * 32, "B": "bb" * 32}
+    return {
+        "format": "tactiq-pcr-reference/2",
+        "bank": "sha256",
+        "boot_path": "bootm",
+        "inputs": {fit_name: sha(fit).hex(), itb_name: sha(itb).hex()},
+        "pcr": vals,
+        "components": {"slots": {
+            "A": {"fit_configuration": "conf-a", "fdt_sha256": sha(slot_dtb(cmd_a)).hex(), "cmdline": cmd_a},
+            "B": {"fit_configuration": "conf-b", "fdt_sha256": sha(slot_dtb(cmd_b)).hex(), "cmdline": cmd_b},
+        }, "bootargs": ""},
+        "assumptions": ["SPL is unmeasured", "no initrd is loaded"],
+    }
+
+
 IDENTITY = (b'TACTIQ_OS_VERSION="2.1.0"\nTACTIQ_OS_CODENAME="hardened-edge"\n'
             b'TACTIQ_BUILD_MACHINE="tactiq-rock5a"\nTACTIQ_META_TACTIQ_GIT="v2.1.0-rc12"\n'
             b'TACTIQ_IMAGE_NAME="tactiq-image"\nTACTIQ_RELEASE_DATE="2026-09-23"\n')
@@ -219,16 +265,16 @@ class Case:
 
 
 def build(root, keys, itb_keys=None, fit=None, idb_version=VER_A, ref_edit=None,
-          keyring=None, identity=IDENTITY):
+          keyring=None, identity=IDENTITY, bootm=False):
     d = Path(tempfile.mkdtemp(dir=root))
     c = Case(d, keyring)
     itb = make_itb(itb_keys if itb_keys is not None else keys)
-    fitb = fit if fit is not None else make_fit()
+    fitb = fit if fit is not None else (make_fit_bootm() if bootm else make_fit())
     c.put("u-boot-rock5a.itb", itb)
     c.put("fitImage-rock5a", fitb)
     c.put("idbloader-rock5a.img", b"SPL\x00" + idb_version + b"\x00")
     c.put("tactiq-release-rock5a", identity)
-    ref = pcr_ref("fitImage-rock5a", fitb, "u-boot-rock5a.itb", itb)
+    ref = (pcr_ref_bootm if bootm else pcr_ref)("fitImage-rock5a", fitb, "u-boot-rock5a.itb", itb)
     if ref_edit:
         ref_edit(ref)
     c.put("pcr-reference-rock5a.json", json.dumps(ref, indent=2))
@@ -465,6 +511,56 @@ def main():
                     build(root, good_keys, keyring=kr), "over one bank",
                     "--agent-unit", unit("agent-banks.service", "Environment=TACTIQ_PCR_SPEC=sha256:0,1+sha1:0"))
         del fit_other
+
+        # --- bootm path: reference format 2 ---------------------------------
+        cb = build(root, good_keys, keyring=kr, bootm=True)
+        r, out = cb.run(*full, out="rim-bootm.json")
+        check("bootm: exits 0", r.returncode == 0, r.stderr.strip())
+        if r.returncode == 0:
+            raw = out.read_bytes()
+            rb = json.loads(raw)
+            errs = [e.message for e in validator.iter_errors(rb)]
+            check("bootm: validates against rim-v1.json", not errs, "; ".join(errs))
+            check("bootm: command line per slot, read from /chosen of the FIT",
+                  rb["pcr"].get("cmdline") == {"A": CMD_A, "B": CMD_B}, str(rb["pcr"].get("cmdline")))
+            refb = json.loads(cb.files["pcr-reference-rock5a.json"].read_text())
+            wantb = {k: ([v.lower()] if isinstance(v, str) else {s_: x.lower() for s_, x in v.items()})
+                     for k, v in refb["pcr"].items()}
+            check("bootm: PCR values copied as sets, lower-cased", rb["pcr"]["values"] == wantb)
+            r2, out2 = cb.run(*full, out="rim-bootm2.json")
+            check("bootm: byte-identical on a second run",
+                  r2.returncode == 0 and out2.read_bytes() == raw)
+
+        expect_fail("bootm: format 2 with another boot path",
+                    build(root, good_keys, keyring=kr, bootm=True,
+                          ref_edit=lambda ref: ref.__setitem__("boot_path", "extlinux")),
+                    "expected 'bootm'")
+        expect_fail("bootm: reference names no slot",
+                    build(root, good_keys, keyring=kr, bootm=True,
+                          ref_edit=lambda ref: ref["components"].pop("slots")),
+                    "components.slots names no slot")
+        expect_fail("bootm: slot names a configuration the FIT lacks",
+                    build(root, good_keys, keyring=kr, bootm=True,
+                          ref_edit=lambda ref: ref["components"]["slots"]["B"].__setitem__("fit_configuration", "conf-x")),
+                    "has no configuration conf-x")
+        expect_fail("bootm: slot devicetree not the one the reference names",
+                    build(root, good_keys, keyring=kr, bootm=True,
+                          ref_edit=lambda ref: ref["components"]["slots"]["B"].__setitem__("fdt_sha256", "00" * 32)),
+                    "is not the one")
+        expect_fail("bootm: reference command line differs from the FIT",
+                    build(root, good_keys, keyring=kr, bootm=True,
+                          ref_edit=lambda ref: ref["components"]["slots"]["A"].__setitem__("cmdline", "root=/dev/mmcblk0p2")),
+                    "differs from /chosen bootargs")
+        no_args = make_fit_bootm(cmd_b=None)
+        expect_fail("bootm: slot devicetree without /chosen bootargs",
+                    build(root, good_keys, keyring=kr, bootm=True, fit=no_args,
+                          ref_edit=lambda ref: ref["components"]["slots"]["B"].update(
+                              fdt_sha256=sha(slot_dtb(None)).hex(), cmdline=None)),
+                    "has no /chosen bootargs")
+        expect_fail("bootm: a PCR keyed by slots the reference does not name",
+                    build(root, good_keys, keyring=kr, bootm=True,
+                          ref_edit=lambda ref: ref["pcr"].__setitem__("0", {"A": "AA" * 32, "C": "CC" * 32})),
+                    "is keyed by")
 
     check("no __pycache__ left in scripts/",
           pycache_before or not pycache.exists(),

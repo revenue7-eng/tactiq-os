@@ -510,8 +510,8 @@ SHA-256 of the four bytes `ff ff ff ff`.
 
 | PCR | Extended by | Content |
 |-----|-------------|---------|
-| 0   | SPL, then U-Boot | S-CRTM version string; each firmware image SPL loads from `u-boot.itb` (TF-A, OP-TEE); then, from U-Boot proper, the S-CRTM version string again and the kernel devicetree |
-| 1   | U-Boot | kernel command line; one value per A/B slot |
+| 0   | SPL, then U-Boot | S-CRTM version string; each firmware image SPL loads from `u-boot.itb` (TF-A, OP-TEE); then, from U-Boot proper, the S-CRTM version string again and, with U-Boot 2024.07, the kernel devicetree |
+| 1   | U-Boot | with U-Boot 2026.10, the kernel devicetree; then the U-Boot `bootargs` variable. On the bootm path (from v2.1.0-rc14) `bootargs` is empty and each slot's command line is in `/chosen` of its own devicetree, so the slots differ through the devicetree; on the extlinux path of older loaders the command line itself is measured. One value per A/B slot either way |
 | 2, 3, 5, 7 | U-Boot | separator only |
 | 4   | SPL | U-Boot proper |
 | 6   | SPL | U-Boot control devicetree, which carries the FIT verification key |
@@ -528,7 +528,10 @@ production image ships with IMA off. When IMA appraisal is enabled in
 a production image, the RIM gains an IMA reference (§5.7).
 
 `scripts/mk-pcr-reference.py` computes every value in this table from
-five published release files, without the device. It is the normative
+published release files, without the device: on the bootm path from
+`fitImage` and `u-boot.itb` (whose compiled-in environment names the FIT
+configuration of each slot), on the extlinux path of older loaders also
+from `extlinux.conf` and the U-Boot environment file. It is the normative
 description of the model: where the table and the script differ, the
 script is right and the table is a documentation bug.
 
@@ -572,13 +575,14 @@ with a gap in it.
   enforced when the release is assembled (the build-identity gates of
   `mk-release.sh`), not by the RIM.
 - **Reference values.** The hash bank and, for every PCR of §5.2, its
-  set of values, with PCR 1 keyed by slot. The kernel command line of
-  each slot, in clear, so that PCR 1 can be checked by recomputation
-  rather than trusted.
+  set of values, a value that differs between slots keyed by slot. The
+  kernel command line of each slot, in clear, so that it can be checked
+  by recomputation rather than trusted; on the bootm path it is read
+  from `/chosen` of the slot's devicetree in the published FIT.
 - **Link to the derivation.** The SHA-256 of
   `pcr-reference-<machine>.json` of the same release, the file from
   which the reference values are taken. Anyone can recompute that file
-  from the five published inputs and compare it byte for byte.
+  from the published inputs it names and compare it byte for byte.
 - **Key endorsements.** For each key, the SHA-256 of its DER-encoded
   SubjectPublicKeyInfo: the FIT verification key compiled into U-Boot,
   read from the control devicetree inside the published `u-boot.itb`;
@@ -695,9 +699,9 @@ A verifier appraising a device against a RIM:
 
 1. Selects the RIM for the build identity the device reports.
 2. Verifies the RIM signature to the release root it has pinned.
-3. Optionally, recomputes `pcr-reference-<machine>.json` from the five
-   published inputs with `mk-pcr-reference.py`, and checks its SHA-256
-   against the RIM.
+3. Optionally, recomputes `pcr-reference-<machine>.json` from the
+   published inputs it names with `mk-pcr-reference.py`, and checks its
+   SHA-256 against the RIM.
 4. Verifies the quote itself: signature by the device's attestation
    key and freshness of the nonce (`ATTESTATION.md`). This is not a
    RIM function.
