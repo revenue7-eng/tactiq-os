@@ -19,10 +19,9 @@
 # TPM2_Clear disabled before the OS starts. The L3 evidence of the release is
 # signed under the release root by a new Evidence Signer leaf and listed in
 # SHA256SUMS. The release image and the release loader ran on the reference
-# device before the tag (measurements/rel14-coldboot-20261012.md). No row
-# changes status: DE-0007/DE-0008 moves only when an envelope from a device
-# running this release has been checked against its RIM, and that is
-# measured after the tag.
+# device before the tag (measurements/rel14-coldboot-20261012.md), and its
+# envelopes from that run were checked against the RIM of this release before
+# the tag, so DE-0007/DE-0008 moves from planned to partial.
 # ---------------------------------------------------------------------------
 
 schema_version: "0.3"
@@ -86,7 +85,7 @@ manifest:
     generation: "r2"
     sha256_fingerprint: "8E:10:04:1E:BB:FC:CB:A0:36:62:1B:2E:45:36:87:D2:9A:50:D7:15:65:F2:99:CB:41:28:B4:CE:B9:65:FF:E8"
     not_after: "2036-09-21"
-    certificate: "carried inside rim-rock5a.json (keys.release_root); a verifier pins it by the fingerprint above, obtained through a channel other than this release"
+    certificate: "attached to the release as release-root-r2.pem, outside SHA256SUMS; a verifier pins it by the fingerprint above, obtained through a channel other than this release. rim-rock5a.json carries the SHA-256 of the root's public key and its subject (keys.release_root), not the certificate. Correction to rc12 and rc13, whose manifests said the certificate is carried inside the RIM"
     note: >-
       Regenerated for rc12 in a live-USB session with no network, together
       with a new Signing CA and new RAUC, IMA and RIM leaves. The rc11 root
@@ -111,8 +110,9 @@ manifest:
       timestamp. It lets a reader verify the signature from the release
       assets and a Sigstore trusted root after the certificate's ten-minute
       validity has ended, without querying Rekor. Offline verification of
-      the bundle runs in the release workflow and does not yet fail the
-      release; its result on this tag is in the workflow log.
+      the bundle runs in the release workflow and fails the release when it
+      does not verify (release-sign.yml, fatal since v2.1.0-rc12). Correction
+      to rc13, whose manifest said it did not yet fail the release.
     rekor_lookup: >-
       The Rekor entry covering this release is found by searching for the
       sha256 of SHA256SUMS at https://search.sigstore.dev. No index is
@@ -173,9 +173,7 @@ manifest:
       - id: spl-unmeasured-otp
         text: "SPL is the unmeasured root of the measurement chain and RK3588 OTP is not fused, so the BootROM does not authenticate SPL; a replaced SPL could extend the expected values. The reference describes the chain from SPL on, not from the BootROM"
       - id: pcr-computed-not-observed
-        text: "the PCR values of this release are computed, not yet observed. rc14 changes the loader to U-Boot v2026.10, which measures the kernel devicetree into PCR 1 instead of PCR 0; the release loader's values are checked after the tag by a quote from the reference device (VERIFY-L3-rc14.md). The release loader ran on the reference device before the tag (measurements/rel14-coldboot-20261012.md), but PCR values were not read in that run. For rc13 such a quote after a power cycle matched its reference; values after a warm reboot with a release loader have not been observed, and the production image has no console by design"
-      - id: no-attestation-envelope
-        text: "the agent of this release ran on the reference device after a power cycle (measurements/rel14-coldboot-20261012.md); its envelopes are checked against this RIM after the tag by the published procedure (VERIFY-L3-rc14.md), with an AK registered by TactiQ (ak-registration-bench-only). For rc13 an envelope from the reference device, after a power cycle, verified against the rc13 RIM (VERIFY-L3-rc13.md). The gate stays open while pcr-computed-not-observed is open"
+        text: "the PCR values of slot A are computed, not observed. For slot B the release image and loader produced, after a power cycle, 19 quotes whose PCR 0 to 9 digest equals the slot B composite of this RIM (VERIFY-L3-rc14.md); slot A has not booted the release image. rc14 measures the kernel devicetree into PCR 1, so the two slots differ there. Values after a warm reboot with the release loader have not been observed, and the production image has no console by design"
       - id: tpm-reset-line
         text: "SPL pulses the TPM reset line before measuring, so a warm reboot starts the TPM like a power cycle; observed with the development loader on a warm reboot, and with the rc14 release loader at a cold start (measurements/rel14-coldboot-20261012.md). A warm reboot with the release loader has not been observed. The line is a GPIO the running system can also drive, so a TPM reset is not by itself evidence of a reboot (disclosed in the RIM; replaces tpm-not-reset-warm-reboot)"
       - id: ima-off-production
@@ -200,9 +198,13 @@ manifest:
         text: "the owner, endorsement and lockout authorizations of the reference TPM are empty, so a root process can evict the persistent AK (0x81010100) and take the device out of attestation until it is registered again; it cannot make another AK pass, because the registration record names the AK. From rc14 the bootloader disables the platform hierarchy and sets disableClear, so root can no longer clear the TPM or use platform authority (observed on the reference device, 2026-10-08)"
       - id: ima-tmpfs-unappraised
         text: "the IMA policy does not appraise files on tmpfs, so root can mount a tmpfs and run an unsigned binary from it; observed on the development image on 2026-10-08, where the Infineon TPM update tool ran from a tmpfs because /data is mounted noexec"
+      - id: agent-envelope-not-atomic
+        text: "the agent writes the files of an envelope in place, without fsync or an atomic rename, so the envelope being written when power is lost can be left as files of zero length. On the reference device the envelope after the last one in the L3 evidence was left that way when power was removed at the end of the run; it carries no evidence and is not in the archive. The audit log shows the envelopes in it, not that none are missing (VERIFY-L3-rc14.md)"
       - id: netperm-dev-permission
         text: "on the reference device the release image refused the site network permission left in /data by development work, and the agent ran without network (measurements/rel14-coldboot-20261012.md). The permission is signed with the development netperm key and the release image pins the release key (TACTIQ_NETPERM_PUBKEY), so the refusal is the intended behaviour. A permission signed with the release key has not been tested on this release"
     resolved:
+      - id: no-attestation-envelope
+        text: "the agent of this release ran on the reference device after a power cycle (measurements/rel14-coldboot-20261012.md); 19 of its envelopes, signed by the AK registered against the EK (ak-registration-bench-only), verify against the RIM of this release, slot B, by the published procedure, before the tag (l3-evidence-rc14.tar.gz, VERIFY-L3-rc14.md)"
       - id: kernel-pin
         text: "the rc14 layer set moves to a new openembedded-core base and the kernel to 6.18.52+git, with a fresh CVE baseline (manifest.cve)"
       - id: layer-set-evidence
@@ -211,7 +213,7 @@ manifest:
         text: "withdrawn as wrong: the development loader resets the TPM on a warm reboot (measurements/tpm-quotes-dev-20261002.md, #224, rc13 errata section 1); replaced by tpm-reset-line"
       - id: agent-skip-switch-unseen
         text: "the runtime skip switch is removed: the agent unit no longer reads /etc/tactiq/skip-tpm, and autostart on QEMU is disabled at build time (#231)"
-  generated_utc: "2026-10-13T04:03:08Z"
+  generated_utc: "2026-10-13T06:11:18Z"
 
 reference_frameworks:
   - "SPARTA v3.2 (Aerospace Corp)"
@@ -327,7 +329,8 @@ techniques:
       reset line and measured the images of u-boot.itb, and U-Boot accepted
       the kernel FIT with release-fit and disabled the TPM platform hierarchy
       (measurements/rel14-coldboot-20261012.md). PCR values were not read in
-      that run. On the build host the loader accepts only a FIT signed with
+      that run; the quotes the agent took in it match the slot B values of
+      this release's RIM (DE-0007/DE-0008). On the build host the loader accepts only a FIT signed with
       release-fit. Correction to rc13: this row said that the TPM is not
       reset by a warm reboot. That was withdrawn in the rc13 errata (known
       issue tpm-reset-line): SPL pulses the TPM reset line, observed with the
@@ -339,8 +342,7 @@ techniques:
       PCR 8 and the initrd marker to PCR 9. The expected values are computed
       from the release artifacts and published with them. Stays partial: SPL
       is the unmeasured root and RK3588 OTP is not fused, so the BootROM does
-      not authenticate SPL, and the release values are checked by a quote
-      only after the tag (DE-0007/DE-0008).
+      not authenticate SPL, and the slot A values have not been observed.
     nist: ["SI-7", "SP 800-193"]
     sentinel: { signal: "boot_measurement_mismatch", meaning: "boot-chain != expected" }
     provenance: FACT
@@ -348,8 +350,8 @@ techniques:
   - id: "DE-0007/DE-0008"
     name: "Evasion via Rootkit / Bootkit"
     tactic: "Defense Evasion"
-    coverage: planned
-    mechanism: ["(remote attestation over measured boot: quote not yet checked against the RIM)"]
+    coverage: partial
+    mechanism: ["TPM quote over PCR 0 to 9 under a registered AK, checked against the signed RIM of the release"]
     evidence:
       - { type: "reference", ref: "rim-rock5a.json + rim-rock5a.json.p7s: signed Reference Integrity Manifest, RIM Signer -> Release Signing CA -> Release Root CA (r2)" }
     note: >-
@@ -363,11 +365,16 @@ techniques:
       that a verifier checks against the release root alone, offline. New in
       rc13: the agent in the image is real and starts at boot (prover 0.3.0,
       envelope v2: TPM2_Quote under a restricted AK). rc14 puts the L3
-      evidence inside the signed set (manifest.attestation.l3_evidence). Still
-      missing before the tag: an envelope from a device running this release,
-      checked against this RIM.
-      Until then the row stays planned; it moves by measurement, not by the
-      presence of the parts.
+      evidence inside the signed set (manifest.attestation.l3_evidence), and
+      the envelopes of this release, taken from the reference device after a
+      power cycle, verify against this RIM before the tag: 19 quotes, slot B
+      (VERIFY-L3-rc14.md). The row moves to partial by that measurement.
+      Stays partial: the AK was registered by TactiQ on its own bench and a
+      release device has no registration path of its own
+      (ak-registration-bench-only); the quotes are not fresh, their
+      qualifying data is the agent's own record; slot A has not been observed
+      (pcr-computed-not-observed); the agent's log does not show that no
+      envelope is missing (agent-envelope-not-atomic).
     nist: ["SI-7", "CM-6"]
     sentinel: { signal: "attestation_quote_divergence", meaning: "quote != PCR profile" }
     provenance: INFERENCE
@@ -482,27 +489,30 @@ techniques:
 #             EX-0010 (SELinux enforcing, observed on the rc14 production
 #             image; no IMA in production),
 #             EX-0004 (measured boot with a published reference; SPL root
-#             unauthenticated, release loader ran on hardware, its PCR
-#             values not observed before the tag),
+#             unauthenticated, release loader ran on hardware, slot B
+#             values matched by quotes, slot A not observed),
 #             EX-0005 (bundle-level dm-verity; root verity booted on the
 #             release image, refusal not recorded),
 #             PER-0004/PER-0002 (release keys pinned in the pipeline; no
-#             hardware token, no fused OTP)
-#   planned : DE-0007/DE-0008 (RIM and L3 evidence signed; no envelope from
-#             this release checked before the tag),
-#             DE-0010, T1611/T2017, EX-0012.13
+#             hardware token, no fused OTP),
+#             DE-0007/DE-0008 (envelopes of this release checked against its
+#             RIM before the tag; AK registered on the TactiQ bench only)
+#   planned : DE-0010, T1611/T2017, EX-0012.13
 #
-# Change vs rc13. No status change. New: openembedded-core base with kernel
+# Change vs rc13. DE-0007/DE-0008 planned -> partial. New: openembedded-core base with kernel
 # 6.18.52+git, U-Boot v2026.10 as the default loader, Evidence Signer for the
 # L3 evidence, release key pins in mk-release.sh, layer set check output in
 # the release, release image and loader run on the reference device before
 # the tag. Corrections to rc13 text in EX-0004 (TPM reset) and EX-0005 (root
-# verity). Known issues against rc13: 11 carried (pcr-computed-not-observed,
-# no-attestation-envelope, rootfs-not-verity, cve-db-date-rust and
-# ak-registration-bench-only reworded), 4 resolved (layer-set-evidence,
-# tpm-not-reset-warm-reboot, agent-skip-switch-unseen, kernel-pin), 5 new
-# (tpm-reset-line, agent-quote-pcr-0-9, tpm-owner-auth-empty,
-# ima-tmpfs-unappraised, netperm-dev-permission).
+# verity), release_root.certificate (the RIM carries a hash of the root,
+# not the certificate) and attestation.signature_bundle (offline bundle
+# verification is fatal). Known issues against rc13: 10 carried
+# (pcr-computed-not-observed, rootfs-not-verity, cve-db-date-rust and
+# ak-registration-bench-only reworded), 5 resolved (no-attestation-envelope,
+# layer-set-evidence, tpm-not-reset-warm-reboot, agent-skip-switch-unseen,
+# kernel-pin), 6 new (tpm-reset-line, agent-quote-pcr-0-9,
+# tpm-owner-auth-empty, ima-tmpfs-unappraised, netperm-dev-permission,
+# agent-envelope-not-atomic).
 #
 # OPEN ISSUE: rekor_index self-reference, unchanged since rc5: the index is
 # pinned in the release notes after signing.
