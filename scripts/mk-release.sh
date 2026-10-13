@@ -69,6 +69,12 @@
 #                        or the bundle is not the pinned release key (see
 #                        "Release key pins" below). For mechanics testing
 #                        ONLY; the output is NOT a valid release.
+#   ALLOW_UNTAGGED_MANIFEST=1  let IMAGE=tactiq-image take the coverage
+#                        manifest from the working tree when the tag is
+#                        absent or the working copy differs from the tagged
+#                        one (see "Release-identity gate" below). For
+#                        mechanics testing ONLY; the output is NOT a valid
+#                        release.
 #
 # Produces in <output-dir>:
 #   image-${BOARD}.wic.gz, image-${BOARD}.wic.bmap   (compressed image + bmap;
@@ -173,9 +179,46 @@ fi
 #
 # If build_id here is wrong, the tag is wrong: the manifest is pinned to the
 # tag, so the remedy is a new tag, not an edit to a published manifest.
+#
+# The manifest is read from the commit under the tag, not from the working
+# tree. A working-tree path would let an uncommitted edit, a checkout that is
+# not the tag, or a tag moved after the run pass as "pinned to the tag". The
+# copy shipped below is the tagged blob, so what the release carries is what
+# the tag carries. A working copy that differs from the tagged one is refused:
+# the difference is reported, not silently bypassed.
 # ---------------------------------------------------------------------------
-COV_SRC="${SCRIPT_DIR}/../security/coverage-${BOARD}.${TAG}.yaml"
+COV_REL="security/coverage-${BOARD}.${TAG}.yaml"
+COV_WT="${SCRIPT_DIR}/../${COV_REL}"
+COV_TAG_COMMIT="$(git -C "${SCRIPT_DIR}/.." rev-parse --verify -q "refs/tags/${TAG}^{commit}" 2>/dev/null || true)"
+cov_untagged() {
+    if [[ "$IMAGE" == tactiq-image && "${ALLOW_UNTAGGED_MANIFEST:-0}" != 1 ]]; then
+        echo "::error:: $1" >&2
+        exit 1
+    fi
+    echo "::warning:: $1 Using the working-tree manifest. THIS OUTPUT IS NOT A VALID RELEASE." >&2
+}
+COV_SRC=""
+if [[ -n "$COV_TAG_COMMIT" ]]; then
+    COVX="$(mktemp -d)"
+    trap 'rm -rf "$COVX"' EXIT
+    if git -C "${SCRIPT_DIR}/.." show "${COV_TAG_COMMIT}:${COV_REL}" > "${COVX}/coverage.yaml" 2>/dev/null; then
+        COV_SRC="${COVX}/coverage.yaml"
+        if [[ -e "$COV_WT" ]] && ! cmp -s "$COV_SRC" "$COV_WT"; then
+            cov_untagged "working-tree ${COV_REL} differs from the copy under ${TAG} (${COV_TAG_COMMIT:0:12})."
+            COV_SRC="$COV_WT"
+        fi
+    else
+        cov_untagged "${COV_REL} is not in the commit under ${TAG} (${COV_TAG_COMMIT:0:12})."
+        COV_SRC="$COV_WT"
+    fi
+else
+    cov_untagged "tag ${TAG} is not in $(cd "${SCRIPT_DIR}/.." && pwd); the coverage manifest cannot be read from the tagged commit."
+    COV_SRC="$COV_WT"
+fi
 [[ -e "$COV_SRC" ]] || { echo "::error:: coverage manifest not found: $COV_SRC" >&2; exit 1; }
+if [[ "$COV_SRC" == "${COVX:-/nonexistent}/coverage.yaml" ]]; then
+    echo "==> coverage manifest: ${COV_REL} from ${TAG} (${COV_TAG_COMMIT:0:12})"
+fi
 ! grep -q '^draft: true' "$COV_SRC" || { echo "::error:: coverage manifest is still a draft (draft: true): $COV_SRC" >&2; exit 1; }
 
 cov_field() {  # echo a 2-space-indented scalar from the top-level manifest: block
@@ -395,7 +438,7 @@ BOOT_RECIPE="${DEPLOY}/tactiq-boot-image.ext4"
 [[ -e "$BOOT_ENV" ]]    || { echo "::error:: boot environment not found: $BOOT_ENV" >&2; exit 1; }
 
 BOOTX="$(mktemp -d)"
-trap 'rm -rf "$BOOTX"' EXIT
+trap 'rm -rf "$BOOTX" "${COVX:-}"' EXIT
 extract() {  # extract <ext4-image> <path-in-image> <dest>
     debugfs -R "dump $2 $3" "$1" >/dev/null 2>&1 || true
     [[ -s "$3" ]] || { echo "::error:: $2 not found in $(basename "$1")" >&2; exit 1; }
@@ -579,7 +622,8 @@ fi
 # if absent: a transparency release without its coverage map is a defect.
 # ---------------------------------------------------------------------------
 echo "==> coverage manifest"
-# COV_SRC resolved and validated by the release-identity gate above.
+# COV_SRC resolved and validated by the release-identity gate above: the
+# blob under the tag, unless an override was given.
 cp -L "$COV_SRC" "coverage-${BOARD}.${TAG}.yaml"
 echo "    + coverage-${BOARD}.${TAG}.yaml"
 # ---------------------------------------------------------------------------
