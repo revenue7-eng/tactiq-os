@@ -74,13 +74,14 @@
 #   image-${BOARD}.wic.gz, image-${BOARD}.wic.bmap   (compressed image + bmap;
 #       the raw .wic is ~9.8 GB and exceeds the GitHub 2 GB asset limit, so we
 #       publish the .gz + .bmap — flash with: bmaptool copy image.wic.gz /dev/sdX)
-#   kernel-${BOARD}.bin, rk3588s-rock-5a.dtb
+#   kernel-${BOARD}.bin, rk3588s-rock-5a.dtb         (the kernel and its devicetree as
+#       built; each slot's devicetree in the FIT is this one plus /chosen bootargs)
 #   fitImage-${BOARD}, extlinux-${BOARD}.conf        (as found on the boot partition)
 #   idbloader-${BOARD}.img, u-boot-${BOARD}.itb      (SPL, the root of the measurement
 #       chain, and the images it measures)
 #   tactiq-boot-${BOARD}.env                         (U-Boot default environment)
 #   pcr-reference-${BOARD}.json, mk-pcr-reference.py (expected boot PCRs and the
-#       script that recomputes them from the four files above)
+#       script that recomputes them from fitImage and u-boot.itb, bootm path)
 #   manifest-${BOARD}.txt, testdata-${BOARD}.json, buildinfo-${BOARD}.json
 #   sbom-${BOARD}.spdx.json                          (SPDX 3.0.1)
 #   cve-${BOARD}.sbom-cve-check.yocto.json
@@ -374,8 +375,16 @@ fi
 # one is only valid for a board prepared with the other if both carry the same
 # bytes, so both are opened and compared before anything is derived. The FIT
 # and extlinux.conf are published as found on the boot partition, next to the
-# bootloader and its default environment, so a reader can rerun the
-# computation from release assets alone.
+# bootloader and its default environment.
+#
+# The loader boots by bootm (#217): bootcmd runs boot_ab from the environment
+# compiled into u-boot.itb, which boots one FIT configuration per slot, and
+# each slot's devicetree carries its command line in /chosen bootargs. The
+# reference is therefore computed on the bootm path, from fitImage and
+# u-boot.itb alone, so a reader can rerun it from release assets.
+# mk-pcr-reference.py refuses a loader whose boot_ab calls sysboot or sets
+# bootargs, so extlinux.conf takes no part in the boot it describes; the
+# loose kernel and devicetree are checked against every slot.
 # ---------------------------------------------------------------------------
 echo "==> boot PCR reference"
 command -v debugfs >/dev/null 2>&1 || { echo "::error:: debugfs not on PATH (e2fsprogs) — needed to read the boot partition." >&2; exit 1; }
@@ -440,12 +449,13 @@ cp -L "$BOOT_ENV" "tactiq-boot-${BOARD}.env";               echo "    + tactiq-b
 cp -L "${SCRIPT_DIR}/mk-pcr-reference.py" "mk-pcr-reference.py"; echo "    + mk-pcr-reference.py"
 
 python3 mk-pcr-reference.py \
-    --fit "fitImage-${BOARD}" --extlinux "extlinux-${BOARD}.conf" \
+    --fit "fitImage-${BOARD}" \
     --uboot "u-boot-${BOARD}.itb" --idbloader "idbloader-${BOARD}.img" \
-    --boot-env "tactiq-boot-${BOARD}.env" \
     --image "kernel-${BOARD}.bin" --dtb "rk3588s-rock-5a.dtb" \
     --out "pcr-reference-${BOARD}.json"
-echo "    + pcr-reference-${BOARD}.json"
+BOOT_PATH="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("boot_path",""))' "pcr-reference-${BOARD}.json")"
+[[ "$BOOT_PATH" == "bootm" ]] || { echo "::error:: pcr-reference-${BOARD}.json describes boot path '${BOOT_PATH}', expected bootm." >&2; exit 1; }
+echo "    + pcr-reference-${BOARD}.json  (bootm path)"
 
 FIT_KEY="$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1]))["components"]["fit_key_name_hint"]))' "pcr-reference-${BOARD}.json")"
 echo "    FIT signed with: ${FIT_KEY}"
