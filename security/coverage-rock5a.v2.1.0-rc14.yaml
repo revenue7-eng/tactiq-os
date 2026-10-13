@@ -29,7 +29,7 @@ schema_version: "0.3"
 
 manifest:
   os_release: "v2.1.0-rc14"
-  source_commit: "fd1e31d8786c2af2dbb2230a6075a59a4767073f"   # the commit the image was built from; the tag sits on the commit that adds this file
+  source_commit: "fd1e31d8786c2af2dbb2230a6075a59a4767073f"   # the commit the image was built from; the tag sits on or after the commit that adds this file
   distro_version: "2.1.0"          # unchanged since rc6
   build_id: "20261012174949"
   platform: "Radxa Rock 5A (RK3588S)"
@@ -133,9 +133,14 @@ manifest:
       over the whole tracked tree at HEAD.
     boot_measurements: >-
       pcr-reference-rock5a.json: expected SHA-256 PCR values of the boot
-      chain, computed by mk-pcr-reference.py from the published fitImage,
-      extlinux.conf, u-boot.itb, idbloader.img and tactiq-boot.env; all
-      inputs and the script are in the release set.
+      chain on the bootm path the rc14 loader takes (boot_ab from the
+      environment compiled into u-boot.itb, one FIT configuration per slot,
+      each slot's command line in /chosen of its devicetree), computed by
+      mk-pcr-reference.py from the published fitImage and u-boot.itb, with
+      idbloader.img checked for the same U-Boot version. The inputs and the
+      script are in the release set. extlinux.conf and tactiq-boot.env are
+      published as found but take no part in this boot: the loader refuses
+      sysboot and a stored bootargs.
     reference_integrity_manifest: >-
       Since rc12. rim-rock5a.json binds the expected boot values to the
       release: the PCR selection the agent quotes, the RAUC keyring and the
@@ -206,7 +211,7 @@ manifest:
         text: "withdrawn as wrong: the development loader resets the TPM on a warm reboot (measurements/tpm-quotes-dev-20261002.md, #224, rc13 errata section 1); replaced by tpm-reset-line"
       - id: agent-skip-switch-unseen
         text: "the runtime skip switch is removed: the agent unit no longer reads /etc/tactiq/skip-tpm, and autostart on QEMU is disabled at build time (#231)"
-  generated_utc: "2026-10-12T20:43:56Z"
+  generated_utc: "2026-10-13T04:03:08Z"
 
 reference_frameworks:
   - "SPARTA v3.2 (Aerospace Corp)"
