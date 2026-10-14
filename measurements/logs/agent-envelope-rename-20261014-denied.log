@@ -1,0 +1,35 @@
+root@tactiq-rock5a:~# cp /tmp/ak.pub /data/tactiq/keys/ak.pub
+root@tactiq-rock5a:~# echo TACTIQ-BENCH-001 > /data/tactiq/keys/device_id
+root@tactiq-rock5a:~# chmod 0644 /data/tactiq/keys/ak.pub
+root@tactiq-rock5a:~# chmod 0600 /data/tactiq/keys/device_id
+root@tactiq-rock5a:~# chown tactiq-agent:tactiq-agent /data/tactiq/keys/ak.pub /data/tactiq/keys/device_id
+root@tactiq-rock5a:~# restorecon -Rv /data/tactiq/keys
+root@tactiq-rock5a:~# sync
+root@tactiq-rock5a:~# systemctl reset-failed tactiq-agent
+root@tactiq-rock5a:~# systemctl start tactiq-agent
+root@tactiq-rock5a:~# systemctl status tactiq-agent --no-pager
+* tactiq-agent.service - TactiQ Attestation Agent
+     Loaded: loaded (/usr/lib/systemd/system/tactiq-agent.service; enabled; preset: enabled)
+    Drop-In: /run/systemd/system.control/tactiq-agent.service.d
+             `-50-IPAddressAllow.conf
+     Active: activating (auto-restart) (Result: exit-code) since Mon 2026-10-12 00:01:58 UTC; 5s ago
+ Invocation: f4fe7533adb4464eb8291ecf1b1cf3d4
+       Docs: file:///usr/share/doc/tactiq-os/ATTESTATION.md
+    Process: 599 ExecStart=/opt/tactiq/bin/tactiq-agent run (code=exited, status=1/FAILURE)
+   Main PID: 599 (code=exited, status=1/FAILURE)
+     Status: "attest failed: rename /data/tactiq/audit/135744454656.msg: Permission denied (os error 13)"
+   Mem peak: 11.9M
+        CPU: 203ms
+root@tactiq-rock5a:~#
+root@tactiq-rock5a:~# dmesg | grep -i avc | tail -n 6
+[  120.322350] audit: type=1400 audit(1791763318.092:130): avc:  denied  { rename } for  pid=599 comm="tactiq-agent" name="135744454656.msg.part" dev="mmcblk0p5" ino=262163 scontext=system_u:system_r:tactiq_agent_t:s0 tcontext=system_u:object_r:tactiq_agent_audit_t:s0 tclass=file permissive=0
+[  132.016125] audit: type=1400 audit(1791763329.784:139): avc:  denied  { rename } for  pid=625 comm="tactiq-agent" name="135761231872.msg.part" dev="mmcblk0p5" ino=262163 scontext=system_u:system_r:tactiq_agent_t:s0 tcontext=system_u:object_r:tactiq_agent_audit_t:s0 tclass=file permissive=0
+[  143.754313] audit: type=1400 audit(1791763341.524:148): avc:  denied  { rename } for  pid=637 comm="tactiq-agent" name="135778009088.msg.part" dev="mmcblk0p5" ino=262163 scontext=system_u:system_r:tactiq_agent_t:s0 tcontext=system_u:object_r:tactiq_agent_audit_t:s0 tclass=file permissive=0
+root@tactiq-rock5a:~# ls -laZ /data/tactiq/audit
+drwxr-x---    2 tactiq-agent tactiq-agent system_u:object_r:tactiq_agent_audit_t:s0      4096 Oct 12 00:02 .
+drwxr-xr-x    6 tactiq-agent tactiq-agent system_u:object_r:tactiq_vault_data_t:s0      4096 Oct 12 00:00 ..
+-rw-rw----    1 tactiq-agent tactiq-agent system_u:object_r:tactiq_agent_audit_t:s0       145 Oct 12 00:02 135778009088.attest.part
+-rw-r--r--    1 tactiq-agent tactiq-agent system_u:object_r:tactiq_agent_audit_t:s0        93 Oct 12 00:02 135778009088.msg.part
+-rw-rw----    1 tactiq-agent tactiq-agent system_u:object_r:tactiq_agent_audit_t:s0        72 Oct 12 00:02 135778009088.sig.part
+-rw-r--r--    1 tactiq-agent tactiq-agent system_u:object_r:tactiq_agent_audit_t:s0        38 Oct 12 00:02 135778009088.tag.part
+root@tactiq-rock5a:~#

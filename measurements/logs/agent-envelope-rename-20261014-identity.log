@@ -1,0 +1,79 @@
+root@tactiq-rock5a:~# journalctl -b -u tactiq-agent --no-pager | head -n 25
+Oct 12 00:00:04 tactiq-rock5a systemd[1]: Starting TactiQ Attestation Agent...
+Oct 12 00:00:04 tactiq-rock5a tactiq-agent[427]: tactiq-agent: cannot run: Absent
+Oct 12 00:00:04 tactiq-rock5a systemd[1]: tactiq-agent.service: Main process exited, code=exited, status=1/FAILURE
+Oct 12 00:00:04 tactiq-rock5a systemd[1]: tactiq-agent.service: Failed with result 'exit-code'.
+Oct 12 00:00:04 tactiq-rock5a systemd[1]: Failed to start TactiQ Attestation Agent.
+Oct 12 00:00:14 tactiq-rock5a systemd[1]: tactiq-agent.service: Scheduled restart job, restart counter is at 1.
+Oct 12 00:00:14 tactiq-rock5a systemd[1]: Starting TactiQ Attestation Agent...
+Oct 12 00:00:14 tactiq-rock5a tactiq-agent[476]: tactiq-agent: cannot run: Absent
+Oct 12 00:00:14 tactiq-rock5a systemd[1]: tactiq-agent.service: Main process exited, code=exited, status=1/FAILURE
+Oct 12 00:00:14 tactiq-rock5a systemd[1]: tactiq-agent.service: Failed with result 'exit-code'.
+Oct 12 00:00:14 tactiq-rock5a systemd[1]: Failed to start TactiQ Attestation Agent.
+Oct 12 00:00:24 tactiq-rock5a systemd[1]: tactiq-agent.service: Scheduled restart job, restart counter is at 2.
+Oct 12 00:00:24 tactiq-rock5a systemd[1]: Starting TactiQ Attestation Agent...
+Oct 12 00:00:25 tactiq-rock5a tactiq-agent[486]: tactiq-agent: cannot run: Absent
+Oct 12 00:00:25 tactiq-rock5a systemd[1]: tactiq-agent.service: Main process exited, code=exited, status=1/FAILURE
+Oct 12 00:00:25 tactiq-rock5a systemd[1]: tactiq-agent.service: Failed with result 'exit-code'.
+Oct 12 00:00:25 tactiq-rock5a systemd[1]: Failed to start TactiQ Attestation Agent.
+Oct 12 00:00:35 tactiq-rock5a systemd[1]: tactiq-agent.service: Scheduled restart job, restart counter is at 3.
+Oct 12 00:00:35 tactiq-rock5a systemd[1]: tactiq-agent.service: Start request repeated too quickly.
+Oct 12 00:00:35 tactiq-rock5a systemd[1]: tactiq-agent.service: Failed with result 'exit-code'.
+Oct 12 00:00:35 tactiq-rock5a systemd[1]: Failed to start TactiQ Attestation Agent.
+root@tactiq-rock5a:~# tpm2_getcap handles-persistent
+- 0x81010001
+- 0x81010002
+- 0x81010100
+root@tactiq-rock5a:~# TPM2TOOLS_TCTI=device:/dev/tpmrm0 tpm2_readpublic -c 0x81010100 -o /tmp/ak.pub
+name: 000b35c0941662473b6dc78ce636d83dfcaf1bbdfa68bb69121dd9b3c0b414df0a0a
+qualified name: 000b47dd0060f902fa2dc607d706f078a4885474200ec8a93570d4c2a4a06cb4a2c9
+name-alg:
+  value: sha256
+  raw: 0xb
+attributes:
+  value: fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|sign
+  raw: 0x50072
+type:
+  value: ecc
+  raw: 0x23
+curve-id:
+  value: NIST p256
+  raw: 0x3
+kdfa-alg:
+  value: null
+  raw: 0x10
+kdfa-halg:
+  value: (null)
+  raw: 0x0
+scheme:
+  value: ecdsa
+  raw: 0x18
+scheme-halg:
+  value: sha256
+  raw: 0xb
+sym-alg:
+  value: null
+  raw: 0x10
+sym-mode:
+  value: (null)
+  raw: 0x0
+sym-keybits: 0
+x: 48a79a676879cb757fd509d4df87938e976327c8b66e0c29c4d353408dd259f9
+y: e9f8f047b622a7776486c7598d147fed405ee2417e0bcde75619798b45b4528b
+root@tactiq-rock5a:~# sha256sum /tmp/ak.pub
+7305eb2f5c44527681eefff026fcfbd86a98ecbe0565a2b12c721ecd3d4a04bd  /tmp/ak.pub
+root@tactiq-rock5a:~#
+andrew@UserHome-PC49:~/dev-build-rc11$ sudo mkdir -p /mnt/olddata
+[sudo] password for andrew:
+andrew@UserHome-PC49:~/dev-build-rc11$ sudo mount -o loop,ro,noload /mnt/d/rkdevtool/RKDevTool_v3.37_for_window/Output/ExportImage-before-dev-20261014.img /mnt/olddata
+andrew@UserHome-PC49:~/dev-build-rc11$ sudo ls -la /mnt/olddata/tactiq/keys
+total 16
+drwx------. 2 997 crontab 4096 Mar 13  2026 .
+drwxr-xr-x. 7 997 crontab 4096 Mar 13  2026 ..
+-rw-r--r--. 1 997 crontab   90 Mar 13  2026 ak.pub
+-rw-------. 1 997 crontab   17 Mar 13  2026 device_id
+andrew@UserHome-PC49:~/dev-build-rc11$ sudo cat /mnt/olddata/tactiq/keys/device_id
+TACTIQ-BENCH-001
+andrew@UserHome-PC49:~/dev-build-rc11$ sudo sha256sum /mnt/olddata/tactiq/keys/ak.pub
+7305eb2f5c44527681eefff026fcfbd86a98ecbe0565a2b12c721ecd3d4a04bd  /mnt/olddata/tactiq/keys/ak.pub
+andrew@UserHome-PC49:~/dev-build-rc11$
