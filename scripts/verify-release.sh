@@ -29,6 +29,9 @@
 #                       --dir check where the tag cannot be derived)
 #   --allow-unsigned    skip the signature step. DEV/TESTING ONLY — the result
 #                       then authenticates nothing.
+#   --offline           check the signature through the log bundle only, with
+#                       no network (cosign must already hold Sigstore's
+#                       trusted root from an earlier online run)
 #
 # Requires: cosign, jq, sha256sum; gh only for --tag.
 
@@ -37,7 +40,7 @@ set -euo pipefail
 REPO="revenue7-eng/tactiq-os"
 BOARD="rock5a"
 ISSUER="https://token.actions.githubusercontent.com"
-TAG="" DIR="" IDENTITY="" ALLOW_UNSIGNED=0
+TAG="" DIR="" IDENTITY="" ALLOW_UNSIGNED=0 OFFLINE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -47,6 +50,7 @@ while [[ $# -gt 0 ]]; do
         --board) BOARD="$2"; shift 2 ;;
         --identity) IDENTITY="$2"; shift 2 ;;
         --allow-unsigned) ALLOW_UNSIGNED=1; shift ;;
+        --offline) OFFLINE=1; shift ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -95,7 +99,9 @@ elif [[ -f SHA256SUMS.workflow.pem && -f SHA256SUMS.workflow.sig ]]; then
         [[ -n "$TAG" ]] || { echo "::error:: workflow signature present but no --tag to derive identity; pass --identity" >&2; exit 1; }
         id="https://github.com/${REPO}/.github/workflows/release-sign.yml@refs/tags/${TAG}"
     fi
-    if cosign verify-blob \
+    if [[ "$OFFLINE" == 1 ]]; then
+        echo "  [INFO] --offline: certificate and signature are checked through the log bundle only"
+    elif cosign verify-blob \
             --certificate SHA256SUMS.workflow.pem \
             --signature   SHA256SUMS.workflow.sig \
             --certificate-identity        "$id" \
@@ -104,6 +110,28 @@ elif [[ -f SHA256SUMS.workflow.pem && -f SHA256SUMS.workflow.sig ]]; then
         ok "cosign workflow-identity signature valid ($id)"
     else
         bad "cosign workflow-identity signature did NOT verify against $id"
+    fi
+    # The log bundle carries the certificate, the signature, the transparency
+    # log entry and its signed checkpoint. It is the only offline check, and
+    # it is not in SHA256SUMS (it signs it), so it is verified here or not at
+    # all. Releases from rc12 on carry it; release-sign.yml fails without it.
+    rcn=$(printf '%s\n' "$id" | sed -n 's/.*-rc\([0-9][0-9]*\)$/\1/p')
+    off=""; [[ "$OFFLINE" == 1 ]] && off="--offline"
+    if [[ -f SHA256SUMS.sigstore.json ]]; then
+        if cosign verify-blob $off \
+                --bundle SHA256SUMS.sigstore.json --new-bundle-format \
+                --certificate-identity    "$id" \
+                --certificate-oidc-issuer "$ISSUER" \
+                SHA256SUMS >/dev/null 2>&1; then
+            ok "log bundle verifies: certificate, signature, log entry and checkpoint${off:+ (offline)}"
+        else
+            bad "log bundle SHA256SUMS.sigstore.json did NOT verify against $id${off:+ (offline)}"
+        fi
+    elif [[ -n "$rcn" && "$rcn" -lt 12 ]]; then
+        echo "  [INFO] no log bundle: releases before rc12 were published without one"
+        if [[ "$OFFLINE" == 1 ]]; then bad "--offline needs the log bundle, and this release has none"; fi
+    else
+        bad "log bundle SHA256SUMS.sigstore.json missing; releases from rc12 on carry it, and it is the only offline check"
     fi
 elif [[ -f SHA256SUMS.pem && -f SHA256SUMS.sig ]]; then
     need cosign
