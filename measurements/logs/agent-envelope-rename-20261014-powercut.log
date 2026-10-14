@@ -1,0 +1,29 @@
+tactiq-rock5a login: root
+root@tactiq-rock5a:~# ls /data/tactiq/audit | grep -c part
+0
+root@tactiq-rock5a:~# ls /data/tactiq/audit | sed 's/\..*//' | sort | uniq -c | grep -v ' 4 '
+root@tactiq-rock5a:~# systemctl status tactiq-agent --no-pager
+* tactiq-agent.service - TactiQ Attestation Agent
+     Loaded: loaded (/usr/lib/systemd/system/tactiq-agent.service; enabled; preset: enabled)
+    Drop-In: /run/systemd/system.control/tactiq-agent.service.d
+             `-50-IPAddressAllow.conf
+     Active: active (running) since Mon 2026-10-12 00:00:04 UTC; 3min 24s ago
+ Invocation: a4de9f4987114e7cb9326adcf4112d7b
+       Docs: file:///usr/share/doc/tactiq-os/ATTESTATION.md
+   Main PID: 426 (tactiq-agent)
+      Tasks: 1 (limit: 4701)
+     Memory: 3.2M (max: 128M, available: 124.7M, peak: 12.3M)
+        CPU: 570ms
+     CGroup: /system.slice/tactiq-agent.service
+             `-426 /opt/tactiq/bin/tactiq-agent run
+
+Oct 12 00:00:04 tactiq-rock5a systemd[1]: Starting TactiQ Attestation Agent...
+Oct 12 00:00:04 tactiq-rock5a systemd[1]: Started TactiQ Attestation Agent.
+Oct 12 00:00:06 tactiq-rock5a tactiq-agent[426]: attested TACTIQ-BENCH-001 counter=135979335680 -> /data/tactiq/audit/135979335680.msg
+Oct 12 00:00:35 tactiq-rock5a tactiq-agent[426]: attested TACTIQ-BENCH-001 counter=135979335681 -> /data/tactiq/audit/135979335681.msg
+Oct 12 00:01:05 tactiq-rock5a tactiq-agent[426]: attested TACTIQ-BENCH-001 counter=135979335682 -> /data/tactiq/audit/135979335682.msg
+Oct 12 00:01:35 tactiq-rock5a tactiq-agent[426]: attested TACTIQ-BENCH-001 counter=135979335683 -> /data/tactiq/audit/135979335683.msg
+Oct 12 00:02:05 tactiq-rock5a tactiq-agent[426]: attested TACTIQ-BENCH-001 counter=135979335684 -> /data/tactiq/audit/135979335684.msg
+Oct 12 00:02:35 tactiq-rock5a tactiq-agent[426]: attested TACTIQ-BENCH-001 counter=135979335685 -> /data/tactiq/audit/135979335685.msg
+Oct 12 00:03:05 tactiq-rock5a tactiq-agent[426]: attested TACTIQ-BENCH-001 counter=135979335686 -> /data/tactiq/audit/135979335686.msg
+root@tactiq-rock5a:~#

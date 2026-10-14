@@ -1,0 +1,92 @@
+
+tactiq-rock5a login: root
+root@tactiq-rock5a:~# systemctl status tactiq-agent --no-pager
+* tactiq-agent.service - TactiQ Attestation Agent
+     Loaded: loaded (/usr/lib/systemd/system/tactiq-agent.service; enabled; preset: enabled)
+    Drop-In: /run/systemd/system.control/tactiq-agent.service.d
+             `-50-IPAddressAllow.conf
+     Active: active (running) since Mon 2026-10-12 00:00:04 UTC; 6min ago
+ Invocation: 5d2e00ed6fef458498264eeb659972b0
+       Docs: file:///usr/share/doc/tactiq-os/ATTESTATION.md
+   Main PID: 429 (tactiq-agent)
+      Tasks: 1 (limit: 4701)
+     Memory: 3M (max: 128M, available: 124.9M, peak: 12.3M)
+        CPU: 998ms
+     CGroup: /system.slice/tactiq-agent.service
+             `-429 /opt/tactiq/bin/tactiq-agent run
+
+Oct 12 00:02:05 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781252 -> /data/tactiq/audit/135945781252.msg
+Oct 12 00:02:35 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781253 -> /data/tactiq/audit/135945781253.msg
+Oct 12 00:03:05 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781254 -> /data/tactiq/audit/135945781254.msg
+Oct 12 00:03:35 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781255 -> /data/tactiq/audit/135945781255.msg
+Oct 12 00:04:05 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781256 -> /data/tactiq/audit/135945781256.msg
+Oct 12 00:04:35 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781257 -> /data/tactiq/audit/135945781257.msg
+Oct 12 00:05:05 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781258 -> /data/tactiq/audit/135945781258.msg
+Oct 12 00:05:35 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781259 -> /data/tactiq/audit/135945781259.msg
+Oct 12 00:06:05 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781260 -> /data/tactiq/audit/135945781260.msg
+Oct 12 00:06:35 tactiq-rock5a tactiq-agent[429]: attested TACTIQ-BENCH-001 counter=135945781261 -> /data/tactiq/audit/135945781261.msg
+root@tactiq-rock5a:~# dmesg | grep -i avc | tail -n 5
+root@tactiq-rock5a:~# ls -la /data/tactiq/audit
+drwxr-x---    2 tactiq-agent tactiq-agent      4096 Oct 12 00:07 .
+drwxr-xr-x    6 tactiq-agent tactiq-agent      4096 Oct 12 00:00 ..
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:00 135945781248.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:00 135945781248.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:00 135945781248.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:00 135945781248.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:00 135945781249.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:00 135945781249.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:00 135945781249.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:00 135945781249.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:01 135945781250.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:01 135945781250.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:01 135945781250.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:01 135945781250.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:01 135945781251.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:01 135945781251.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:01 135945781251.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:01 135945781251.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:02 135945781252.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:02 135945781252.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:02 135945781252.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:02 135945781252.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:02 135945781253.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:02 135945781253.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        72 Oct 12 00:02 135945781253.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:02 135945781253.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:03 135945781254.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:03 135945781254.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:03 135945781254.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:03 135945781254.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:03 135945781255.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:03 135945781255.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:03 135945781255.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:03 135945781255.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:04 135945781256.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:04 135945781256.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:04 135945781256.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:04 135945781256.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:04 135945781257.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:04 135945781257.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        70 Oct 12 00:04 135945781257.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:04 135945781257.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:05 135945781258.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:05 135945781258.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:05 135945781258.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:05 135945781258.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:05 135945781259.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:05 135945781259.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:05 135945781259.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:05 135945781259.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:06 135945781260.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:06 135945781260.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        71 Oct 12 00:06 135945781260.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:06 135945781260.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:06 135945781261.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:06 135945781261.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        72 Oct 12 00:06 135945781261.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:06 135945781261.tag
+-rw-rw----    1 tactiq-agent tactiq-agent       145 Oct 12 00:07 135945781262.attest
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:07 135945781262.msg
+-rw-rw----    1 tactiq-agent tactiq-agent        72 Oct 12 00:07 135945781262.sig
+-rw-r--r--    1 tactiq-agent tactiq-agent        38 Oct 12 00:07 135945781262.tag
+root@tactiq-rock5a:~#
