@@ -201,6 +201,13 @@ jobs:
         run: python3 -m pip install 'jsonschema==4.26.0'
       - name: Run RIM generator tests
         run: python3 tests/rim/test_mk_rim.py
+      - name: Status screen tests
+        # tactiq-status prints what a device reports about itself; the test
+        # runs it against synthetic roots and checks that it never calls a
+        # root dm-verity, IMA on or a PCR read complete when it is not. Run
+        # under dash here; BusyBox, as on the board, by the same script with
+        # TACTIQ_STATUS_TEST_SHELL (see the file).
+        run: python3 tests/status/test_tactiq_status.py
       - name: Run PCR reference tests (bootm path)
         # The RIM takes its values and the slots' command lines from the PCR
         # reference; on the bootm path each slot's devicetree carries its

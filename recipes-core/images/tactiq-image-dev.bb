@@ -73,6 +73,17 @@ IMAGE_INSTALL:append = " audit"
 IMAGE_INSTALL:append = " jq"
 
 # ---------------------------------------------------------------------------
+# Status screen at login
+# ---------------------------------------------------------------------------
+# tactiq-status shows what the device reports about itself when someone logs
+# in on the bench. It ships here only: the production profile has no
+# interactive login path, so there is no one to show it to. A pre-login
+# variant for production would run as a boot service and needs its own
+# SELinux domain to read the TPM and /sys/kernel/security; that is separate
+# work.
+IMAGE_INSTALL:append = " tactiq-status"
+
+# ---------------------------------------------------------------------------
 # Debug tools — enable per bring-up session, never in a release
 # ---------------------------------------------------------------------------
 # IMAGE_INSTALL:append = " strace tcpdump nano less"
