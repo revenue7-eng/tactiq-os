@@ -164,9 +164,18 @@ if [ -e "$R/sys/class/tpm/tpm0" ]; then
         fw2=$(printf '%s\n' "$cap" | sed -n '/TPM2_PT_FIRMWARE_VERSION_2:/,/raw:/s/.*raw: *\(0x[0-9a-fA-F]*\).*/\1/p' | head -n 1)
         [ -n "$mfr" ] && v_tpm="$v_tpm, $mfr"
         if [ -n "$fw1" ] && [ -n "$fw2" ]; then
-            # TPM2_PT_FIRMWARE_VERSION_1/2: major.minor in the high and low
-            # 16 bits of the first word, the build in the second word.
-            v_tpm="$v_tpm, firmware $(( fw1 >> 16 )).$(( fw1 & 0xffff )).$(( fw2 >> 16 )).$(( fw2 & 0xffff ))"
+            # TPM2_PT_FIRMWARE_VERSION_1 carries major.minor in its high and
+            # low 16 bits on every vendor. VERSION_2 is vendor-defined: on
+            # Infineon the build sits in the middle two bytes and the last
+            # byte is a separate field (0x004CEB02 is 19691.2). Other vendors
+            # get the raw word rather than a guessed split.
+            fwv="$(( fw1 >> 16 )).$(( fw1 & 0xffff ))"
+            if [ "$mfr" = "IFX" ]; then
+                fwv="$fwv.$(( (fw2 >> 8) & 0xffff )).$(( fw2 & 0xff ))"
+            else
+                fwv="$fwv ($fw2)"
+            fi
+            v_tpm="$v_tpm, firmware $fwv"
         fi
     fi
     if command -v tpm2_pcrread >/dev/null 2>&1; then

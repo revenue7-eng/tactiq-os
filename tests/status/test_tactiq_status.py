@@ -72,7 +72,7 @@ TPM2_PT_MANUFACTURER:
 TPM2_PT_FIRMWARE_VERSION_1:
   raw: 0x70057
 TPM2_PT_FIRMWARE_VERSION_2:
-  raw: 0x4CEB0002
+  raw: 0x4CEB02
 """
 
 def envelope(stem, empty=(), missing=()):
@@ -217,7 +217,7 @@ def main():
     check(field(out, "root") == 'dm-verity, dm-0 "rootfs" (as booted)', "release: verity root recognised")
     check(field(out, "selinux") == "enforcing", "release: selinux enforcing")
     check(field(out, "ima") == "off (no rules loaded)", "release: empty IMA policy reads as off")
-    check(field(out, "tpm") == "present, TPM 2.0, IFX, firmware 7.87.19691.2", "release: tpm manufacturer and firmware decoded")
+    check(field(out, "tpm") == "present, TPM 2.0, IFX, firmware 7.87.19691.2", "release: Infineon firmware decoded (build in the middle bytes)")
     d = hashlib.sha256(PCR_BYTES).hexdigest()
     check(field(out, "pcr 0-9") == f"sha256 {d[:12]}...{d[-12:]}", "release: PCR composite is sha256 over 320 bytes")
     check(field(out, "agent") == "active, envelopes: 2 complete, 2 incomplete, 1 .part",
