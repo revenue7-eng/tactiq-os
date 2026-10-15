@@ -1,0 +1,274 @@
+#!/bin/sh
+# tactiq-status: print what this device reports about its own boot and
+# integrity state, under the TactiQ monogram.
+#
+# Every line is read from the running system at the moment the command runs;
+# nothing is fixed at build time except the release identity, which the image
+# itself writes to /etc/tactiq-release. Where a value cannot be read, the line
+# says so instead of guessing.
+#
+# This is a self-report. The device describes itself, and a compromised device
+# could describe itself the same way. The last line of the screen says where
+# the claim is checked: outside the device, against the signed release set
+# (VERIFY-L3). Do not change the screen to say "verified" or "secure": the
+# screen cannot know that, and the published known issues of each release say
+# what has and has not been observed.
+#
+# Wording rules for the lines below:
+#   root     "dm-verity" is printed only when the kernel command line creates
+#            a verity target and root= names the device-mapper device that
+#            target became. That is how the device was told to boot. Refusal of
+#            a modified root is a separate, recorded test, not a status line.
+#   ima      the loaded policy is counted rule by rule; zero rules is printed
+#            as "off", which is how the release image ships.
+#   pcr      the composite is SHA-256 over PCR 0..9 of the sha256 bank in
+#            index order, the same construction as the pcrDigest of a TPM2
+#            quote over that selection. It identifies the measured boot state;
+#            it is not compared with anything here.
+#
+# Options and environment:
+#   --plain            no colour, ASCII monogram
+#   NO_COLOR           (any value) no colour
+#   TACTIQ_STATUS_ROOT prefix for /proc, /sys, /etc, /data (tests only)
+#
+# Exit status is 0 even when lines are unreadable: this is a display, not a
+# check, and must not be used as one.
+
+R="${TACTIQ_STATUS_ROOT:-}"
+PLAIN=0
+[ "${1:-}" = "--plain" ] && PLAIN=1
+
+if [ "$PLAIN" = 0 ] && [ -z "${NO_COLOR+x}" ] && [ -t 1 ]; then
+    # Brand colours on a dark terminal (brandbook, 06.10.2026): the monogram
+    # in "orange on dark" #F57A35, values in "light ground" #F3F1EC, labels
+    # dim. Graphite #141A22 is the dark ground itself, so it is not used for
+    # text here. 24-bit colour when the terminal says it supports it;
+    # otherwise the nearest xterm-256 entries (209 and 255). The kernel
+    # console and a serial line usually announce nothing, so they get 256.
+    case "${COLORTERM:-}" in
+        truecolor|24bit)
+            C_MARK=$(printf '\033[38;2;245;122;53m')
+            C_VAL=$(printf '\033[1;38;2;243;241;236m') ;;
+        *)
+            C_MARK=$(printf '\033[38;5;209m')
+            C_VAL=$(printf '\033[1;38;5;255m') ;;
+    esac
+    C_LBL=$(printf '\033[2m')
+    C_WARN=$C_MARK
+    C_OFF=$(printf '\033[0m')
+else
+    C_MARK=''; C_LBL=''; C_VAL=''; C_WARN=''; C_OFF=''
+fi
+
+CMDLINE=$(cat "$R/proc/cmdline" 2>/dev/null)
+
+# cmdline_arg NAME: value of NAME= on the kernel command line, or empty.
+cmdline_arg() {
+    printf '%s\n' "$CMDLINE" | tr ' ' '\n' | sed -n "s/^$1=//p" | head -n 1
+}
+
+# release_field NAME: value of NAME= in /etc/tactiq-release, or empty.
+release_field() {
+    sed -n "s/^$1=//p" "$R/etc/tactiq-release" 2>/dev/null | head -n 1
+}
+
+# --- release ---------------------------------------------------------------
+rel_tag=$(release_field TACTIQ_META_TACTIQ_GIT)
+rel_img=$(release_field TACTIQ_IMAGE_NAME)
+rel_ver=$(release_field TACTIQ_OS_VERSION)
+if [ -n "$rel_tag" ]; then
+    v_release="TactiQ OS $rel_tag"
+    [ -n "$rel_img" ] && v_release="$v_release ($rel_img)"
+elif [ -n "$rel_ver" ]; then
+    v_release="TactiQ OS $rel_ver (no release tag recorded)"
+else
+    v_release="unknown: /etc/tactiq-release not readable"
+fi
+
+# --- board -----------------------------------------------------------------
+# 2>/dev/null before the input redirection: redirections apply left to
+# right, and a missing file would otherwise be reported on stderr.
+v_board=$(tr -d '\000' 2>/dev/null < "$R/proc/device-tree/model")
+[ -n "$v_board" ] || v_board="unknown: no devicetree model"
+
+# --- slot ------------------------------------------------------------------
+v_slot=$(cmdline_arg rauc.slot)
+[ -n "$v_slot" ] || v_slot="not on command line"
+
+# --- root ------------------------------------------------------------------
+# dm-mod.create="<name>,<uuid>,<minor>,<flags>,<table>". The table of a
+# verity target reads "<start> <len> verity ...". The value is quoted and
+# contains spaces, so it is cut from the raw command line, not tokenised.
+dm_create=$(printf '%s\n' "$CMDLINE" | sed -n 's/.*dm-mod\.create="\([^"]*\)".*/\1/p')
+dm_name=$(printf '%s\n' "$dm_create" | cut -d, -f1)
+dm_table=$(printf '%s\n' "$dm_create" | cut -d, -f5-)
+root_arg=$(cmdline_arg root)
+case "$root_arg" in
+    /dev/dm-*)
+        dm_dev=${root_arg#/dev/}
+        sys_name=$(cat "$R/sys/block/$dm_dev/dm/name" 2>/dev/null)
+        if [ -n "$dm_name" ] && [ "$sys_name" = "$dm_name" ] \
+            && printf '%s\n' "$dm_table" | grep -q '^[0-9][0-9]* [0-9][0-9]* verity '; then
+            v_root="dm-verity, $dm_dev \"$dm_name\" (as booted)"
+        elif [ -n "$sys_name" ]; then
+            v_root="device-mapper $dm_dev \"$sys_name\", target type not established"
+        else
+            v_root="$root_arg, not present in /sys"
+        fi
+        ;;
+    "") v_root="no root= on command line" ;;
+    *)  v_root="$root_arg, no device-mapper" ;;
+esac
+
+# --- selinux ---------------------------------------------------------------
+if [ -r "$R/sys/fs/selinux/enforce" ]; then
+    case "$(cat "$R/sys/fs/selinux/enforce" 2>/dev/null)" in
+        1) v_selinux="enforcing" ;;
+        0) v_selinux="permissive" ;;
+        *) v_selinux="unknown value in /sys/fs/selinux/enforce" ;;
+    esac
+else
+    v_selinux="disabled or not mounted"
+fi
+
+# --- ima -------------------------------------------------------------------
+P="$R/sys/kernel/security/ima/policy"
+if [ -r "$P" ]; then
+    n_app=$(grep -c '^appraise ' "$P" 2>/dev/null)
+    n_mea=$(grep -c '^measure ' "$P" 2>/dev/null)
+    n_app=${n_app:-0}; n_mea=${n_mea:-0}
+    if [ "$n_app" -eq 0 ] && [ "$n_mea" -eq 0 ]; then
+        v_ima="off (no rules loaded)"
+    else
+        v_ima="policy: measure $n_mea, appraise $n_app"
+        n_log=$(cat "$R/sys/kernel/security/ima/runtime_measurements_count" 2>/dev/null)
+        [ -n "$n_log" ] && v_ima="$v_ima, $n_log entries measured"
+    fi
+    ia=$(cmdline_arg ima_appraise)
+    [ -n "$ia" ] && v_ima="$v_ima, ima_appraise=$ia"
+elif [ -e "$P" ]; then
+    v_ima="policy not readable by this user"
+else
+    v_ima="no IMA interface"
+fi
+
+# --- tpm -------------------------------------------------------------------
+v_pcr=''
+if [ -e "$R/sys/class/tpm/tpm0" ]; then
+    maj=$(cat "$R/sys/class/tpm/tpm0/tpm_version_major" 2>/dev/null)
+    v_tpm="present${maj:+, TPM $maj.0}"
+    if command -v tpm2_getcap >/dev/null 2>&1; then
+        cap=$(tpm2_getcap properties-fixed 2>/dev/null)
+        mfr=$(printf '%s\n' "$cap" | sed -n '/TPM2_PT_MANUFACTURER:/,/value:/s/.*value: *"\(.*\)".*/\1/p' | head -n 1)
+        fw1=$(printf '%s\n' "$cap" | sed -n '/TPM2_PT_FIRMWARE_VERSION_1:/,/raw:/s/.*raw: *\(0x[0-9a-fA-F]*\).*/\1/p' | head -n 1)
+        fw2=$(printf '%s\n' "$cap" | sed -n '/TPM2_PT_FIRMWARE_VERSION_2:/,/raw:/s/.*raw: *\(0x[0-9a-fA-F]*\).*/\1/p' | head -n 1)
+        [ -n "$mfr" ] && v_tpm="$v_tpm, $mfr"
+        if [ -n "$fw1" ] && [ -n "$fw2" ]; then
+            # TPM2_PT_FIRMWARE_VERSION_1/2: major.minor in the high and low
+            # 16 bits of the first word, the build in the second word.
+            v_tpm="$v_tpm, firmware $(( fw1 >> 16 )).$(( fw1 & 0xffff )).$(( fw2 >> 16 )).$(( fw2 & 0xffff ))"
+        fi
+    fi
+    if command -v tpm2_pcrread >/dev/null 2>&1; then
+        tmp=$(mktemp 2>/dev/null) || tmp=''
+        if [ -n "$tmp" ] && tpm2_pcrread -Q -o "$tmp" sha256:0,1,2,3,4,5,6,7,8,9 >/dev/null 2>&1 \
+            && [ "$(wc -c < "$tmp")" -eq 320 ]; then
+            d=$(sha256sum "$tmp" | cut -c1-64)
+            v_pcr="$(printf '%s' "$d" | cut -c1-12)...$(printf '%s' "$d" | cut -c53-64)"
+        else
+            v_pcr="not readable"
+        fi
+        [ -n "$tmp" ] && rm -f "$tmp"
+    else
+        v_pcr="tpm2_pcrread not installed"
+    fi
+else
+    v_tpm="not found"
+fi
+
+# --- agent -----------------------------------------------------------------
+if command -v systemctl >/dev/null 2>&1; then
+    v_agent=$(systemctl is-active tactiq-agent 2>/dev/null)
+    [ -n "$v_agent" ] || v_agent="unknown"
+else
+    v_agent="unknown: no systemctl"
+fi
+A="$R/data/tactiq/audit"
+# An envelope is four files under one numeric stem: .attest, .msg, .sig and
+# .tag. From tactiq-attest d2f6efc the agent writes each as <file>.part,
+# renames it into place and writes .tag last (measurements/
+# agent-envelope-rename-20261014.md), so a stem with all four non-empty is
+# complete. Anything else under a final name is counted as incomplete: an
+# older agent left zero-length files after a power cut (rc14 known issue
+# agent-envelope-not-atomic). Leftover .part files are counted on their own;
+# the next write removes them.
+if [ -d "$A" ] && [ -r "$A" ] && [ -x "$A" ]; then
+    n_ok=0; n_bad=0
+    stems=$(for f in "$A"/*.attest "$A"/*.msg "$A"/*.sig "$A"/*.tag; do
+        [ -f "$f" ] || continue
+        b=${f##*/}; printf '%s\n' "${b%.*}"
+    done | sort -u)
+    for st in $stems; do
+        if [ -s "$A/$st.attest" ] && [ -s "$A/$st.msg" ] \
+            && [ -s "$A/$st.sig" ] && [ -s "$A/$st.tag" ]; then
+            n_ok=$((n_ok + 1))
+        else
+            n_bad=$((n_bad + 1))
+        fi
+    done
+    n_part=0
+    for f in "$A"/*.part; do
+        [ -f "$f" ] && n_part=$((n_part + 1))
+    done
+    v_env="$n_ok complete"
+    [ "$n_bad" -gt 0 ] && v_env="$v_env, ${C_WARN}$n_bad incomplete${C_OFF}${C_VAL}"
+    [ "$n_part" -gt 0 ] && v_env="$v_env, $n_part .part"
+elif [ -d "$A" ]; then
+    v_env="not readable by this user"
+else
+    v_env="no audit directory"
+fi
+
+# --- screen ----------------------------------------------------------------
+if [ "$PLAIN" = 1 ] || [ -n "${TACTIQ_STATUS_ASCII+x}" ]; then
+    M1='###########.'
+    M2='   #  #    #'
+    M3='   #  #    #'
+    M4='   #  #   ##'
+    M5='   #   ####.'
+else
+    # The crossbar of the T runs on into the top of the Q.
+    M1='▀▀▀▀▀▀▀▀▀▀▀▄'
+    M2='   █  █    █'
+    M3='   █  █    █'
+    M4='   █  █   ▄█'
+    M5='   ▀   ▀▀▀▀▄'
+fi
+
+M0='            '
+
+line() {
+    # line MONOGRAM LABEL VALUE. The monogram strings are padded to the same
+    # display width by hand: printf pads by bytes, and each block character is
+    # three bytes in UTF-8.
+    printf '  %s%s%s   %s%-8s%s %s%s%s\n' \
+        "$C_MARK" "$1" "$C_OFF" "$C_LBL" "$2" "$C_OFF" "$C_VAL" "$3" "$C_OFF"
+}
+
+echo
+line "$M1" "release" "$v_release"
+line "$M2" "board"   "$v_board"
+line "$M3" "slot"    "$v_slot"
+line "$M4" "root"    "$v_root"
+line "$M5" "selinux" "$v_selinux"
+line "$M0" "ima"     "$v_ima"
+line "$M0" "tpm"     "$v_tpm"
+[ -n "$v_pcr" ] && line "$M0" "pcr 0-9" "sha256 $v_pcr"
+line "$M0" "agent"   "$v_agent, envelopes: $v_env"
+echo
+printf '  %sReported by this device. Check it from outside with VERIFY-L3%s%s\n' \
+    "$C_LBL" "${rel_tag:+ for $rel_tag}" "$C_OFF"
+printf '  %sand the signed release set; this screen is not a verification.%s\n' \
+    "$C_LBL" "$C_OFF"
+echo
+exit 0
