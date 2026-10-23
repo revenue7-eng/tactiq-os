@@ -43,4 +43,4 @@ meta-security        https://git.yoctoproject.org/meta-security           270397
 meta-arm             https://git.yoctoproject.org/meta-arm                673e8d7c5dcd14de58092eb73e6ecc5eee5c1735  wrynose
 meta-rockchip        https://git.yoctoproject.org/meta-rockchip           9d02575bfd9ca5e87c394f593f2bbdbdee914d4e  wrynose
 meta-tensorflow-lite https://github.com/NobuoTsukamoto/meta-tensorflow-lite 1fc5d5d68763ded53b11feac20fd65fbc6700f3b  main
-tactiq-os-selinux    https://github.com/revenue7-eng/tactiq-os-selinux    c3f7044fe3e390dd2c0752324a51feb506aa3eaa  main
+tactiq-os-selinux    https://github.com/revenue7-eng/tactiq-os-selinux    dc49201e8eb395d8cc1239da6e56798702179879  main
