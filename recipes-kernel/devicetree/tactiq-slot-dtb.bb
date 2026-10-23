@@ -1,6 +1,7 @@
 SUMMARY = "Per-slot device trees carrying verity bootargs in /chosen"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
+SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 
 # kernel-fit-image.bbclass keys off this: when a virtual/dtb provider exists it
 # sets EXTERNAL_KERNEL_DEVICETREE to ${RECIPE_SYSROOT}/boot/devicetree itself

@@ -8,6 +8,7 @@ THREAT_MODEL.md, agent network exception."
 HOMEPAGE = "https://github.com/revenue7-eng/tactiq-os"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
+SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 
 # The public half of the permission key. Development default is in pki/dev;
 # a production build must point TACTIQ_NETPERM_PUBKEY outside the tree, and

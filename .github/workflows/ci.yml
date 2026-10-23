@@ -164,6 +164,8 @@ jobs:
                          pki/dev/signer.pem \
             || { echo "::error::pki/dev/signer.pem does not chain to root-ca.pem"; exit 1; }
           echo "rauc keyring posture: OK"
+      - name: SBOM supplier claims (every recipe classified)
+        run: python3 tests/supplier/test_spdx_supplier.py
 
   repro-report-tests:
     name: Reproducibility report tests
