@@ -111,6 +111,8 @@ do_configure() {
         bbfatal "CONFIG_MEASURED_BOOT_LOCK_PLATFORM did not survive olddefconfig: the OS would get the TPM platform hierarchy"
     grep -q '^CONFIG_ENV_FLAGS_LIST_STATIC="BOOT_ORDER:sw,BOOT_A_LEFT:dw,BOOT_B_LEFT:dw"$' ${B}/.config || \
         bbfatal "CONFIG_ENV_FLAGS_LIST_STATIC is not the A/B list: with ENV_WRITEABLE_LIST nothing would be imported from the saved environment"
+    ! grep -q '^CONFIG_NET=y$' ${B}/.config || \
+        bbfatal "CONFIG_NET is still set: net-off.cfg did not apply"
     if [ "${TACTIQ_UBOOT_CONSOLE}" != "1" ]; then
         grep -q '^CONFIG_BOOTDELAY=-2$' ${B}/.config || \
             bbfatal "console lockdown: CONFIG_BOOTDELAY is not -2"
