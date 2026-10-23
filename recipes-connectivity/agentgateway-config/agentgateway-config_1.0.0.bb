@@ -4,6 +4,7 @@ mediator. Shipped as a standalone package, separate from the agentgateway \
 binary, so the configuration is measured by IMA independently of the binary."
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
+SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 
 SRC_URI = "file://config.yaml"
 

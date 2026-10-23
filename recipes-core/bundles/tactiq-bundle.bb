@@ -14,6 +14,7 @@
 # --intermediate, passed through BUNDLE_ARGS.
 
 inherit bundle
+SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 S = "${UNPACKDIR}"
 
 RAUC_BUNDLE_COMPATIBLE = "TactiQ OS Rock5A"
