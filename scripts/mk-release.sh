@@ -281,6 +281,17 @@ if ! python3 "${SCRIPT_DIR}/check-known-issues.py" "${SCRIPT_DIR}/.." "$BOARD" "
 fi
 
 # ---------------------------------------------------------------------------
+# Network-client gate.
+#
+# libcurl, libssh and libnl reached the production image through upstream
+# defaults no TactiQ recipe chose, and were removed (#261, #265, #268).
+# Nothing else would notice one coming back; the manifest says what is
+# installed, so the gate reads it.
+# ---------------------------------------------------------------------------
+echo "==> network clients"
+bash "${SCRIPT_DIR}/check-network-clients.sh" "${DEPLOY}/${PREFIX}.manifest"
+
+# ---------------------------------------------------------------------------
 # Image identity gate.
 #
 # The gate above ties the deploy tree to the tag. This one ties the image to

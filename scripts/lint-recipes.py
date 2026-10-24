@@ -8,11 +8,15 @@ known, as one "<file> <rule> <count>" line per file and rule. Line numbers are
 left out on purpose, so editing a file does not move its known findings.
 
   lint-recipes.py            fail if any file and rule has more errors than
-                             the baseline (a new error), report fixed ones
+                             the baseline (a new error) or fewer (a fixed error
+                             the baseline still lists)
   lint-recipes.py --update   rewrite the baseline from the current tree
 
-A fixed error is not a failure; lower the baseline with --update in the same
-pull request. Warnings and info lines are not gated.
+A fixed error fails too, until the baseline is lowered with --update in the
+same pull request. The baseline then always matches the tree, and a linter
+that stops reporting (a broken install, a changed output format) shows as
+every error "fixed" instead of passing quietly. Warnings and info lines are
+not gated.
 
 Needs: oelint-adv at the version pinned in CI (OELINT_ADV in ci.yml).
 """
@@ -81,10 +85,10 @@ def main():
     for (f, rule), n in sorted(new.items()):
         print(f"NEW    {f} {rule} +{n}")
     for (f, rule), n in sorted(fixed.items()):
-        print(f"FIXED  {f} {rule} -{n} (lower the baseline with --update)")
+        print(f"FIXED  {f} {rule} -{n} (run scripts/lint-recipes.py --update and commit the baseline)")
     print(f"errors: {sum(now.values())} now, {sum(base.values())} in baseline, "
           f"{sum(new.values())} new, {sum(fixed.values())} fixed")
-    return 1 if new else 0
+    return 1 if new or fixed else 0
 
 
 if __name__ == "__main__":
