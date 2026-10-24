@@ -744,7 +744,10 @@ envelopes, the attestation key, the EK certificate and its Infineon
 issuers, and the AK registration record with its signature. This is
 the L3 evidence archive, `l3-evidence-<rcN>.tar.gz`, checked by
 `VERIFY-L3-<rcN>.md` and the script that follows it,
-`verify-l3-<rcN>.sh`.
+`verify-l3.sh`. From `v2.1.0-rc15` every release carries the same
+`scripts/verify-l3.sh` under that name; up to `v2.1.0-rc14` each
+release carried its own `verify-l3-<rcN>.sh`, and those stay in the
+tree unchanged because the releases' `SHA256SUMS` list them.
 
 Up to `v2.1.0-rc13` the archive sat outside the signed set of the
 release: it was not listed in `SHA256SUMS`, and its own list of files
@@ -761,12 +764,12 @@ extended key usage is
 `2.25.303991386130890852620485224389791976682` (critical). It is
 issued and used offline like the other release keys. A verifier checks
 the signature against the release root it has pinned and then the
-purpose of the signer, as in §5.5; `verify-l3-<rcN>.sh` does both.
+purpose of the signer, as in §5.5; `verify-l3.sh` does both.
 This signature rests on the release root and survives adversary A3
 (§7.3).
 
 **Release `SHA256SUMS`.** The archive, `VERIFY-L3-<rcN>.md` and
-`verify-l3-<rcN>.sh` are listed in the release's `SHA256SUMS`, which
+`verify-l3.sh` are listed in the release's `SHA256SUMS`, which
 the release workflow signs with Sigstore. As for the RIM, this gives
 transparency and is not the trust anchor.
 
@@ -783,20 +786,29 @@ release is therefore assembled in this order:
    the signature against the release root and packs the archive into
    `<dir>`. It runs offline, where the key is, and refuses to
    overwrite an existing archive.
-4. `VERIFY-L3-<rcN>.md` and `verify-l3-<rcN>.sh` copied into `<dir>`.
+4. `VERIFY-L3-<rcN>.md` copied into `<dir>`. Step 5 copies
+   `scripts/verify-l3.sh` itself; a copy already in `<dir>` must be
+   identical to the one in the tree, or step 5 refuses.
 5. `scripts/mk-release-sums.sh <tag> <dir>`: checks that the three L3
    files are present and that the archive's list verifies to the
    release root with the Evidence Signer purpose, writes `SHA256SUMS`
-   over everything in `<dir>`, then runs `verify-l3-<rcN>.sh` on the
-   assembled release and removes `SHA256SUMS` again if the script
-   does not exit 0. It writes `SHA256SUMS` once and refuses to
-   overwrite it.
+   over everything in `<dir>`, then runs `verify-l3.sh` with the
+   release tag and board on the assembled release and removes
+   `SHA256SUMS` again if the script does not exit 0. It writes
+   `SHA256SUMS` once and refuses to overwrite it.
 6. The tag and the Sigstore signature over `SHA256SUMS`.
+
+Step 5 reads `BOARD` (default `rock5a`, as for `mk-release.sh`) and,
+for a release under another root, `VERIFY_ROOT_FILE` and
+`VERIFY_ROOT_FP`, plus `VERIFY_EK_ROOT`, `VERIFY_EK_INTERMEDIATE`,
+`VERIFY_EK_ROOT_FP` and `VERIFY_TPM_FW_MIN` for another EK chain; it
+passes them to `verify-l3.sh` as the matching options. Unset, the
+values are those of the TactiQ AI release.
 
 `ALLOW_NO_L3=1` lets step 5 run without the L3 files, for testing the
 mechanics only; its output is not a valid release.
 
-`verify-l3-<rcN>.sh` checks that the archive, the RIM and the script
+`verify-l3.sh` checks that the archive, the RIM and the script
 itself match their lines in `SHA256SUMS`. It does not check the
 Sigstore signature over `SHA256SUMS`; `scripts/verify-release.sh`
 does, and the L3 script says so in a NOT ESTABLISHED line.
