@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""lint-recipes.py: oelint-adv over every recipe and append, against a baseline.
+
+The recipe lint used to run with --fix on two directories and could not fail.
+This runs on every .bb and .bbappend in the repository and compares the
+errors with tests/lint/oelint-baseline.txt, which records the errors already
+known, as one "<file> <rule> <count>" line per file and rule. Line numbers are
+left out on purpose, so editing a file does not move its known findings.
+
+  lint-recipes.py            fail if any file and rule has more errors than
+                             the baseline (a new error), report fixed ones
+  lint-recipes.py --update   rewrite the baseline from the current tree
+
+A fixed error is not a failure; lower the baseline with --update in the same
+pull request. Warnings and info lines are not gated.
+
+Needs: oelint-adv at the version pinned in CI (OELINT_ADV in ci.yml).
+"""
+import collections
+import os
+import re
+import subprocess
+import sys
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASELINE = os.path.join(ROOT, "tests", "lint", "oelint-baseline.txt")
+LINE = re.compile(r"^(?P<file>.+?):\d+:error:(?P<rule>[^:]+):")
+
+
+def recipes():
+    out = []
+    for d, dirs, files in os.walk(ROOT):
+        dirs[:] = [x for x in dirs if not x.startswith(".") and x != "tests"]
+        out += [os.path.join(d, f) for f in files if f.endswith((".bb", ".bbappend"))]
+    return sorted(out)
+
+
+def current():
+    p = subprocess.run(["oelint-adv", "--quiet", *recipes()],
+                       capture_output=True, text=True, cwd=ROOT, check=False)
+    counts = collections.Counter()
+    for line in (p.stdout + p.stderr).splitlines():
+        m = LINE.match(line)
+        if m:
+            f = os.path.relpath(os.path.abspath(os.path.join(ROOT, m["file"])), ROOT)
+            counts[(f, m["rule"])] += 1
+    if not counts and p.returncode not in (0, 1):
+        sys.exit(f"lint-recipes: oelint-adv failed (exit {p.returncode}):\n{p.stderr}")
+    return counts
+
+
+def load():
+    counts = collections.Counter()
+    if os.path.exists(BASELINE):
+        with open(BASELINE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    path, rule, n = line.split()
+                    counts[(path, rule)] = int(n)
+    return counts
+
+
+def save(counts):
+    with open(BASELINE, "w", encoding="utf-8") as out:
+        out.write("# Known oelint-adv errors: <file> <rule> <count>. "
+                  "Regenerate with scripts/lint-recipes.py --update.\n")
+        for (f, rule), n in sorted(counts.items()):
+            out.write(f"{f} {rule} {n}\n")
+
+
+def main():
+    now = current()
+    if "--update" in sys.argv[1:]:
+        save(now)
+        print(f"baseline written: {sum(now.values())} errors in {len(now)} file/rule pairs")
+        return 0
+    base = load()
+    new = {k: n - base[k] for k, n in now.items() if n > base[k]}
+    fixed = {k: base[k] - now[k] for k in base if now[k] < base[k]}
+    for (f, rule), n in sorted(new.items()):
+        print(f"NEW    {f} {rule} +{n}")
+    for (f, rule), n in sorted(fixed.items()):
+        print(f"FIXED  {f} {rule} -{n} (lower the baseline with --update)")
+    print(f"errors: {sum(now.values())} now, {sum(base.values())} in baseline, "
+          f"{sum(new.values())} new, {sum(fixed.values())} fixed")
+    return 1 if new else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
