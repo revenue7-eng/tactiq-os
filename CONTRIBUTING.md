@@ -93,8 +93,10 @@ Reviewers are assigned from `CODEOWNERS`.
 
 Commit messages and pull request descriptions carry no assistant
 attribution: no `Co-authored-by` trailer naming an AI assistant, no
-session link, no "Generated with" line. The author of a commit is the
-person who answers for it. `scripts/check-attribution.sh` enforces this
+session link, no "Generated with" line. AI assistants are used in
+development. They are not named in commits; the person who commits
+answers for the change, and release notes state that assistants were
+used. `scripts/check-attribution.sh` enforces the commit rule
 in CI on the commits and the description of every pull request. To run
 the same check before each commit:
 
