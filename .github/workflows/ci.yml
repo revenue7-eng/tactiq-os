@@ -33,6 +33,21 @@ jobs:
             | xargs oelint-adv --quiet --fix --nofix=oelint.file.patchsignedoff \
             || echo "oelint-adv reported findings (non-fatal in CI bootstrap)"
 
+  commit-attribution:
+    name: No assistant attribution
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Commit messages of this pull request
+        run: bash scripts/check-attribution.sh --range "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+      - name: Pull request body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s\n' "$PR_BODY" | bash scripts/check-attribution.sh --stdin
+
   shellcheck:
     name: Shellcheck scripts
     runs-on: ubuntu-24.04

@@ -89,6 +89,20 @@ unverified change described as verified is not.
 
 Reviewers are assigned from `CODEOWNERS`.
 
+### Commit metadata
+
+Commit messages and pull request descriptions carry no assistant
+attribution: no `Co-authored-by` trailer naming an AI assistant, no
+session link, no "Generated with" line. The author of a commit is the
+person who answers for it. `scripts/check-attribution.sh` enforces this
+in CI on the commits and the description of every pull request. To run
+the same check before each commit:
+
+```
+printf '#!/bin/sh\nexec bash "$(git rev-parse --show-toplevel)/scripts/check-attribution.sh" --file "$1"\n' > .git/hooks/commit-msg
+chmod +x .git/hooks/commit-msg
+```
+
 ### Patches sent as files
 
 Patches are applied with `git am`, which refuses loudly when the tree
