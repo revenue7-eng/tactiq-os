@@ -44,6 +44,13 @@ generated into a directory outside the repository, on encrypted media:
 ./gen-pki.sh prod DIR first, then ima-prod, fit-prod and modsign-prod into
 the same DIR (see the header of gen-pki.sh).
 
+Another operator issues the same hierarchy under their own name with
+PKI_ORG (the O= of every certificate), PKI_PREFIX (replaces the leading
+"TactiQ OS" or "TactiQ" of every CN) and PKI_HOLDER (the name in the prod
+Signer CN). Unset, the names are exactly as above. The key usages and the
+EKU OIDs do not change, so scripts/verify-l3.sh checks such a release with
+--root-file and --root-fp pointing at that operator's root.
+
 The dev bundle signer leaf (signer.pem) is valid for 90 days. Renew it with
 ./gen-pki.sh signer: it reissues signer.pem and signer.key.pem from the
 existing dev Signing CA and leaves root-ca.pem and signing-ca.pem untouched,
