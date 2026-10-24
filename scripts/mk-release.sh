@@ -69,6 +69,11 @@
 #                        or the bundle is not the pinned release key (see
 #                        "Release key pins" below). For mechanics testing
 #                        ONLY; the output is NOT a valid release.
+#   ALLOW_CMDLINE_MISMATCH=1  let IMAGE=tactiq-image go when the kernel
+#                        command line of a slot differs from
+#                        security/cmdline-<board>.json (see "Kernel command
+#                        line" below). For mechanics testing ONLY; the output
+#                        is NOT a valid release.
 #   ALLOW_UNTAGGED_MANIFEST=1  let IMAGE=tactiq-image take the coverage
 #                        manifest from the working tree when the tag is
 #                        absent or the working copy differs from the tagged
@@ -510,6 +515,28 @@ python3 mk-pcr-reference.py \
 BOOT_PATH="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("boot_path",""))' "pcr-reference-${BOARD}.json")"
 [[ "$BOOT_PATH" == "bootm" ]] || { echo "::error:: pcr-reference-${BOARD}.json describes boot path '${BOOT_PATH}', expected bootm." >&2; exit 1; }
 echo "    + pcr-reference-${BOARD}.json  (bootm path)"
+
+# ---------------------------------------------------------------------------
+# Kernel command line. rc10 shipped with ima_appraise=enforce because it was
+# cut from a bench tree whose local.conf appended a development override; the
+# configuration was never visible in the tree, only in the artefact. So the
+# artefact is what is checked: the /chosen bootargs of every slot, as recorded
+# above from the signed FIT, must equal security/cmdline-${BOARD}.json word
+# for word (the dm-verity table by form). Anything not named there is refused.
+# ---------------------------------------------------------------------------
+if [[ "$IMAGE" == "tactiq-image" ]]; then
+    echo "==> kernel command line"
+    CMDLINE_REF="${SCRIPT_DIR}/../security/cmdline-${BOARD}.json"
+    [[ -f "$CMDLINE_REF" ]] || { echo "::error:: no expected command line for ${BOARD}: ${CMDLINE_REF}" >&2; exit 1; }
+    if ! python3 "${SCRIPT_DIR}/check-release-cmdline.py" --reference "$CMDLINE_REF" --pcr "pcr-reference-${BOARD}.json"; then
+        if [[ "${ALLOW_CMDLINE_MISMATCH:-0}" == 1 ]]; then
+            echo "::warning:: kernel command line differs from security/cmdline-${BOARD}.json (ALLOW_CMDLINE_MISMATCH=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+        else
+            echo "::error:: kernel command line differs from security/cmdline-${BOARD}.json; see above." >&2
+            exit 1
+        fi
+    fi
+fi
 
 FIT_KEY="$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1]))["components"]["fit_key_name_hint"]))' "pcr-reference-${BOARD}.json")"
 echo "    FIT signed with: ${FIT_KEY}"

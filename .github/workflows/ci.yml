@@ -94,6 +94,27 @@ jobs:
             || { echo "::error::sbom-cve-check not enabled (wrynose: cve-check class removed)"; exit 1; }
           echo "distro config sanity: OK"
 
+      - name: Assert no hidden command-line override
+        run: |
+          set -e
+          # The tactiq-dev-policy override was removed after it shipped
+          # ima_appraise=enforce in rc10 from a local.conf. Comments may
+          # still name it; no configuration line may use it again.
+          hits=$(grep -rnE '^[^#]*tactiq-dev-policy' \
+                   --include='*.conf' --include='*.conf.in' --include='*.inc' \
+                   --include='*.bb' --include='*.bbappend' --include='*.bbclass' \
+                   --exclude-dir=docs --exclude-dir=.git . || true)
+          if [ -n "$hits" ]; then
+            echo "::error::tactiq-dev-policy is used again; the release command line is pinned in security/cmdline-*.json instead:"
+            echo "$hits"
+            exit 1
+          fi
+          python3 -c 'import json,glob; [json.load(open(f)) for f in glob.glob("security/cmdline-*.json")]'
+          echo "no hidden command-line override: OK"
+
+      - name: Release command-line check tests
+        run: python3 tests/cmdline/test_check_release_cmdline.py
+
       - name: Assert production image profile is hardened
         run: |
           set -e
