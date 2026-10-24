@@ -1,0 +1,59 @@
+Drop tpm2_getekcertificate and the libcurl dependency
+
+tpm2_getekcertificate fetches an EK certificate from the TPM vendor over
+HTTP. It is the only tool that uses libcurl, but configure makes libcurl
+mandatory and every tool is linked into the single tpm2 binary, so the
+library ships with any image that carries tpm2-tools. On a device with no
+network role that is an HTTP client nobody chose.
+
+Remove the tool, its man page and the libcurl check. All other tools are
+unchanged.
+
+Upstream-Status: Inappropriate [TactiQ OS: no network client in the image]
+
+--- a/configure.ac
++++ b/configure.ac
+@@ -86,7 +86,6 @@
+         AC_DEFINE([HAVE_FAPI_DIGEST_AND_SIGN], [1], [Support signing with restricted keys])],
+         [])
+ LIBS="${LIBS_save}"
+-PKG_CHECK_MODULES([CURL], [libcurl])
+ 
+ # pretty print of devicepath if efivar library is present
+ # auto detect if not specified via the --with-efivar option.
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -17,7 +17,7 @@
+ AM_CFLAGS := \
+     $(INCLUDE_DIRS) $(EXTRA_CFLAGS) $(TSS2_ESYS_CFLAGS) $(TSS2_MU_CFLAGS) \
+     $(CRYPTO_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(TSS2_TCTILDR_CFLAGS) \
+-    $(TSS2_RC_CFLAGS) $(TSS2_SYS_CFLAGS) $(CURL_CFLAGS)
++    $(TSS2_RC_CFLAGS) $(TSS2_SYS_CFLAGS)
+ 
+ AM_LDFLAGS   := $(EXTRA_LDFLAGS) $(CODE_COVERAGE_LIBS)
+ 
+@@ -92,7 +92,7 @@
+ 
+ # Bundle all the tools into a single program similar to busybox
+ bin_PROGRAMS += tools/tpm2
+-tools_tpm2_LDADD = $(LDADD) $(CURL_LIBS)
++tools_tpm2_LDADD = $(LDADD)
+ tools_tpm2_CFLAGS = $(AM_CFLAGS) -DTPM2_TOOLS_MAX="$(words $(tpm2_tools))"
+ tools_tpm2_SOURCES = \
+ 	tools/tpm2_tool.c \
+@@ -128,7 +128,6 @@
+     tools/tpm2_encryptdecrypt.c \
+     tools/tpm2_evictcontrol.c \
+     tools/tpm2_flushcontext.c \
+-    tools/tpm2_getekcertificate.c \
+     tools/tpm2_getrandom.c \
+     tools/tpm2_gettime.c \
+     tools/tpm2_hash.c \
+@@ -397,7 +396,6 @@
+     man/man1/tpm2_eventlog.1 \
+     man/man1/tpm2_evictcontrol.1 \
+     man/man1/tpm2_flushcontext.1 \
+-    man/man1/tpm2_getekcertificate.1 \
+     man/man1/tpm2_getrandom.1 \
+     man/man1/tpm2_gettestresult.1 \
+     man/man1/tpm2_gettime.1 \
