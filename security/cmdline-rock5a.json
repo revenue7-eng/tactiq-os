@@ -1,0 +1,27 @@
+{
+  "comment": "Expected kernel command line of a production release on the bootm path, per slot. scripts/check-release-cmdline.py compares it with components.slots.*.cmdline of pcr-reference-rock5a.json, which mk-pcr-reference.py reads from /chosen bootargs of each slot's devicetree inside the signed FIT. The dm-mod.create table is checked by form, because its sizes, root hash and salt change with every build; every other word is compared exactly and in order. A change here is a change to what the device boots and goes through review like one.",
+  "board": "rock5a",
+  "slots": {
+    "A": {"device": "/dev/mmcblk0p2"},
+    "B": {"device": "/dev/mmcblk0p4"}
+  },
+  "verity": {
+    "name": "rootfs",
+    "data_block_size": 4096,
+    "hash_block_size": 4096,
+    "hash_algorithm": "sha256",
+    "options": ["ignore_zero_blocks"]
+  },
+  "args": [
+    "root=/dev/dm-0",
+    "ro",
+    "rootwait",
+    "rootfstype=ext4",
+    "earlycon",
+    "panic=5",
+    "console=tty1",
+    "console=ttyS2,1500000n8",
+    "systemd.machine_id=firmware",
+    "rauc.slot={slot}"
+  ]
+}

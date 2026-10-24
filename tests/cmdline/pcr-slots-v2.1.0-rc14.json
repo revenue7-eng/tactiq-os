@@ -1,0 +1,12 @@
+{
+  "components": {
+    "slots": {
+      "A": {
+        "cmdline": "dm-mod.create=\"rootfs,,,ro,0 701288 verity 1 /dev/mmcblk0p2 /dev/mmcblk0p2 4096 4096 87661 87661 sha256 02a7d9becfbd78e297119d9c531dd93e46b5975982efea1a1293254ca57202c9 8a7b98d830ac3bf9daa968b9c322bc1e6d9300c632f8f610be59dd67d2c4d797 1 ignore_zero_blocks\" root=/dev/dm-0 ro rootwait rootfstype=ext4 earlycon panic=5 console=tty1 console=ttyS2,1500000n8 systemd.machine_id=firmware rauc.slot=A"
+      },
+      "B": {
+        "cmdline": "dm-mod.create=\"rootfs,,,ro,0 701288 verity 1 /dev/mmcblk0p4 /dev/mmcblk0p4 4096 4096 87661 87661 sha256 02a7d9becfbd78e297119d9c531dd93e46b5975982efea1a1293254ca57202c9 8a7b98d830ac3bf9daa968b9c322bc1e6d9300c632f8f610be59dd67d2c4d797 1 ignore_zero_blocks\" root=/dev/dm-0 ro rootwait rootfstype=ext4 earlycon panic=5 console=tty1 console=ttyS2,1500000n8 systemd.machine_id=firmware rauc.slot=B"
+      }
+    }
+  }
+}

@@ -81,23 +81,19 @@ UBOOT_LOADADDRESS = "${UBOOT_ENTRYPOINT}"
 # extlinux.conf uses ${rauc_slot} placeholder, resolved at boot time.
 UBOOT_EXTLINUX_KERNEL_ARGS:append = " rauc.slot=__RAUC_SLOT__"
 
-# ---- IMA appraisal: measurement/dev profile only ----
-# Gated on the tactiq-dev-policy override axis, which is set in local.conf
-# (OVERRIDES:append = ":tactiq-dev-policy") and is therefore not under version
-# control. Production (tactiq-image.bb) does not carry the override and gets no
-# IMA appraisal. The mode is a variable so that an enforce boot can be
-# exercised without editing this file: set TACTIQ_IMA_APPRAISE = "enforce"
-# in local.conf. Default log records violations without blocking.
-TACTIQ_IMA_APPRAISE ?= "log"
-UBOOT_EXTLINUX_KERNEL_ARGS:append:tactiq-dev-policy = " ima_appraise=${TACTIQ_IMA_APPRAISE} ima_policy=appraise_tcb"
+# ---- IMA appraisal on the command line: none ----
+# Until 2026-10 a tactiq-dev-policy override, appended in local.conf, added
+# ima_appraise and ima_policy=appraise_tcb here and in TACTIQ_EXTRA_BOOTARGS.
+# It was never visible in the tree, and v2.1.0-rc10 shipped with
+# ima_appraise=enforce from a bench tree that had it on. It was removed. The
+# release command line is pinned in security/cmdline-<board>.json and checked
+# on the artefact by scripts/mk-release.sh.
 
 # ---- FIT boot: per-slot devicetrees carry the kernel command line ----
 # With TACTIQ_BOOT_METHOD = "fit", boot_ab runs bootm on the signed FIT and
 # the command line is /chosen of the slot's devicetree, written by
-# tactiq-slot-dtb.bb with the dm-verity table of TACTIQ_VERITY_IMAGE. The
-# dev-policy IMA arguments reach that command line through
-# TACTIQ_EXTRA_BOOTARGS, not through extlinux. A build of an image other than
-# TACTIQ_VERITY_IMAGE is refused at do_image_bootext4.
+# tactiq-slot-dtb.bb with the dm-verity table of TACTIQ_VERITY_IMAGE, plus
+# TACTIQ_EXTRA_BOOTARGS when a bench build sets it. A build of an image other
+# than TACTIQ_VERITY_IMAGE is refused at do_image_bootext4.
 PREFERRED_PROVIDER_virtual/dtb ?= "tactiq-slot-dtb"
 FIT_CONF_DEFAULT_DTB ?= "${@os.path.basename(d.getVar('KERNEL_DEVICETREE').split()[0])}"
-TACTIQ_EXTRA_BOOTARGS:append:tactiq-dev-policy = " ima_appraise=${TACTIQ_IMA_APPRAISE} ima_policy=appraise_tcb"
