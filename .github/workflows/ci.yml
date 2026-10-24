@@ -22,16 +22,14 @@ jobs:
           python-version: '3.12'
 
       - name: Install oelint-adv
-        run: pip install --upgrade pip oelint-adv
+        # Pinned: the baseline in tests/lint is only comparable with the
+        # version that produced it. Raise both together.
+        run: pip install --upgrade pip 'oelint-adv==9.11.2'
 
-      - name: Lint recipes
-        run: |
-          # Fail on errors; report warnings non-fatally.
-          # --quiet suppresses info lines, keeps actionable output.
-          set -o pipefail
-          find recipes-core recipes-kernel -name '*.bb' -o -name '*.bbappend' \
-            | xargs oelint-adv --quiet --fix --nofix=oelint.file.patchsignedoff \
-            || echo "oelint-adv reported findings (non-fatal in CI bootstrap)"
+      - name: Lint recipes against the baseline
+        # Every .bb and .bbappend, no --fix. Fails on an error that is not in
+        # tests/lint/oelint-baseline.txt; known errors are listed there.
+        run: python3 scripts/lint-recipes.py
 
   commit-attribution:
     name: No assistant attribution
