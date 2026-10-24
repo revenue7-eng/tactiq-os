@@ -40,6 +40,10 @@
 # regsigner-prod, cartsigner-prod and evsigner-prod, whose keys sign a RIM,
 # a registration record, a cartridge or an evidence list outside bitbake.
 #
+# Certificate names default to TactiQ; PKI_ORG, PKI_PREFIX and PKI_HOLDER
+# change them for another operator (see "Names" below the flavour table):
+#   PKI_ORG="Acme" PKI_PREFIX="Acme OS" bash gen-pki.sh prod DIR
+#
 # Hierarchy (both flavours):
 #   Root CA  ->  Signing CA  ->  Signer (leaf)
 #
@@ -113,7 +117,8 @@ case "$FLAVOUR" in
     ORG="TactiQ"
     ROOT_CN="TactiQ Release Root CA"
     ICA_CN="TactiQ Release Signing CA"
-    LEAF_CN="TactiQ Release Signer - Andrey"
+    HOLDER="${PKI_HOLDER-Andrey}"
+    LEAF_CN="TactiQ Release Signer${HOLDER:+ - $HOLDER}"
     ENC="-aes-256-cbc"     # passphrase required
     ROOT_DAYS=3650
     ICA_DAYS=1095
@@ -242,9 +247,57 @@ case "$FLAVOUR" in
     echo "       $0 cartsigner-prod CA_DIR DIR" >&2
     echo "       $0 evsigner" >&2
     echo "       $0 evsigner-prod CA_DIR DIR" >&2
+    echo "names: PKI_ORG, PKI_PREFIX, PKI_HOLDER (see the header)" >&2
     exit 1
     ;;
 esac
+
+# Names. Three environment variables let another operator issue a hierarchy
+# under their own name; unset, every subject is exactly as before.
+#   PKI_ORG     replaces O= in every certificate this run issues
+#   PKI_PREFIX  replaces the leading "TactiQ OS" or "TactiQ" of every CN,
+#               so the DEVELOPMENT / NOT FOR PRODUCTION markers stay
+#   PKI_HOLDER  the name after " - " in the prod Signer CN (default Andrey;
+#               set it empty to leave the name out)
+# Nothing in the build or in the verifiers matches on these names: devices
+# and verifiers pin keys and fingerprints, and verify-l3.sh takes the root
+# fingerprint as --root-fp.
+pki_name_ok() {
+  case "$2" in
+    "")       echo "ERROR: $1 is set but empty." >&2; exit 1 ;;
+    *[/\\=+,\"]*) echo "ERROR: $1 must not contain / \\ = + , or a double quote: $2" >&2; exit 1 ;;
+  esac
+  if printf '%s' "$2" | LC_ALL=C grep -q '[^ -~]'; then
+    echo "ERROR: $1: printable ASCII only: $2" >&2; exit 1
+  fi
+}
+pki_rename() {
+  local cn="$1"
+  case "$cn" in
+    "TactiQ OS "*) cn="${cn#TactiQ OS }" ;;
+    "TactiQ "*)    cn="${cn#TactiQ }" ;;
+  esac
+  printf '%s %s' "$PKI_PREFIX" "$cn"
+}
+if [ -n "${PKI_ORG+x}" ]; then
+  pki_name_ok PKI_ORG "$PKI_ORG"
+  ORG="$PKI_ORG"
+fi
+if [ -n "${PKI_HOLDER:-}" ]; then
+  pki_name_ok PKI_HOLDER "$PKI_HOLDER"
+fi
+if [ -n "${PKI_PREFIX+x}" ]; then
+  pki_name_ok PKI_PREFIX "$PKI_PREFIX"
+  LEAF_CN="$(pki_rename "$LEAF_CN")"
+  [ -n "${ROOT_CN:-}" ] && ROOT_CN="$(pki_rename "$ROOT_CN")"
+  [ -n "${ICA_CN:-}" ]  && ICA_CN="$(pki_rename "$ICA_CN")"
+fi
+for cn in "${ROOT_CN:-}" "${ICA_CN:-}" "$LEAF_CN" "$ORG"; do
+  if [ "${#cn}" -gt 64 ]; then
+    echo "ERROR: name longer than 64 characters (X.509 upper bound): $cn" >&2
+    exit 1
+  fi
+done
 
 # Release flavours: DIR is mandatory and must be outside the repository.
 case "$FLAVOUR" in
