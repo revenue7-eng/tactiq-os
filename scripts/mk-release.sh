@@ -776,5 +776,5 @@ else
 fi
 echo "==> artifacts done: ${OUT}  (tag ${TAG}); no SHA256SUMS yet"
 echo "    next: release image on the reference device, scripts/mk-l3-evidence.sh,"
-echo "    VERIFY-L3 page and script into ${OUT}, then scripts/mk-release-sums.sh"
+echo "    VERIFY-L3 page into ${OUT}, then scripts/mk-release-sums.sh"
 ls -la "$OUT"
