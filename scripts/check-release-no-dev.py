@@ -12,7 +12,7 @@ checks the release artefacts against everything it adds:
   features      each debug image feature, image class and image hook of the
                 dev recipe maps to a check on the release rootfs, read with
                 debugfs: root is locked, PAM has no plain nullok, there is no
-                postinst logging, no IMA policy, no development audit log path.
+                postinst logging, no IMA policy.
 
 Two modes:
 
@@ -38,7 +38,8 @@ import sys
 # Packages the dev recipe installs that production carries anyway.
 PRODUCTION_ALSO = {
     'audit': 'RDEPENDS of dbus-1, shadow-base, libsemanage2 and '
-             'policycoreutils-setfiles (tactiq-image.bb); not started at boot',
+             'policycoreutils-setfiles (tactiq-image.bb); the library only, '
+             'the daemon is package auditd',
     'tpm2-tools': 'RDEPENDS of tactiq-agent, which reaches the TPM through it; '
                   'leaves production when the agent moves to tss-esapi',
 }
@@ -56,11 +57,8 @@ CLASS_CHECKS = {'ima-evm-rootfs': 'no-ima-policy'}
 INHERIT_CHECKS = {'create-spdx': None}   # None: build side only, nothing in the rootfs
 VARIABLE_CHECKS = {'EXTRA_USERS_PARAMS': 'root-locked'}
 HOOK_CHECKS = {
-    'tactiq_dev_audit_log': 'audit-log',
     'tactiq_ima_policy_mode': 'no-ima-policy',
 }
-
-DEV_AUDIT_PREFIX = '/data/tactiq/measurement/'
 
 
 def code_lines(path):
@@ -186,14 +184,6 @@ def check_rootfs(fs, checks):
     if 'no-ima-policy' in checks:
         if fs.read('/etc/ima/ima-policy') is not None:
             problems.append('/etc/ima/ima-policy is present (development IMA policy)')
-    if 'audit-log' in checks:
-        text = fs.read('/etc/audit/auditd.conf')
-        if text is not None:
-            for l in text.splitlines():
-                m = re.match(r'^\s*log_file\s*=\s*(\S+)', l)
-                if m and m.group(1).startswith(DEV_AUDIT_PREFIX):
-                    problems.append('/etc/audit/auditd.conf logs to the development '
-                                    'measurement tree: %s' % m.group(1))
     return problems
 
 

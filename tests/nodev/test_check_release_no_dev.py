@@ -68,7 +68,7 @@ class NoDevTest(unittest.TestCase):
         for p in ('openssh-sshd', 'jq', 'tactiq-status', 'libtss2-tcti-mssim', 'curl'):
             self.assertIn(p, self.dev['packages'])
         self.assertEqual(self.checks, {'root-locked', 'pam-nullok', 'postinst-logging',
-                                       'no-ima-policy', 'audit-log'})
+                                       'no-ima-policy'})
 
     def test_unknown_addition_is_reported(self):
         with tempfile.NamedTemporaryFile('w', suffix='.bb', delete=False) as f:
@@ -120,11 +120,6 @@ class NoDevTest(unittest.TestCase):
 
     def test_ima_policy(self):
         self.refused({'/etc/ima/ima-policy': 'measure func=BPRM_CHECK\n'}, 'ima-policy')
-
-    def test_dev_audit_log(self):
-        self.refused({'/etc/audit/auditd.conf':
-                      'log_file = /data/tactiq/measurement/audit/audit.log\n'},
-                     'measurement tree')
 
 
 if __name__ == '__main__':

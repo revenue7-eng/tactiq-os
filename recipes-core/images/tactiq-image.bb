@@ -144,10 +144,9 @@ IMAGE_INSTALL:append = " \
 # 27.08.2026 against buildhistory depends.dot. Do not attempt to strip it;
 # removing setfiles breaks /data labelling on first boot.
 #
-# Installed is not running: auditd is not started at boot in either profile
-# (recipes-security/audit/audit_%.bbappend), and only the development image
-# redirects its log to /data. In this image an AVC denial is not kept by
-# auditd across a reboot.
+# That package is the library and /etc/libaudit.conf only. The daemon and
+# /etc/audit are the separate package auditd, which this profile does not
+# install: the v2.1.0-rc14 manifest has audit and no auditd.
 #
 # NOT ESTABLISHED: that auditd is configured for this platform — rule set,
 # log persistence across reboot, flash wear bounds. Package presence in the
