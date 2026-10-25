@@ -44,6 +44,17 @@ Environment=TPM2TOOLS_TCTI=device:/dev/tpmrm0
 # built-in default is 0-7, which leaves out the kernel measurements.
 Environment=TACTIQ_PCR_SPEC=sha256:0,1,2,3,4,5,6,7,8,9
 
+# The boot event log in securityfs is 0440 root:root, out of reach of this
+# unprivileged service. A privileged pre-start step ('+') copies it into the
+# runtime directory and hands it to the service user; the agent then keeps one
+# copy per distinct log under /data/tactiq/audit as boot-<sha256>.bios.log, so a
+# verifier can replay PCR 0 to 9 of the envelopes it signs. The '-' keeps a board
+# without the log (or a failed copy) starting normally: the log is supporting
+# evidence, not a precondition of attesting.
+ExecStartPre=-+/bin/cp /sys/kernel/security/tpm0/binary_bios_measurements /run/tactiq-agent/boot.bios.log
+ExecStartPre=-+/bin/chown tactiq-agent:tactiq-agent /run/tactiq-agent/boot.bios.log
+Environment=TACTIQ_BOOT_LOG=/run/tactiq-agent/boot.bios.log
+
 # Resource limits
 MemoryMax=128M
 CPUQuota=25%
