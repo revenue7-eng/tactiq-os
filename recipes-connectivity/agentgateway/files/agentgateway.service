@@ -1,7 +1,11 @@
 [Unit]
 Description=agentgateway MCP/A2A traffic mediation (in-perimeter)
 Documentation=https://github.com/agentgateway/agentgateway
-After=network.target
+After=network.target tactiq-stop.service
+# Every tool call is checked with tactiq-stop first (extAuthz in the config).
+# Wants, not Requires: if the stop service is absent or down the gateway still
+# runs and denies every call (failureMode: deny), which is the safe direction.
+Wants=tactiq-stop.service
 
 [Service]
 Type=simple

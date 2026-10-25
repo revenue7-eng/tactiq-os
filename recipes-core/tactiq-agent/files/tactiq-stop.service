@@ -1,0 +1,86 @@
+[Unit]
+Description=TactiQ agent stop service (extAuthz for agentgateway)
+Documentation=https://github.com/revenue7-eng/tactiq-attest
+# Needs the identity the agent provisioned (device_id, ak.pub).
+After=data-tactiq-dirs.service tactiq-agent.service
+Requires=data-tactiq-dirs.service
+RequiresMountsFor=/data
+# The gateway asks this service before every tool call; start first.
+Before=agentgateway.service
+
+# The service refuses to start until the stop counter is defined
+# (tactiq-stop define) and the gateway config has the extAuthz block it
+# checks. Three failures and it stays down; the gateway then denies every
+# tool call (failureMode: deny), which is the intended direction.
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=/opt/tactiq/bin/tactiq-stop serve
+Restart=on-failure
+RestartSec=10
+
+# Scratch for tpm2-tools output and the operator lock. The binary checks it
+# is not writable by group or others and is owned by its uid or root.
+RuntimeDirectory=tactiq-stop
+RuntimeDirectoryMode=0700
+
+Environment=TPM2TOOLS_TCTI=device:/dev/tpmrm0
+
+MemoryMax=64M
+CPUQuota=25%
+
+# ---------------------------------------------------------------------------
+# Privilege model
+# ---------------------------------------------------------------------------
+# Runs under the agent's user so it can read the identity the agent
+# provisioned (keys/ is 0700 tactiq-agent) without loosening those modes.
+# The boundary between the two is SELinux: tactiq_stop_t reads keys/ and
+# cannot write it, and has no access to the agent's envelopes or counter.
+User=tactiq-agent
+Group=tactiq-agent
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateMounts=yes
+ReadOnlyPaths=/data/tactiq/keys /etc/tactiq/agentgateway
+InaccessiblePaths=-/data/tactiq/audit -/data/tactiq/counter
+ProtectProc=invisible
+ProcSubset=pid
+
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+
+PrivateDevices=yes
+DeviceAllow=/dev/tpmrm0 rw
+BindPaths=/dev/tpmrm0
+
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+# No RemoveIPC: the user is shared with tactiq-agent, and RemoveIPC acts per
+# user, not per unit.
+
+# Listens on loopback, connects nowhere.
+RestrictAddressFamilies=AF_UNIX AF_INET
+IPAddressAllow=localhost
+IPAddressDeny=any
+
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @debug @mount @swap @raw-io @reboot @cpu-emulation @obsolete @module
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

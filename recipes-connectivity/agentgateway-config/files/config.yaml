@@ -41,8 +41,38 @@
 # input — decide then (real stub vs require non-empty perimeter), on evidence.
 # ============================================================================
 
+# STOP CHECK (extAuthz):
+#   Every request on this listener is first sent to tactiq-stop on
+#   127.0.0.1:49318. 2xx lets it through; anything else, or no answer, denies
+#   it (failureMode: deny), and a 403 body (the signed refusal receipt) goes
+#   back to the caller unchanged. The block sits in the listener's policies,
+#   not on a route, so it covers every route, present and future.
+#   Settings tactiq-stop checks before it starts, and why:
+#     - requestTimeout: agentgateway (d204f9c) gives the authorization call
+#       200 ms by default; a signed refusal takes several TPM operations.
+#     - includeRequestBody with an explicit maxRequestBytes: the schema
+#       default is 0, which would send no body; the request digest in a
+#       refusal covers the body as sent, up to this many bytes.
+#     - allowPartialMessage: false, stated explicitly.
+#   tests/agentgateway/test_extauthz_config.py parses this file and fails the
+#   build if any listener lacks this block or any value drifts.
+# ============================================================================
+
 binds:
 - port: 49317
   listeners:
-  - routes:
+  - policies:
+      extAuthz:
+        host: 127.0.0.1:49318
+        protocol:
+          http:
+            path: null
+        failureMode: deny
+        includeRequestBody:
+          maxRequestBytes: 1048576
+          allowPartialMessage: false
+        policies:
+          http:
+            requestTimeout: 5s
+    routes:
     - backends: []

@@ -87,6 +87,18 @@ IMAGE_INSTALL:append = " jq"
 IMAGE_INSTALL:append = " tactiq-status"
 
 # ---------------------------------------------------------------------------
+# Agent stop service (bench step)
+# ---------------------------------------------------------------------------
+# tactiq-stop answers agentgateway's extAuthz before every tool call. It is
+# in the development image first: trip and recover need a shell, which a
+# release image does not give, and the stop counter's write authorization
+# is still the owner hierarchy. It moves to the release image when both are
+# settled. The gateway config (shared by both images) already points at it;
+# in a release image the gateway is disabled with an empty perimeter, and if
+# enabled it would deny every call, since nothing answers on 49318.
+IMAGE_INSTALL:append = " tactiq-stop"
+
+# ---------------------------------------------------------------------------
 # Debug tools — enable per bring-up session, never in a release
 # ---------------------------------------------------------------------------
 # IMAGE_INSTALL:append = " strace tcpdump nano less"
