@@ -25,9 +25,20 @@ root, so a BSP recipe that requires a file from the common layer would
 otherwise fail although BitBake finds it. The finding is dropped only when
 the file exists under one of those roots.
 
+Each recipe is linted in its own oelint-adv process, together with the
+.bbappend files that apply to it; .bbappend files with no recipe in this
+repository are linted per target name. One process over all files is not
+deterministic: oelint-adv hands groups of files to worker processes, and
+state left behind by one group (machine names it learned from a BSP layer,
+for one) changes the findings of the next group in the same worker. Which
+groups share a worker depends on the number of CPUs, so the same tree gave
+different findings on a two-CPU host and on CI. Separate processes keep
+every finding a function of the files it is about.
+
 Needs: oelint-adv at the version pinned in CI (OELINT_ADV in ci.yml).
 """
 import collections
+import concurrent.futures
 import os
 import re
 import subprocess
@@ -35,7 +46,7 @@ import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASELINE = os.path.join(ROOT, "tests", "lint", "oelint-baseline.txt")
-LINE = re.compile(r"^(?P<file>.+?):\d+:error:(?P<rule>[^:]+):")
+LINE = re.compile(r"^(?P<file>.+?):(?P<line>\d+):error:(?P<rule>[^:]+):")
 REQUIRE = re.compile(r"^.+?:\d+:error:oelint\.file\.requirenotfound:'(?P<inc>[^']+)' was not found")
 
 
@@ -62,22 +73,53 @@ def found_along_bbpath(inc, roots):
     return any(os.path.isfile(os.path.join(r, inc)) for r in roots)
 
 
-def current():
-    p = subprocess.run(["oelint-adv", "--quiet", *recipes()],
+def groups(files):
+    """Recipe groups as BitBake applies them: each .bb with the .bbappend
+    files whose name matches it ('%' as a wildcard), and the remaining
+    .bbappend files grouped by the name they append to."""
+    bbs = [f for f in files if f.endswith(".bb")]
+    appends = [f for f in files if f.endswith(".bbappend")]
+    out = {bb: [bb] for bb in bbs}
+    lone = {}
+    for a in appends:
+        stem = os.path.basename(a)[:-len(".bbappend")]
+        pat = re.compile("^" + re.escape(stem).replace("%", ".*") + r"\.bb$")
+        hits = [bb for bb in bbs if pat.match(os.path.basename(bb))]
+        for bb in hits:
+            out[bb].append(a)
+        if not hits:
+            lone.setdefault(stem.replace("%", ""), []).append(a)
+    return sorted(out.values()) + sorted(lone.values())
+
+
+def lint_group(files):
+    p = subprocess.run(["oelint-adv", "--quiet", "--jobs", "1", *files],
                        capture_output=True, text=True, cwd=ROOT, check=False)
-    counts = collections.Counter()
+    if p.returncode not in (0, 1):
+        sys.exit(f"lint-recipes: oelint-adv failed (exit {p.returncode}) on "
+                 f"{' '.join(files)}:\n{p.stderr}")
+    return (p.stdout + p.stderr).splitlines()
+
+
+def current():
+    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 1) as pool:
+        outputs = list(pool.map(lint_group, groups(recipes())))
+    # A file can be reached from several groups: a .bbappend that applies to
+    # several recipes, or a recipe that another one requires. Count a finding
+    # once per file, line and rule. The message text cannot be the key: it
+    # names the group's files in set order, which differs between processes.
+    seen = set()
     roots = layer_roots()
-    for line in (p.stdout + p.stderr).splitlines():
-        r = REQUIRE.match(line)
-        if r and found_along_bbpath(r["inc"], roots):
-            continue
-        m = LINE.match(line)
-        if m:
-            f = os.path.relpath(os.path.abspath(os.path.join(ROOT, m["file"])), ROOT)
-            counts[(f, m["rule"])] += 1
-    if not counts and p.returncode not in (0, 1):
-        sys.exit(f"lint-recipes: oelint-adv failed (exit {p.returncode}):\n{p.stderr}")
-    return counts
+    for out in outputs:
+        for line in out:
+            r = REQUIRE.match(line)
+            if r and found_along_bbpath(r["inc"], roots):
+                continue
+            m = LINE.match(line)
+            if m:
+                f = os.path.relpath(os.path.abspath(os.path.join(ROOT, m["file"])), ROOT)
+                seen.add((f, int(m["line"]), m["rule"]))
+    return collections.Counter((f, rule) for f, _, rule in seen)
 
 
 def load():

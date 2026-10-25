@@ -29,11 +29,12 @@ recipes-core/images/tactiq-boot-image.bb oelint.var.mandatoryvar.HOMEPAGE 1
 recipes-core/images/tactiq-boot-image.bb oelint.vars.dependsappend 1
 recipes-core/images/tactiq-boot-image.bb oelint.vars.inconspaces 1
 recipes-core/images/tactiq-image-dev.bb oelint.var.mandatoryvar.DESCRIPTION 1
-recipes-core/images/tactiq-image-dev.bb oelint.var.override 2
+recipes-core/images/tactiq-image-dev.bb oelint.var.override 1
 recipes-core/images/tactiq-image-npu.bb oelint.var.mandatoryvar.DESCRIPTION 1
 recipes-core/images/tactiq-image.bb oelint.var.mandatoryvar.DESCRIPTION 1
 recipes-core/images/tactiq-image.bb oelint.var.override 1
 recipes-core/images/tactiq-image.bb oelint.vars.specific 2
+recipes-core/rauc/rauc-conf.bbappend oelint.func.specific 1
 recipes-core/rauc/rauc-conf.bbappend oelint.vars.noncoreoverride 6
 recipes-core/rauc/rauc-native_%.bbappend oelint.vars.noncoreoverride 1
 recipes-core/systemd/systemd_%.bbappend oelint.vars.noncoreoverride 3
