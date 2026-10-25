@@ -358,7 +358,7 @@ echo "==> image identity: ${ID_REV} ${ID_IMAGE} ${ID_MACHINE} ${ID_DATE}"
 # in recipes-core/images/tactiq-image-dev.bb; check-release-no-dev.py reads it
 # and checks this image against each addition: dev packages absent from the
 # manifest, root locked, PAM without plain nullok, no postinst logging, no IMA
-# policy, no development audit log path. CI keeps the two from drifting apart
+# policy. CI keeps the two from drifting apart
 # (--static): a dev addition with no release check fails there.
 # ---------------------------------------------------------------------------
 if [[ "$IMAGE" == "tactiq-image" ]]; then

@@ -62,26 +62,13 @@ IMAGE_INSTALL:append = " \
 "
 
 # ---------------------------------------------------------------------------
-# Audit daemon
+# Audit library
 # ---------------------------------------------------------------------------
-# AVC denials are read from the audit log during policy work.
+# Package audit is the library and /etc/libaudit.conf; production carries it
+# too, as an RDEPENDS of base packages (tactiq-image.bb). The daemon and
+# /etc/audit are the separate package auditd, which neither image installs.
+# AVC denials on the bench are read from the journal (journalctl, dmesg).
 IMAGE_INSTALL:append = " audit"
-
-# The audit log of a bench run goes to the persistent measurement tree on
-# /data (rootfs /var/log is volatile). Set on this image only: the package is
-# shared with production, whose auditd.conf keeps the upstream log_file.
-# ROOTFS_POSTPROCESS_COMMAND runs before SELinux labelling and IMA signing
-# (IMAGE_PREPROCESS_COMMAND), so the file is labelled and signed like any
-# other, as with /etc/tactiq-release (tactiq-release-identity.bbclass).
-tactiq_dev_audit_log() {
-    conf=${IMAGE_ROOTFS}${sysconfdir}/audit/auditd.conf
-    [ -f "$conf" ] || bbfatal "tactiq-image-dev: $conf not in the rootfs"
-    sed -e 's|^log_file =.*|log_file = /data/tactiq/measurement/audit/audit.log|' "$conf" > "${WORKDIR}/auditd.conf.dev"
-    grep -q '^log_file = /data/tactiq/measurement/audit/audit.log$' "${WORKDIR}/auditd.conf.dev" \
-        || bbfatal "tactiq-image-dev: no log_file line to redirect in $conf"
-    cat "${WORKDIR}/auditd.conf.dev" > "$conf"
-}
-ROOTFS_POSTPROCESS_COMMAND += "tactiq_dev_audit_log"
 
 # ---------------------------------------------------------------------------
 # Bench utilities
