@@ -5,7 +5,7 @@ useDefault = true
 
 [allowlist]
 description = "pki/dev private keys are public by design (see pki/README.md). EKU OID strings and kernel key fingerprints in boot logs are not secrets."
-paths = ['''^pki/dev/''']
+paths = ['''(^|/)pki/dev/''']
 regexTarget = "line"
 regexes = [
   '''X509v3ExtendedKeyUsage''',
