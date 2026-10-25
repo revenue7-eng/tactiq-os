@@ -25,9 +25,7 @@ SRC_URI += "file://0001-arm64-dts-rk3588s-rock-5a-add-TPM-2.0-on-spi4-for-U-.pat
             file://0003-configs-rock5a-rk3588s-declare-writeable-environment.patch \
             file://0004-arm64-dts-rk3588s-rock-5a-reserve-a-TPM-event-log-ar.patch \
             file://0005-rockchip-rk3588s-rock-5a-measure-the-images-SPL-load.patch \
-            file://0006-rockchip-add-vm-uuid-derived-from-the-SoC-cpuid.patch \
-            file://0007-tpm-tcg2-gate-SM3-per-build-phase.patch \
-            file://0008-boot-lock-the-TPM-platform-hierarchy-before-the-OS.patch"
+            file://0006-rockchip-add-vm-uuid-derived-from-the-SoC-cpuid.patch"
 SRC_URI += "file://env-mmc.cfg"
 SRC_URI += "file://boot-ab.cfg"
 SRC_URI += "file://env-lockdown.cfg"
@@ -256,3 +254,8 @@ do_configure:tactiq-rock5t() {
             bbfatal "console lockdown: CONFIG_BOOTDELAY is not -2"
     fi
 }
+
+# Board-independent patches (TPM platform hierarchy lock, SM3 gated per
+# build phase) come from the common layer. Kept as the last line so they
+# apply after the board patches above, in the same order as before.
+require recipes-bsp/u-boot/tactiq-u-boot-common.inc
