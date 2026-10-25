@@ -22,6 +22,11 @@ spec.loader.exec_module(nd)
 DEV_RECIPE = os.path.join(ROOT, 'recipes-core', 'images', 'tactiq-image-dev.bb')
 RC14_MANIFEST = os.path.join(HERE, 'manifest-v2.1.0-rc14.txt')
 
+
+def text(path):
+    with open(path) as f:
+        return f.read()
+
 CLEAN = {
     '/etc/shadow': 'root:!:19000:0:99999:7:::\n',
     '/etc/passwd': 'root:x:0:0:root:/root:/bin/sh\n',
@@ -67,7 +72,7 @@ class NoDevTest(unittest.TestCase):
 
     def test_unknown_addition_is_reported(self):
         with tempfile.NamedTemporaryFile('w', suffix='.bb', delete=False) as f:
-            f.write(open(DEV_RECIPE).read() + '\nEXTRA_IMAGE_FEATURES:append = " tools-debug"\n')
+            f.write(text(DEV_RECIPE) + '\nEXTRA_IMAGE_FEATURES:append = " tools-debug"\n')
         try:
             _, unknown = nd.required_checks(nd.parse_dev_recipe(f.name))
         finally:
@@ -79,7 +84,7 @@ class NoDevTest(unittest.TestCase):
 
     def test_dev_package_in_manifest(self):
         with tempfile.NamedTemporaryFile('w', delete=False) as f:
-            f.write(open(RC14_MANIFEST).read() + 'openssh-sshd cortexa76-cortexa55 9.9p2-r0\n')
+            f.write(text(RC14_MANIFEST) + 'openssh-sshd cortexa76-cortexa55 9.9p2-r0\n')
         try:
             problems = nd.check_manifest(f.name, self.dev['packages'])
         finally:
