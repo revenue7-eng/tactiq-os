@@ -103,6 +103,6 @@ Publishing this development key has no security impact while
 `CONFIG_MODULE_SIG_FORCE` is disabled: unsigned modules continue to load, with
 only a kernel warning. During the Phase 3 transition described in
 `KERNEL_HARDENING.md`, production builds must instead supply
-`TACTIQ_MODULE_SIG_KEY` from CI-managed secrets. Otherwise, possession of the
+`TACTIQ_MODULE_SIG_KEY` from the offline release key material (`RELEASE_INTEGRITY.md` §2.3). Otherwise, possession of the
 published development key would allow an attacker to produce modules accepted
 by the production kernel.
