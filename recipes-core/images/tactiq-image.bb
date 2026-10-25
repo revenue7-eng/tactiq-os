@@ -141,11 +141,13 @@ IMAGE_INSTALL:append = " \
 #
 # audit ships in this profile and is not removable: it is an RDEPENDS of
 # dbus-1, shadow-base, libsemanage2 and policycoreutils-setfiles. Verified
-# 27.08.2026 against buildhistory depends.dot. This is accepted rather than
-# worked around — SELinux runs in enforcing mode, and without auditd an AVC
-# denial goes to the kernel ring buffer and is lost on reboot, which
-# contradicts the immutable-logging property the product claims. Do not
-# attempt to strip it; removing setfiles breaks /data labelling on first boot.
+# 27.08.2026 against buildhistory depends.dot. Do not attempt to strip it;
+# removing setfiles breaks /data labelling on first boot.
+#
+# Installed is not running: auditd is not started at boot in either profile
+# (recipes-security/audit/audit_%.bbappend), and only the development image
+# redirects its log to /data. In this image an AVC denial is not kept by
+# auditd across a reboot.
 #
 # NOT ESTABLISHED: that auditd is configured for this platform — rule set,
 # log persistence across reboot, flash wear bounds. Package presence in the

@@ -69,6 +69,10 @@
 #                        or the bundle is not the pinned release key (see
 #                        "Release key pins" below). For mechanics testing
 #                        ONLY; the output is NOT a valid release.
+#   ALLOW_DEV_CONTENT=1  let IMAGE=tactiq-image go when the image carries
+#                        something the development profile adds (see "No
+#                        development content" below). For mechanics testing
+#                        ONLY; the output is NOT a valid release.
 #   ALLOW_CMDLINE_MISMATCH=1  let IMAGE=tactiq-image go when the kernel
 #                        command line of a slot differs from
 #                        security/cmdline-<board>.json (see "Kernel command
@@ -348,6 +352,28 @@ if [[ "$id_bad" == 1 ]]; then
     fi
 fi
 echo "==> image identity: ${ID_REV} ${ID_IMAGE} ${ID_MACHINE} ${ID_DATE}"
+
+# ---------------------------------------------------------------------------
+# No development content. Everything the development profile adds is declared
+# in recipes-core/images/tactiq-image-dev.bb; check-release-no-dev.py reads it
+# and checks this image against each addition: dev packages absent from the
+# manifest, root locked, PAM without plain nullok, no postinst logging, no IMA
+# policy, no development audit log path. CI keeps the two from drifting apart
+# (--static): a dev addition with no release check fails there.
+# ---------------------------------------------------------------------------
+if [[ "$IMAGE" == "tactiq-image" ]]; then
+    echo "==> no development content"
+    if ! python3 "${SCRIPT_DIR}/check-release-no-dev.py" \
+            --dev-recipe "${SCRIPT_DIR}/../recipes-core/images/tactiq-image-dev.bb" \
+            --manifest "${DEPLOY}/${PREFIX}.manifest" --rootfs "$ROOTFS_EXT4"; then
+        if [[ "${ALLOW_DEV_CONTENT:-0}" == 1 ]]; then
+            echo "::warning:: development content in the release image (ALLOW_DEV_CONTENT=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+        else
+            echo "::error:: development content in the release image; see above." >&2
+            exit 1
+        fi
+    fi
+fi
 
 mkdir -p "$OUT"; cd "$OUT"
 

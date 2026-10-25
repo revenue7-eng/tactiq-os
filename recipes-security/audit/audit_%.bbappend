@@ -1,16 +1,15 @@
-# DEV measurement infrastructure: persistent AVC audit log on /data.
-# auditd goes into tactiq-image-dev only (see image recipe), never product.
-# That separation is enforced by the image IMAGE_INSTALL, not by this file:
-# a bbappend applies to the recipe wherever it is parsed, so if auditd ever
-# enters the product image it arrives with log_file pointing at the
-# measurement tree. Gate log_file on the image at that point.
-# Not boot-enabled (ordering cycle: auditd<->data-tactiq-dirs via sysinit);
-# started explicitly by edge-probe-run.sh once /data is mounted.
+# auditd in TactiQ OS.
+#
+# audit is in the production image as well: it is an RDEPENDS of dbus-1,
+# shadow-base, libsemanage2 and policycoreutils-setfiles (tactiq-image.bb).
+# This append therefore applies to both profiles and holds only what is
+# right for both: auditd is not started at boot (ordering cycle
+# auditd <-> data-tactiq-dirs via sysinit).
+#
+# The development image points log_file at the persistent measurement tree
+# on /data; that is done in tactiq-image-dev.bb on the image, not here, so
+# the production auditd.conf keeps the upstream log_file. scripts/mk-release.sh
+# refuses a release whose auditd.conf names the measurement tree
+# (check-release-no-dev.py).
 
 SYSTEMD_AUTO_ENABLE:auditd = "disable"
-
-do_install:append() {
-    # Redirect audit log to persistent /data partition (rootfs /var/log is volatile)
-    sed -i -e 's|^log_file =.*|log_file = /data/tactiq/measurement/audit/audit.log|' \
-        ${D}${sysconfdir}/audit/auditd.conf
-}

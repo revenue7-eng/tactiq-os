@@ -115,6 +115,15 @@ jobs:
       - name: Release command-line check tests
         run: python3 tests/cmdline/test_check_release_cmdline.py
 
+      - name: Every development addition has a release check
+        run: |
+          # tactiq-image-dev.bb is the one place the development profile is
+          # declared; mk-release.sh checks each addition is absent from a
+          # release. A new addition with no check fails here.
+          python3 scripts/check-release-no-dev.py \
+            --dev-recipe recipes-core/images/tactiq-image-dev.bb --static
+          python3 tests/nodev/test_check_release_no_dev.py
+
       - name: Assert production image profile is hardened
         run: |
           set -e

@@ -56,6 +56,5 @@ recipes-kernel/devicetree/tactiq-slot-dtb.bb oelint.var.mandatoryvar.DESCRIPTION
 recipes-kernel/devicetree/tactiq-slot-dtb.bb oelint.var.mandatoryvar.HOMEPAGE 1
 recipes-kernel/devicetree/tactiq-slot-dtb.bb oelint.var.mandatoryvar.SRC_URI 1
 recipes-kernel/linux/linux-yocto_%.bbappend oelint.vars.noncoreoverride 23
-recipes-security/audit/audit_%.bbappend oelint.vars.noncoreoverride 1
 recipes-security/keyutils/keyutils_%.bbappend oelint.vars.noncoreoverride 1
 recipes-support/chrony/chrony_%.bbappend oelint.vars.noncoreoverride 1
