@@ -22,6 +22,7 @@ recipes-core/bundles/tactiq-bundle.bb oelint.var.mandatoryvar.HOMEPAGE 1
 recipes-core/bundles/tactiq-bundle.bb oelint.var.mandatoryvar.LICENSE 1
 recipes-core/bundles/tactiq-bundle.bb oelint.var.mandatoryvar.SRC_URI 1
 recipes-core/bundles/tactiq-bundle.bb oelint.var.mandatoryvar.SUMMARY 1
+recipes-core/bundles/tactiq-bundle.bb oelint.vars.specific 1
 recipes-core/images/tactiq-boot-image.bb oelint.file.underscores 1
 recipes-core/images/tactiq-boot-image.bb oelint.var.mandatoryvar.DESCRIPTION 1
 recipes-core/images/tactiq-boot-image.bb oelint.var.mandatoryvar.HOMEPAGE 1
