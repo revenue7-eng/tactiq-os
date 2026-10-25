@@ -30,6 +30,11 @@
 # carried in this repository, verified by tree hash
 # ce25181e3275664e5ed66d980ef2e74424861801).
 #
+# meta-raspberrypi is wired in by the rpi4 build input only
+# (conf/bblayers-rpi4.conf.in). The rock5a build input does not reference
+# it, but the layer set this lock describes is the same for both, so
+# check-layers.sh --check expects it to be present.
+#
 # meta-tensorflow-lite has no wrynose branch. Its main moved to blacksail
 # only (9e0d503); the pin is the last commit whose LAYERSERIES_COMPAT
 # includes wrynose.
@@ -42,5 +47,6 @@ meta-selinux         https://git.yoctoproject.org/meta-selinux            1c3a69
 meta-security        https://git.yoctoproject.org/meta-security           2703974d5e2d61b221dffa302c2e059a522adbf3  wrynose
 meta-arm             https://git.yoctoproject.org/meta-arm                673e8d7c5dcd14de58092eb73e6ecc5eee5c1735  wrynose
 meta-rockchip        https://git.yoctoproject.org/meta-rockchip           9d02575bfd9ca5e87c394f593f2bbdbdee914d4e  wrynose
+meta-raspberrypi     https://git.yoctoproject.org/meta-raspberrypi        919588393f41b48cb6c5d832aa35e58a19b6762d  wrynose
 meta-tensorflow-lite https://github.com/NobuoTsukamoto/meta-tensorflow-lite 1fc5d5d68763ded53b11feac20fd65fbc6700f3b  main
 tactiq-os-selinux    https://github.com/revenue7-eng/tactiq-os-selinux    dc49201e8eb395d8cc1239da6e56798702179879  main

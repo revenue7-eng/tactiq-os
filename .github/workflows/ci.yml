@@ -258,6 +258,11 @@ jobs:
         # reference; on the bootm path each slot's devicetree carries its
         # command line in /chosen and must otherwise equal the kernel's tree.
         run: python3 tests/pcrref/test_mk_pcr_reference.py
+      - name: BSP layer copies (Raspberry Pi against Rockchip)
+        # meta-tactiq-bsp-raspberrypi carries copies of U-Boot lockdown
+        # fragments and of the fw_env helper from the Rockchip layer; the
+        # test fails when a copy drifts from its source.
+        run: python3 tests/bsp/test_bsp_shared_files.py
       - name: RIM leaf posture (pki/dev)
         run: |
           # mk-release.sh signs the RIM only with a leaf whose sole EKU is the

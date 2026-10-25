@@ -5,7 +5,11 @@
 # absolute paths to the layer set assembled by scripts/setup-layers.sh.
 #
 # Usage:
-#   init-build.sh <layers-dir> <build-dir>
+#   init-build.sh <layers-dir> <build-dir> [target]
+#
+# target selects the template pair and the layers checked for:
+#   rock5a (default)  conf/bblayers.conf.in,      conf/local.conf.in
+#   rpi4              conf/bblayers-rpi4.conf.in, conf/local-rpi4.conf.in
 #
 # The layers-dir must contain the layer set that scripts/setup-layers.sh
 # produces; the script verifies this before writing anything.
@@ -16,22 +20,42 @@
 #
 set -euo pipefail
 
-if [ $# -ne 2 ]; then
-  echo "usage: $0 <layers-dir> <build-dir>" >&2
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "usage: $0 <layers-dir> <build-dir> [rock5a|rpi4]" >&2
   exit 2
 fi
 
 LAYERS_DIR="$(cd "$1" && pwd)"
 BUILD_DIR="$2"
+TARGET="${3:-rock5a}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE_DIR="${SCRIPT_DIR}/../conf"
 
-# Required layer directories, as listed in conf/bblayers.conf.in.
-REQUIRED_LAYERS=(
+# Required layer directories per target, as listed in the target's
+# bblayers template. scripts/check-build-input.sh reads these arrays by name.
+REQUIRED_LAYERS_rock5a=(
   openembedded-core meta-openembedded meta-selinux meta-arm
   meta-rockchip meta-rauc meta-tensorflow-lite meta-security
   tactiq-os tactiq-os-selinux bitbake
 )
+REQUIRED_LAYERS_rpi4=(
+  openembedded-core meta-openembedded meta-selinux
+  meta-raspberrypi meta-rauc meta-security
+  tactiq-os tactiq-os-selinux bitbake
+)
+
+case "$TARGET" in
+  rock5a)
+    BBLAYERS_T="bblayers.conf.in"; LOCAL_T="local.conf.in"
+    REQUIRED_LAYERS=("${REQUIRED_LAYERS_rock5a[@]}");;
+  rpi4)
+    BBLAYERS_T="bblayers-rpi4.conf.in"; LOCAL_T="local-rpi4.conf.in"
+    REQUIRED_LAYERS=("${REQUIRED_LAYERS_rpi4[@]}");;
+  *)
+    echo "ERROR: unknown target '${TARGET}' (known: rock5a, rpi4)" >&2
+    exit 2;;
+esac
+
 MISSING=()
 for L in "${REQUIRED_LAYERS[@]}"; do
   [ -d "${LAYERS_DIR}/${L}" ] || MISSING+=("${L}")
@@ -43,7 +67,7 @@ if [ ${#MISSING[@]} -ne 0 ]; then
   exit 1
 fi
 
-for T in bblayers.conf.in local.conf.in; do
+for T in "$BBLAYERS_T" "$LOCAL_T"; do
   [ -f "${TEMPLATE_DIR}/${T}" ] || { echo "ERROR: template not found: ${TEMPLATE_DIR}/${T}" >&2; exit 1; }
 done
 
@@ -61,8 +85,8 @@ done
 # Placeholder substitution. Only ${LAYERS_DIR} is expanded; every other
 # ${...} in the templates is bitbake syntax and must be preserved literally.
 sed "s|\${LAYERS_DIR}|${LAYERS_DIR}|g" \
-    "${TEMPLATE_DIR}/bblayers.conf.in" > "${BUILD_CONF}/bblayers.conf"
-cp "${TEMPLATE_DIR}/local.conf.in" "${BUILD_CONF}/local.conf"
+    "${TEMPLATE_DIR}/${BBLAYERS_T}" > "${BUILD_CONF}/bblayers.conf"
+cp "${TEMPLATE_DIR}/${LOCAL_T}" "${BUILD_CONF}/local.conf"
 
 # Sanity check: the resulting bblayers.conf must contain no unresolved
 # placeholders and every listed BBLAYERS entry must exist on disk.
@@ -76,7 +100,7 @@ awk '
   [ -d "$P" ] || { echo "ERROR: BBLAYERS entry not a directory: $P" >&2; exit 1; }
 done
 
-echo "OK. Wrote:"
+echo "OK. Wrote (target ${TARGET}):"
 echo "  ${BUILD_CONF}/bblayers.conf"
 echo "  ${BUILD_CONF}/local.conf"
 echo

@@ -1,0 +1,52 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Andrey Lazarev <lazarev@tactiqedge.com>
+Date: Sun, 25 Oct 2026 12:30:00 +0000
+Subject: [PATCH] arm: dts: bcm2711-rpi-4-b: pin mmc0 to the SD card in
+ U-Boot's own tree
+
+With OF_BOARD off (see 0001), U-Boot uses its own control devicetree
+instead of the one the VideoCore firmware passes. The firmware's tree
+has mmc aliases that make the SD card mmc 0; U-Boot's tree has none, so
+device numbers follow bind order, and the Wi-Fi SDIO controller under
+/soc is bound before the SD controller under /emmc2bus.
+
+Add bcm2711-rpi-4-b-u-boot.dtsi with mmc0 = &emmc2 and mmc1 = &sdhci.
+A board-specific -u-boot.dtsi replaces the automatic inclusion of
+bcm283x-u-boot.dtsi, so the new file includes it.
+
+Upstream-Status: Inappropriate [TactiQ trust model: only needed with OF_BOARD off]
+---
+ arch/arm/dts/bcm2711-rpi-4-b-u-boot.dtsi | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+ create mode 100644 arch/arm/dts/bcm2711-rpi-4-b-u-boot.dtsi
+
+diff --git a/arch/arm/dts/bcm2711-rpi-4-b-u-boot.dtsi b/arch/arm/dts/bcm2711-rpi-4-b-u-boot.dtsi
+new file mode 100644
+index 0000000..2312a88
+--- /dev/null
++++ b/arch/arm/dts/bcm2711-rpi-4-b-u-boot.dtsi
+@@ -0,0 +1,24 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * U-Boot additions for the Raspberry Pi 4 Model B devicetree when U-Boot
++ * uses its own control devicetree (OF_BOARD off).
++ *
++ * Its presence replaces the automatic inclusion of bcm283x-u-boot.dtsi
++ * (scripts/Makefile.lib takes the first match), so that file is included
++ * here explicitly.
++ */
++
++#include "bcm283x-u-boot.dtsi"
++
++/*
++ * The firmware's devicetree pins mmc0 to the SD card; this tree has no mmc
++ * aliases, so device numbers would follow bind order, in which the Wi-Fi
++ * SDIO controller under /soc comes before the SD controller. Pin them, so
++ * that "mmc 0" in the environment is the SD card.
++ */
++/ {
++	aliases {
++		mmc0 = &emmc2;
++		mmc1 = &sdhci;
++	};
++};
