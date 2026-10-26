@@ -6,6 +6,11 @@ After=network.target tactiq-stop.service
 # Wants, not Requires: if the stop service is absent or down the gateway still
 # runs and denies every call (failureMode: deny), which is the safe direction.
 Wants=tactiq-stop.service
+# Start limits belong in [Unit]. In [Service] systemd ignores
+# StartLimitIntervalSec ("Unknown key", bench 26.10.2026), and the gateway
+# was restarted every 10 s without end.
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -15,8 +20,6 @@ Type=simple
 ExecStart=/opt/tactiq/bin/agentgateway --file /etc/tactiq/agentgateway/config.yaml
 Restart=on-failure
 RestartSec=10
-StartLimitIntervalSec=60
-StartLimitBurst=3
 
 # Resource limits
 MemoryMax=256M
