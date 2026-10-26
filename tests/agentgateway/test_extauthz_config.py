@@ -109,6 +109,12 @@ class StopCheck(unittest.TestCase):
         for key, port in (("adminAddr", 15000), ("statsAddr", 15020), ("readinessAddr", 15021)):
             self.assertEqual(cfg.get(key), f"127.0.0.1:{port}", key)
 
+    def test_ipv6_is_off(self):
+        # Otherwise the listener binds [::] and the gateway reads a net sysctl
+        # its domain may not read.
+        cfg = self.cfg.get("config") or {}
+        self.assertIs(cfg.get("enableIpv6"), False)
+
     def test_device_side_line_check_will_accept_it(self):
         code = "\n".join(l.split("#", 1)[0] for l in self.text.splitlines())
         self.assertNotIn("{", self.text, "tactiq-stop refuses inline mappings")

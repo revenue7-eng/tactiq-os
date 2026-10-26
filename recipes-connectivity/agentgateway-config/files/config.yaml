@@ -7,9 +7,12 @@
 # NETWORK POSTURE (zero-egress):
 #   - Listener: agentgateway binds 0.0.0.0:<port> by design. The file config
 #     exposes only `port`; the bind address is hardcoded to UNSPECIFIED in the
-#     binary (confirmed: crates/agentgateway/src/types/local.rs builds
-#     SocketAddr::new(Ipv4Addr::UNSPECIFIED, port)). Loopback confinement is
-#     therefore enforced OUTSIDE the binary, in three layers:
+#     binary (crates/agentgateway/src/types/local.rs). With IPv6 enabled, the
+#     default, that is [::] and not 0.0.0.0, and to decide it the gateway
+#     reads /proc/sys/net/ipv6/conf/lo/disable_ipv6, which agentgateway_t
+#     may not (bench, 26.10.2026). enableIpv6: false below makes it 0.0.0.0
+#     and skips that read. Loopback confinement is enforced OUTSIDE the
+#     binary, in three layers:
 #       1. systemd  — IPAddressDeny=any + IPAddressAllow=localhost  (agentgateway.service)
 #       2. firewall — NOT IMPLEMENTED. An image-level iptables rule was
 #                     considered and is absent from the tree. Not an active
@@ -68,6 +71,7 @@
 # ============================================================================
 
 config:
+  enableIpv6: false
   adminAddr: 127.0.0.1:15000
   statsAddr: 127.0.0.1:15020
   readinessAddr: 127.0.0.1:15021
