@@ -9,7 +9,10 @@ Wants=tactiq-stop.service
 
 [Service]
 Type=simple
-ExecStart=/opt/tactiq/bin/agentgateway --config /etc/tactiq/agentgateway/config.yaml
+# --file takes a path; --config takes the configuration text itself. With
+# --config and a path the gateway tried to parse the path as YAML and never
+# started (found on the bench 26.10.2026; the unit had not been run before).
+ExecStart=/opt/tactiq/bin/agentgateway --file /etc/tactiq/agentgateway/config.yaml
 Restart=on-failure
 RestartSec=10
 StartLimitIntervalSec=60

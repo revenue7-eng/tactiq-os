@@ -48,15 +48,29 @@
 #   back to the caller unchanged. The block sits in the listener's policies,
 #   not on a route, so it covers every route, present and future.
 #   Settings tactiq-stop checks before it starts, and why:
-#     - requestTimeout: agentgateway (d204f9c) gives the authorization call
-#       200 ms by default; a signed refusal takes several TPM operations.
+#     - requestTimeout: at agentgateway d204f9c the http check has a fixed
+#       200 ms timeout and this value is NOT applied to it (the extAuthz
+#       policies are not passed to the call). The agentgateway recipe patches
+#       the timeout to 10 s; a signed refusal took 2.4 s on the bench. The
+#       value is kept for a gateway revision that honours it.
 #     - includeRequestBody with an explicit maxRequestBytes: the schema
 #       default is 0, which would send no body; the request digest in a
 #       refusal covers the body as sent, up to this many bytes.
 #     - allowPartialMessage: false, stated explicitly.
 #   tests/agentgateway/test_extauthz_config.py parses this file and fails the
 #   build if any listener lacks this block or any value drifts.
+#
+# MANAGEMENT LISTENERS:
+#   agentgateway always opens admin (15000), stats (15020) and readiness
+#   (15021) listeners; stats and readiness default to every interface. All
+#   three are bound to loopback here. Their port type (agentgateway_mgmt_port_t)
+#   lets agentgateway_t bind exactly these numbers.
 # ============================================================================
+
+config:
+  adminAddr: 127.0.0.1:15000
+  statsAddr: 127.0.0.1:15020
+  readinessAddr: 127.0.0.1:15021
 
 binds:
 - port: 49317

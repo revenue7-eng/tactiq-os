@@ -25,6 +25,10 @@ RestartSec=10
 # is not writable by group or others and is owned by its uid or root.
 RuntimeDirectory=tactiq-stop
 RuntimeDirectoryMode=0700
+# The directory is also created at boot by tmpfiles (tactiq-stop.conf), so an
+# operator command run before the service never creates it with root's owner
+# and label (seen on the bench 26.10.2026); keep it across restarts too.
+RuntimeDirectoryPreserve=yes
 
 Environment=TPM2TOOLS_TCTI=device:/dev/tpmrm0
 

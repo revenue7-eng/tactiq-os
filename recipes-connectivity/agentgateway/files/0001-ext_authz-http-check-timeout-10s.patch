@@ -1,0 +1,39 @@
+From: TactiQ OS <andrey@tactiq.ai>
+Date: Mon, 26 Oct 2026 00:00:00 +0000
+Subject: [PATCH] ext_authz: http check timeout 10 s instead of 200 ms
+
+In http mode the authorization call gets a fixed 200 ms timeout, and the
+extAuthz block's policies (requestTimeout) are not passed to it at this
+revision, so the timeout cannot be raised from the config. tactiq-stop,
+the agent stop service TactiQ OS puts behind extAuthz, signs every
+refusal with the TPM and took 2.4 s on the reference board: at 200 ms the
+gateway denies on its own and the caller never receives the signed
+receipt. Measured on the bench 26.10.2026.
+
+Upstream main (October 2026) passes the policies to this call and
+defaults to 2 s. Drop this patch when the recipe moves to such a revision
+and the config's requestTimeout takes effect.
+
+Upstream-Status: Inappropriate [superseded upstream by passing the extAuthz policies]
+Signed-off-by: TactiQ OS <andrey@tactiq.ai>
+---
+diff --git a/crates/agentgateway/src/http/ext_authz.rs b/crates/agentgateway/src/http/ext_authz.rs
+index 523aabb..ef2b76c 100644
+--- a/crates/agentgateway/src/http/ext_authz.rs
++++ b/crates/agentgateway/src/http/ext_authz.rs
+@@ -605,10 +605,13 @@ impl ExtAuthz {
+ 			let resv = http::HeaderOrPseudoValue::from_cel_result(hn, res);
+ 			http::RequestOrResponse::Request(&mut check_req).apply_header(hn, resv, false);
+ 		}
+-		// Set the default request timeout. This can be overridden by a timeout on the Backend object itself.
++		// TactiQ OS: 10 s instead of 200 ms. In http mode this timeout cannot be
++		// overridden at this revision (the extAuthz policies are not passed to
++		// the call below), and tactiq-stop needs about 2.4 s to sign a refusal
++		// on an SPI TPM. Upstream main passes the policies and defaults to 2 s.
+ 		check_req
+ 			.extensions_mut()
+-			.insert(BackendRequestTimeout(Duration::from_millis(200)));
++			.insert(BackendRequestTimeout(Duration::from_secs(10)));
+ 		let resp = client.call_reference(check_req, &self.target).await;
+ 		let mut resp = match resp {
+ 			Ok(r) => r,

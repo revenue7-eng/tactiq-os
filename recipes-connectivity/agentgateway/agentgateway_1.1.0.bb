@@ -88,6 +88,11 @@ SYSTEMD_SERVICE:${PN} = "agentgateway.service"
 SYSTEMD_AUTO_ENABLE = "disable"
 SRC_URI += "file://agentgateway.service"
 
+# One patch to the engine: the extAuthz http check timeout (200 ms, not
+# configurable at this revision) is raised to 10 s, because tactiq-stop needs
+# about 2.4 s to sign a refusal with the TPM. See the patch for when to drop it.
+SRC_URI += "file://0001-ext_authz-http-check-timeout-10s.patch"
+
 do_install:append() {
     install -d ${D}/opt/tactiq/bin
     install -m 0755 ${B}/target/${CARGO_TARGET_SUBDIR}/agentgateway ${D}/opt/tactiq/bin/agentgateway

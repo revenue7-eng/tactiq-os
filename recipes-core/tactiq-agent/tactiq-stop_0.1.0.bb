@@ -14,7 +14,7 @@ SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 # tree. Keep the two SRCREVs equal.
 SRCREV = "d3a561d9222759c6a50def7872fdf4edb8b461f8"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
-SRC_URI += "file://tactiq-stop.service"
+SRC_URI += "file://tactiq-stop.service file://tactiq-stop.tmpfiles"
 
 # The workspace's crate list is shared with tactiq-agent: one Cargo.lock,
 # and the stop service adds no crates.io dependency of its own (sha2 is
@@ -44,10 +44,13 @@ do_install:append() {
     install -m 0755 ${B}/target/${CARGO_TARGET_SUBDIR}/tactiq-stop ${D}/opt/tactiq/bin/tactiq-stop
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/tactiq-stop.service ${D}${systemd_system_unitdir}/
+    install -d ${D}${nonarch_libdir}/tmpfiles.d
+    install -m 0644 ${UNPACKDIR}/tactiq-stop.tmpfiles ${D}${nonarch_libdir}/tmpfiles.d/tactiq-stop.conf
     rm -rf ${D}${bindir}
 }
 
 FILES:${PN} = " \
     /opt/tactiq/bin/tactiq-stop \
     ${systemd_system_unitdir}/tactiq-stop.service \
+    ${nonarch_libdir}/tmpfiles.d/tactiq-stop.conf \
 "

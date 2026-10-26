@@ -104,6 +104,11 @@ class StopCheck(unittest.TestCase):
         for p, _ in hits:
             self.assertRegex(p, r"^/binds\[\d+\]/listeners\[\d+\]/policies/extAuthz$")
 
+    def test_management_listeners_are_on_loopback(self):
+        cfg = self.cfg.get("config") or {}
+        for key, port in (("adminAddr", 15000), ("statsAddr", 15020), ("readinessAddr", 15021)):
+            self.assertEqual(cfg.get(key), f"127.0.0.1:{port}", key)
+
     def test_device_side_line_check_will_accept_it(self):
         code = "\n".join(l.split("#", 1)[0] for l in self.text.splitlines())
         self.assertNotIn("{", self.text, "tactiq-stop refuses inline mappings")
