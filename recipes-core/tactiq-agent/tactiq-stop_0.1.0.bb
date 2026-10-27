@@ -12,7 +12,7 @@ SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 # Same repository and revision as tactiq-agent: the stop service shares the
 # envelope, the TPM layer and the AK with it, so the two are built from one
 # tree. Keep the two SRCREVs equal.
-SRCREV = "d3a561d9222759c6a50def7872fdf4edb8b461f8"
+SRCREV = "e1929382307a036c59f8b3c95d117e3a23103398"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
 SRC_URI += "file://tactiq-stop.service file://tactiq-stop.tmpfiles"
 
