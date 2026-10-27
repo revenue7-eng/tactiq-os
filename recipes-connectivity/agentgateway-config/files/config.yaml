@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://agentgateway.dev/schema/config
 # ============================================================================
-# TactiQ OS — agentgateway production config (v1, empty perimeter)
+# TactiQ OS: agentgateway production config (v1, one reference tool)
 # ----------------------------------------------------------------------------
 # In-perimeter MCP/A2A traffic mediation. Local mediation ONLY.
 #
@@ -30,18 +30,16 @@
 #     would have been checked against virt_migration_port_t and denied. Fixed
 #     and documented because the SELinux bind rule and the client depend on it.
 #
-#   - Backends: this v1 ships an EMPTY perimeter — no MCP targets. The mediator
-#     starts and listens; no traffic is proxied until targets are declared.
+#   - Backends: one MCP target, the reference tool of the development image
+#     (tactiq-reftool, below). It shows the tool boundary of the SELinux policy
+#     acting; it reads and changes nothing on the device.
 #     When real MCP servers are added they MUST be local stdio processes
 #     addressed by ABSOLUTE PATH (no `npx`, no `docker`, no `host:` HTTP target
 #     — each of those would be runtime network egress and break offline-first).
-#     Every new stdio target also requires a matching SELinux
-#     domain_auto_transition in agentgateway_t.
-#
-# NOTE: empty-perimeter runtime behaviour (does the listener stay up with no
-# backend?) is to be confirmed by artifact during runtime acceptance, not
-# assumed. If the binary refuses an empty backend, that is a deliberate design
-# input — decide then (real stub vs require non-empty perimeter), on evidence.
+#     Every new stdio target also requires a matching SELinux domain
+#     transition from agentgateway_t, with nnp_transition (the gateway runs
+#     with NoNewPrivileges), and its types in the tool attributes of
+#     tactiq_fixes; tactiq_reftool.te in tactiq-os-selinux is the pattern.
 # ============================================================================
 
 # STOP CHECK (extAuthz):
@@ -93,4 +91,16 @@ binds:
           http:
             requestTimeout: 5s
     routes:
-    - backends: []
+    # Reference tool (development image only, package tactiq-reftool): an MCP
+    # server on stdio, by absolute path, as the BACKENDS rule above requires.
+    # statefulMode stateless: the gateway starts the tool for each request and
+    # stops it after, so no tool process outlives a call, and a caller needs
+    # no session. Where the package is absent (a release has no gateway yet)
+    # the start fails and the call is refused.
+    - backends:
+      - mcp:
+          statefulMode: stateless
+          targets:
+          - name: reftool
+            stdio:
+              cmd: /opt/tactiq/bin/tactiq-reftool
