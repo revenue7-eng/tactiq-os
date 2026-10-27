@@ -33,7 +33,8 @@ SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 # History note: these revs previously drifted (recipe on 84362d3, Custinel on
 # 8d77e2ac) and a "must match" comment masked it. Version-parity is the real
 # invariant; a rev mismatch under one envelope version is expected.
-SRCREV = "d2f6efc18512385173a4db91c4ecc4354036ab8b"
+# Keep equal to tactiq-stop's SRCREV: one tree, one Cargo.lock.
+SRCREV = "d3a561d9222759c6a50def7872fdf4edb8b461f8"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
 SRC_URI += "file://tactiq-agent.service"
 
@@ -67,7 +68,8 @@ export SOURCE_DATE_EPOCH
 # Runtime
 # ---------------------------------------------------------------------------
 # The agent reaches the TPM through tpm2-tools. That is the current state of
-# crates/prover/src/tpm.rs and it is deliberate: the command sequence matches
+# crates/attest-tpm (moved out of crates/prover/src/tpm.rs, unchanged, so the
+# stop service shares it) and it is deliberate: the command sequence matches
 # the harness that validated the protocol against the verifier, and it behaves
 # identically against swtpm and a discrete chip.
 #

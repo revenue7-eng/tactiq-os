@@ -1,0 +1,4 @@
+# /run/tactiq-stop: tactiq-stop scratch and the operator lock. Created at
+# boot with the service owner, labelled from policy (tactiq_stop_runtime_t),
+# so no command creates it with its own owner and label.
+d /run/tactiq-stop 0700 tactiq-agent tactiq-agent -

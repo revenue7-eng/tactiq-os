@@ -82,9 +82,15 @@ IMAGE_INSTALL:append = " \
     tactiq-config \
     tactiq-netperm \
     tactiq-cartridge-anchor \
-    agentgateway \
-    agentgateway-config \
 "
+# No agentgateway here. The tool path (agentgateway, its config, tactiq-stop)
+# is installed in the development image only, until a release image has an
+# operator channel to stop and resume tool calls: without one the gateway
+# could only refuse every call. Without the gateway no process reaches a tool
+# (the neverallow in tactiq_fixes), so its absence closes the path, it does
+# not open one. Up to v2.1.0-rc14 the gateway shipped here disabled, and was
+# never run in its domain; its first run on the bench (26.10.2026) found seven
+# defects.
 
 # ---------------------------------------------------------------------------
 # OTA Updates (RAUC A/B)
