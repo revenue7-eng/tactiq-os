@@ -52,8 +52,13 @@
 
 enum { HELD, BROKE, UNSURE };
 
+/* err: 0 the attempt succeeded, > 0 its errno, < 0 not known. */
 static int report(const char *what, int err, const char *ok_detail)
 {
+    if (err < 0) {
+        printf("%s: result not known (no report from the attempt), inconclusive\n", what);
+        return UNSURE;
+    }
     if (err == 0) {
         printf("%s: SUCCEEDED (%s), the boundary did not hold\n", what, ok_detail);
         return BROKE;
@@ -66,15 +71,26 @@ static int report(const char *what, int err, const char *ok_detail)
     return UNSURE;
 }
 
-/* fork and execve the tool with stdin at end of file; the errno of execve, or 0. */
+/*
+ * fork and execve the tool with stdin and stdout on /dev/null. Returns 0 when
+ * the tool ran (exit status 0), the errno of execve when it failed, and -1
+ * when that cannot be told. The verdict comes from the child's exit status:
+ * 127 is written by this code only after execve returned. The errno travels
+ * over a pipe; if it does not arrive, the result is "not known", never "ran".
+ * On the bench (27.10.2026) the agent's domain could not use the pipe, the
+ * errno was lost, and an earlier version read that as success.
+ */
 static int try_exec(void)
 {
     int p[2];
     if (pipe2(p, O_CLOEXEC) < 0)
-        return errno;
+        return -1;
     pid_t pid = fork();
-    if (pid < 0)
-        return errno;
+    if (pid < 0) {
+        close(p[0]);
+        close(p[1]);
+        return -1;
+    }
     if (pid == 0) {
         int devnull = open("/dev/null", O_RDWR);
         if (devnull >= 0) {
@@ -93,8 +109,14 @@ static int try_exec(void)
     int e = 0;
     ssize_t r = read(p[0], &e, sizeof e);
     close(p[0]);
-    waitpid(pid, NULL, 0);
-    return r == (ssize_t)sizeof e ? e : 0;
+    int st = 0;
+    if (waitpid(pid, &st, 0) < 0 || !WIFEXITED(st))
+        return -1;
+    if (WEXITSTATUS(st) == 127)
+        return (r == (ssize_t)sizeof e && e > 0) ? e : -1;
+    if (WEXITSTATUS(st) == 0 && r == 0)
+        return 0;
+    return -1;
 }
 
 static int connect_to(const char *ip, int port, int *fd)
