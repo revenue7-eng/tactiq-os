@@ -53,3 +53,6 @@ pki/**/*.srl
 
 apply-meta-security.sh
 setup-tpm-layers.sh
+
+# Python bytecode (scripts load each other through importlib)
+__pycache__/
