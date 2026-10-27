@@ -85,7 +85,12 @@ RUSTFLAGS += "--remap-path-prefix=${WORKDIR}=/usr/src/debug/${PN}/${PV} --cfg to
 export SOURCE_DATE_EPOCH
 
 SYSTEMD_SERVICE:${PN} = "agentgateway.service"
-SYSTEMD_AUTO_ENABLE = "disable"
+# Enabled (the default) wherever it is installed. Which images carry the tool
+# path is decided by IMAGE_INSTALL alone; until v2.1.0-rc14 the gateway was
+# installed everywhere and disabled, and so never ran.
+# The unit runs it with --file on the config, which sends every call to
+# tactiq-stop; agentgateway-config pulls the stop service in.
+RDEPENDS:${PN} += "agentgateway-config"
 SRC_URI += "file://agentgateway.service"
 
 # One patch to the engine: the extAuthz http check timeout (200 ms, not

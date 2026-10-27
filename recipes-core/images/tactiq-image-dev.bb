@@ -87,16 +87,17 @@ IMAGE_INSTALL:append = " jq"
 IMAGE_INSTALL:append = " tactiq-status"
 
 # ---------------------------------------------------------------------------
-# Agent stop service (bench step)
+# Tool path: agentgateway, asking tactiq-stop before every tool call
 # ---------------------------------------------------------------------------
-# tactiq-stop answers agentgateway's extAuthz before every tool call. It is
-# in the development image first: trip and recover need a shell, which a
-# release image does not give, and the stop counter's write authorization
-# is still the owner hierarchy. It moves to the release image when both are
-# settled. The gateway config (shared by both images) already points at it;
-# in a release image the gateway is disabled with an empty perimeter, and if
-# enabled it would deny every call, since nothing answers on 49318.
-IMAGE_INSTALL:append = " tactiq-stop"
+# The three come as one: agentgateway needs its config, and the config sends
+# every call to tactiq-stop (RDEPENDS in their recipes). All three are listed
+# here so that scripts/check-release-no-dev.py refuses any of them in a
+# release manifest. They are in the development image only: trip and recover
+# need a shell, which a release image does not give, and the stop counter's
+# write authorization is still the owner hierarchy. They move to the release
+# image when both are settled. The gateway starts at boot wherever it is
+# installed.
+IMAGE_INSTALL:append = " agentgateway agentgateway-config tactiq-stop"
 
 # ---------------------------------------------------------------------------
 # Debug tools — enable per bring-up session, never in a release

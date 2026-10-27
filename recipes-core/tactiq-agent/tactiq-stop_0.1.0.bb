@@ -31,7 +31,11 @@ RUSTFLAGS += "--remap-path-prefix=${WORKDIR}=/usr/src/debug/${PN}/${PV}"
 export SOURCE_DATE_EPOCH
 
 # The service reaches the TPM through tpm2-tools, as the agent does.
-RDEPENDS:${PN} = "tpm2-tools libtss2 libtss2-mu libtss2-tcti-device tactiq-agent agentgateway-config"
+# It reads the gateway config at start, but does not depend on its package:
+# the dependency runs the other way (agentgateway-config requires this
+# service), and a cycle would hide which one needs which. Without the config
+# the service refuses to start, and the gateway, if any, denies every call.
+RDEPENDS:${PN} = "tpm2-tools libtss2 libtss2-mu libtss2-tcti-device tactiq-agent"
 
 SYSTEMD_SERVICE:${PN} = "tactiq-stop.service"
 # Enabled: the service refuses to start until the stop counter exists
