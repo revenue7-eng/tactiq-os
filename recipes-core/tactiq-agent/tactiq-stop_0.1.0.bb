@@ -14,13 +14,13 @@ SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 # Same repository and revision as tactiq-agent: the stop service shares the
 # envelope, the TPM layer and the AK with it, so the two are built from one
 # tree. Keep the two SRCREVs equal.
-SRCREV = "e1929382307a036c59f8b3c95d117e3a23103398"
+SRCREV = "55cd8d436926a9d13350b0b3829420c2c2ab4f6a"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
 SRC_URI += "file://tactiq-stop.service file://tactiq-stop.tmpfiles"
 
 # The workspace's crate list is shared with tactiq-agent: one Cargo.lock,
-# and the stop service adds no crates.io dependency of its own (sha2 is
-# already there for the envelope).
+# and the stop service adds no crate the lock lacks (sha2 for the envelope,
+# p256 for the operator release, both already there).
 require tactiq-agent-crates.inc
 
 inherit cargo cargo-update-recipe-crates systemd
