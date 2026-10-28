@@ -99,6 +99,14 @@ IMAGE_INSTALL:append = " tactiq-status"
 # installed.
 IMAGE_INSTALL:append = " agentgateway agentgateway-config tactiq-stop"
 
+# Reference tool and reference agent for the tool boundary: an MCP tool on
+# stdio with a fixed answer, started by the gateway, and an agent that tries
+# to reach it around the gateway and then through it (systemctl start
+# tactiq-refagent). Their SELinux domains are in every policy
+# (tactiq_reftool); the binaries are here only, so check-release-no-dev.py
+# refuses the package in a release.
+IMAGE_INSTALL:append = " tactiq-reftool"
+
 # ---------------------------------------------------------------------------
 # Debug tools — enable per bring-up session, never in a release
 # ---------------------------------------------------------------------------
