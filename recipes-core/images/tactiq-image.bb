@@ -82,9 +82,15 @@ IMAGE_INSTALL:append = " \
     tactiq-config \
     tactiq-netperm \
     tactiq-cartridge-anchor \
-    agentgateway \
-    agentgateway-config \
 "
+# No agentgateway here. The tool path (agentgateway, its config, tactiq-stop)
+# is installed in the development image only, until a release image has an
+# operator channel to stop and resume tool calls: without one the gateway
+# could only refuse every call. Without the gateway no process reaches a tool
+# (the neverallow in tactiq_fixes), so its absence closes the path, it does
+# not open one. Up to v2.1.0-rc14 the gateway shipped here disabled, and was
+# never run in its domain; its first run on the bench (26.10.2026) found seven
+# defects.
 
 # ---------------------------------------------------------------------------
 # OTA Updates (RAUC A/B)
@@ -144,10 +150,9 @@ IMAGE_INSTALL:append = " \
 # 27.08.2026 against buildhistory depends.dot. Do not attempt to strip it;
 # removing setfiles breaks /data labelling on first boot.
 #
-# Installed is not running: auditd is not started at boot in either profile
-# (recipes-security/audit/audit_%.bbappend), and only the development image
-# redirects its log to /data. In this image an AVC denial is not kept by
-# auditd across a reboot.
+# That package is the library and /etc/libaudit.conf only. The daemon and
+# /etc/audit are the separate package auditd, which this profile does not
+# install: the v2.1.0-rc14 manifest has audit and no auditd.
 #
 # NOT ESTABLISHED: that auditd is configured for this platform — rule set,
 # log persistence across reboot, flash wear bounds. Package presence in the

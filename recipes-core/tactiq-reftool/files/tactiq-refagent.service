@@ -1,0 +1,46 @@
+[Unit]
+Description=TactiQ reference agent: try the tool around and through agentgateway (development image)
+Documentation=https://github.com/revenue7-eng/tactiq-os
+# Started by hand: systemctl start tactiq-refagent; result in
+# journalctl -u tactiq-refagent. Runs in tactiq_refagent_t, an AI agent
+# domain (tactiq-os-selinux, tactiq_reftool.te). Exit 0: running the tool,
+# connecting to tactiq-stop and to a plant address were all refused by the
+# policy, and the gateway answered. See the source for 1 to 3.
+After=agentgateway.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/tactiq/bin/tactiq-refagent
+DynamicUser=yes
+
+# Nothing in this unit stands between the agent and its targets: no
+# NoExecPaths, no port filter, loopback and the rest are treated alike. The
+# attempts around the gateway must be refused by SELinux alone; a filter here
+# would make the test show systemd, not the policy. IPAddressDeny only drops
+# packets, after the connect check SELinux makes first.
+RestrictAddressFamilies=AF_UNIX AF_INET
+IPAddressAllow=localhost
+IPAddressDeny=any
+
+MemoryMax=16M
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+SystemCallArchitectures=native

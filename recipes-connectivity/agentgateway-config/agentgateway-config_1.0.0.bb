@@ -25,6 +25,11 @@ FILES:${PN} = "/etc/tactiq/agentgateway"
 
 CONFFILES:${PN} = "/etc/tactiq/agentgateway/config.yaml"
 
+# Every listener sends each request to tactiq-stop first (extAuthz on
+# 127.0.0.1:49318, failureMode: deny). Without the stop service the gateway
+# refuses every call, so the config does not install without it.
+RDEPENDS:${PN} = "tactiq-stop"
+
 # No systemd unit here on purpose: the agentgateway.service unit ships with
 # the binary package. Keeping this recipe config-only yields a clean,
 # independent IMA measurement of the configuration.

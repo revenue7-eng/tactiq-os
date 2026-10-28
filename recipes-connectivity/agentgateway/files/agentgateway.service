@@ -1,15 +1,25 @@
 [Unit]
 Description=agentgateway MCP/A2A traffic mediation (in-perimeter)
 Documentation=https://github.com/agentgateway/agentgateway
-After=network.target
+After=network.target tactiq-stop.service
+# Every tool call is checked with tactiq-stop first (extAuthz in the config).
+# Wants, not Requires: if the stop service is absent or down the gateway still
+# runs and denies every call (failureMode: deny), which is the safe direction.
+Wants=tactiq-stop.service
+# Start limits belong in [Unit]. In [Service] systemd ignores
+# StartLimitIntervalSec ("Unknown key", bench 26.10.2026), and the gateway
+# was restarted every 10 s without end.
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=simple
-ExecStart=/opt/tactiq/bin/agentgateway --config /etc/tactiq/agentgateway/config.yaml
+# --file takes a path; --config takes the configuration text itself. With
+# --config and a path the gateway tried to parse the path as YAML and never
+# started (found on the bench 26.10.2026; the unit had not been run before).
+ExecStart=/opt/tactiq/bin/agentgateway --file /etc/tactiq/agentgateway/config.yaml
 Restart=on-failure
 RestartSec=10
-StartLimitIntervalSec=60
-StartLimitBurst=3
 
 # Resource limits
 MemoryMax=256M

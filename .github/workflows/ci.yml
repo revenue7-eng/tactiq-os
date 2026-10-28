@@ -72,6 +72,9 @@ jobs:
         run: |
           yamllint -d '{extends: relaxed, rules: {line-length: disable}}' \
             .github recipes-core 2>/dev/null || true
+      - name: agentgateway config carries the stop check on every listener
+        # PyYAML comes with yamllint.
+        run: python3 tests/agentgateway/test_extauthz_config.py
 
   distro-config-sanity:
     name: Distro config sanity

@@ -109,10 +109,16 @@ accepts. Every individual request can be within policy.
 and the SELinux policy source. None of them has yet been observed on a
 running production image (see the verification status below).
 
-- `agentgateway`, the mediator for agent traffic, is confined to
-  loopback by systemd (`IPAddressAllow=localhost`, `IPAddressDeny=any`
-  in `agentgateway.service`). Its SELinux domain `agentgateway_t` is
-  written to hold no `name_connect` on any port type and no DNS
+- The production image does not install `agentgateway`, the mediator
+  for agent tool calls. It is in the development image together with
+  `tactiq-stop`, which it asks before every call, until a production
+  image has an operator channel to stop and resume calls. Without the
+  gateway no process reaches a tool (`neverallow` in `tactiq_fixes`).
+  Where it is installed it is confined to loopback by systemd
+  (`IPAddressAllow=localhost`, `IPAddressDeny=any` in
+  `agentgateway.service`); its listener binds `0.0.0.0:49317` by design
+  of the engine. Its SELinux domain `agentgateway_t` holds one
+  `name_connect`, to `tactiq_stop_port_t` (49318), and no DNS
   resolution.
 - `tactiq-agent` runs with `IPAddressDeny=any`.
 - The production image recipe does not install `curl`, the shipped
@@ -126,8 +132,7 @@ default configuration and is not pinned by this layer.
 
 **Verification status.** Verified: the unit files and recipes above, by
 reading them. Not verified: the binary SELinux policy of a built
-production image (the claim about `agentgateway_t` rests on the policy
-source); the root filesystem of a production image built after the
+production image; the root filesystem of a production image built after the
 network posture change (the last production build predates it); whether
 any network configuration from upstream packages is active in that root
 filesystem, given that `systemd-networkd` and a BusyBox DHCP client are

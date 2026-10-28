@@ -68,7 +68,7 @@ class NoDevTest(unittest.TestCase):
         for p in ('openssh-sshd', 'jq', 'tactiq-status', 'libtss2-tcti-mssim', 'curl'):
             self.assertIn(p, self.dev['packages'])
         self.assertEqual(self.checks, {'root-locked', 'pam-nullok', 'postinst-logging',
-                                       'no-ima-policy', 'audit-log'})
+                                       'no-ima-policy'})
 
     def test_unknown_addition_is_reported(self):
         with tempfile.NamedTemporaryFile('w', suffix='.bb', delete=False) as f:
@@ -79,12 +79,21 @@ class NoDevTest(unittest.TestCase):
             os.unlink(f.name)
         self.assertEqual(unknown, ['image feature tools-debug'])
 
-    def test_rc14_manifest_has_no_dev_packages(self):
-        self.assertEqual(nd.check_manifest(RC14_MANIFEST, self.dev['packages']), [])
+    def test_rc14_manifest_has_no_dev_packages_but_the_tool_path(self):
+        # v2.1.0-rc14 shipped agentgateway and its config, disabled. They
+        # moved to the development image after it (27.10.2026), so the
+        # check names exactly those two in rc14 and nothing else.
+        self.assertEqual(nd.check_manifest(RC14_MANIFEST, self.dev['packages']), [
+            'development package in the release image: agentgateway',
+            'development package in the release image: agentgateway-config',
+        ])
 
     def test_dev_package_in_manifest(self):
         with tempfile.NamedTemporaryFile('w', delete=False) as f:
-            f.write(text(RC14_MANIFEST) + 'openssh-sshd cortexa76-cortexa55 9.9p2-r0\n')
+            # rc14 without the tool path, which it predates (see above).
+            base = ''.join(l for l in text(RC14_MANIFEST).splitlines(True)
+                           if not l.startswith('agentgateway'))
+            f.write(base + 'openssh-sshd cortexa76-cortexa55 9.9p2-r0\n')
         try:
             problems = nd.check_manifest(f.name, self.dev['packages'])
         finally:
@@ -120,11 +129,6 @@ class NoDevTest(unittest.TestCase):
 
     def test_ima_policy(self):
         self.refused({'/etc/ima/ima-policy': 'measure func=BPRM_CHECK\n'}, 'ima-policy')
-
-    def test_dev_audit_log(self):
-        self.refused({'/etc/audit/auditd.conf':
-                      'log_file = /data/tactiq/measurement/audit/audit.log\n'},
-                     'measurement tree')
 
 
 if __name__ == '__main__':
