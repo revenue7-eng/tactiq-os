@@ -10,6 +10,7 @@
 #   ./gen-pki.sh cartsigner -> pki/dev/ Edge cartridge signer leaf
 #   ./gen-pki.sh evsigner  -> pki/dev/ evidence signer leaf
 #   ./gen-pki.sh netperm   -> pki/dev/ site network permission key
+#   ./gen-pki.sh stopop    -> pki/dev/ operator key for stop releases
 #
 #   ./gen-pki.sh prod DIR          release RAUC hierarchy, encrypted keys
 #   ./gen-pki.sh ima-prod DIR      release IMA leaf from the release Signing CA
@@ -29,6 +30,7 @@
 #                                  regsigner-prod: signs the SHA256SUMS of a
 #                                  release's L3 evidence archive
 #   ./gen-pki.sh netperm-prod DIR  release site network permission key
+#   ./gen-pki.sh stopop-prod DIR   operator key for stop releases
 #
 # DIR is required for every release flavour and must lie outside this
 # repository: release keys live on encrypted removable media, attached only
@@ -59,47 +61,58 @@ umask 077
 
 FLAVOUR="${1:-}"
 
-if [ "$FLAVOUR" = "netperm" ] || [ "$FLAVOUR" = "netperm-prod" ]; then
-  # ------------------------------------------------ site network permission
-  # Signs /data/site/network-allow, which tactiq-netperm checks before it
-  # lets tactiq-agent reach a verifier (THREAT_MODEL.md, agent network
-  # exception). A bare ECDSA P-256 key pair, outside every hierarchy on
-  # purpose: the public half is pinned in the image, and no chain means no
-  # other signer can be made to count. It must not be an IMA key, because
-  # IMA would accept that key for executables too.
-  if [ "$FLAVOUR" = "netperm" ]; then
-    OUT="pki/dev"
-  else
-    OUT="${2:-}"
-    if [ -z "$OUT" ]; then
-      echo "Usage: $0 netperm-prod DIR" >&2
-      exit 1
-    fi
-    REPO="$(cd "$(dirname "$0")" && pwd -P)"
-    case "$(realpath -m "$OUT")/" in
-      "$REPO"/*)
-        echo "ERROR: $OUT is inside the repository ($REPO)." >&2
-        echo "       Release keys must live outside it, on encrypted media." >&2
+case "$FLAVOUR" in
+  netperm|netperm-prod|stopop|stopop-prod)
+  # ------------------------------------------ bare ECDSA P-256 key pairs
+  # Keys whose public half is pinned in the image and which sign one small
+  # record on the operator's machine. Outside every hierarchy on purpose: no
+  # chain means no other signer can be made to count. Neither may be an IMA
+  # key, because IMA would accept that key for executables too.
+  #
+  #   netperm  signs /data/site/network-allow, which tactiq-netperm checks
+  #            before it lets tactiq-agent reach a verifier (THREAT_MODEL.md,
+  #            agent network exception);
+  #   stopop   signs /data/tactiq/stop/release, the operator's release that
+  #            alone lifts a stop in tactiq-stop (tactiq-attest, release.rs).
+  case "$FLAVOUR" in
+    netperm*) NAME="netperm"; VAR="TACTIQ_NETPERM_PUBKEY"; REC="network-allow" ;;
+    stopop*)  NAME="stop-operator"; VAR="TACTIQ_STOP_OPERATOR_PUBKEY"; REC="release" ;;
+  esac
+  case "$FLAVOUR" in
+    *-prod)
+      OUT="${2:-}"
+      if [ -z "$OUT" ]; then
+        echo "Usage: $0 $FLAVOUR DIR" >&2
         exit 1
-        ;;
-    esac
-  fi
+      fi
+      REPO="$(cd "$(dirname "$0")" && pwd -P)"
+      case "$(realpath -m "$OUT")/" in
+        "$REPO"/*)
+          echo "ERROR: $OUT is inside the repository ($REPO)." >&2
+          echo "       Release keys must live outside it, on encrypted media." >&2
+          exit 1
+          ;;
+      esac
+      ;;
+    *) OUT="pki/dev" ;;
+  esac
   mkdir -p "$OUT"
-  for f in netperm.key.pem netperm.pem; do
+  for f in "$NAME.key.pem" "$NAME.pem"; do
     if [ -e "$OUT/$f" ]; then
       echo "ERROR: $OUT/$f already exists. Refusing to reissue in place." >&2
       exit 1
     fi
   done
-  openssl ecparam -name prime256v1 -genkey -noout -out "$OUT/netperm.key.pem"
-  openssl ec -in "$OUT/netperm.key.pem" -pubout -out "$OUT/netperm.pem" 2>/dev/null
+  openssl ecparam -name prime256v1 -genkey -noout -out "$OUT/$NAME.key.pem"
+  openssl ec -in "$OUT/$NAME.key.pem" -pubout -out "$OUT/$NAME.pem" 2>/dev/null
   cat <<EOF2
-$OUT/netperm.pem       PUBLIC  -> TACTIQ_NETPERM_PUBKEY, pinned in the image
-$OUT/netperm.key.pem   PRIVATE -> signs network-allow:
-    openssl dgst -sha256 -sign $OUT/netperm.key.pem -out network-allow.sig network-allow
+$OUT/$NAME.pem   PUBLIC  -> $VAR, pinned in the image
+$OUT/$NAME.key.pem   PRIVATE -> signs $REC:
+    openssl dgst -sha256 -sign $OUT/$NAME.key.pem -out $REC.sig $REC
 EOF2
   exit 0
-fi
+  ;;
+esac
 case "$FLAVOUR" in
   dev)
     OUT="pki/dev"

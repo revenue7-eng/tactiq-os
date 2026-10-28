@@ -19,6 +19,10 @@ ExecStart=/bin/sh -c '\
     chmod 0750 /data/tactiq/audit; \
     chmod 0755 /data/tactiq/certs; \
     chown -R tactiq-agent:tactiq-agent /data/tactiq; \
+    mkdir -p /data/tactiq/stop; \
+    restorecon -v /data/tactiq/stop; \
+    chown root:root /data/tactiq/stop; \
+    chmod 0755 /data/tactiq/stop; \
     sync'
 TimeoutStartSec=60
 

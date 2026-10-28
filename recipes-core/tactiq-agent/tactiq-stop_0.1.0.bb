@@ -3,7 +3,9 @@ DESCRIPTION = "Answers agentgateway's extAuthz question before every tool \
 call, on 127.0.0.1:49318. The stop state is the parity of a TPM NV counter \
 (odd = stopped); a refusal carries a receipt with the TPM's own NV_Certify of \
 that counter and an AK quote over the boot PCRs, which the service checks \
-before handing it out."
+before handing it out. A stop is lifted only by the operator's release, a \
+record signed with the operator's key, whose public half this package \
+installs."
 HOMEPAGE = "https://github.com/revenue7-eng/tactiq-attest"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
@@ -12,13 +14,13 @@ SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 # Same repository and revision as tactiq-agent: the stop service shares the
 # envelope, the TPM layer and the AK with it, so the two are built from one
 # tree. Keep the two SRCREVs equal.
-SRCREV = "e1929382307a036c59f8b3c95d117e3a23103398"
+SRCREV = "55cd8d436926a9d13350b0b3829420c2c2ab4f6a"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
 SRC_URI += "file://tactiq-stop.service file://tactiq-stop.tmpfiles"
 
 # The workspace's crate list is shared with tactiq-agent: one Cargo.lock,
-# and the stop service adds no crates.io dependency of its own (sha2 is
-# already there for the envelope).
+# and the stop service adds no crate the lock lacks (sha2 for the envelope,
+# p256 for the operator release, both already there).
 require tactiq-agent-crates.inc
 
 inherit cargo cargo-update-recipe-crates systemd
@@ -50,11 +52,19 @@ do_install:append() {
     install -m 0644 ${UNPACKDIR}/tactiq-stop.service ${D}${systemd_system_unitdir}/
     install -d ${D}${nonarch_libdir}/tmpfiles.d
     install -m 0644 ${UNPACKDIR}/tactiq-stop.tmpfiles ${D}${nonarch_libdir}/tmpfiles.d/tactiq-stop.conf
+    # The operator's public key for stop releases, on the dm-verity root.
+    # Development default in pki/dev; a production build points
+    # TACTIQ_STOP_OPERATOR_PUBKEY outside the tree, or tactiq-keygate halts
+    # parsing. Without it the service refuses to start.
+    install -d ${D}${datadir}/tactiq
+    install -m 0644 ${TACTIQ_STOP_OPERATOR_PUBKEY} ${D}${datadir}/tactiq/stop-operator.pem
     rm -rf ${D}${bindir}
 }
+do_install[file-checksums] += "${TACTIQ_STOP_OPERATOR_PUBKEY}:True"
 
 FILES:${PN} = " \
     /opt/tactiq/bin/tactiq-stop \
     ${systemd_system_unitdir}/tactiq-stop.service \
     ${nonarch_libdir}/tmpfiles.d/tactiq-stop.conf \
+    ${datadir}/tactiq/stop-operator.pem \
 "
