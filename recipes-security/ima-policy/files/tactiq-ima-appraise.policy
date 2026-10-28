@@ -79,6 +79,12 @@ measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t pcr=11
 # a rule naming a type the loaded policy lacks is rejected.
 measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_site_perm_t pcr=11
 
+# The operator's stop release (tactiq-stop), same class as the site
+# permission: measured into PCR 11, never appraised, since it carries its own
+# signature under the operator's key. The type is defined in the SELinux
+# layer (tactiq_stop.te 1.1.0); this line and that module ship together.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_stop_release_t pcr=11
+
 # Cartridges (model weights) under /data/cartridges, same class as the site
 # permission: measured into PCR 11, never appraised. The cartridge carries its
 # own signature, checked by the Edge daemon against its anchor list; a key in

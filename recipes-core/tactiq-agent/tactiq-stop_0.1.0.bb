@@ -3,7 +3,9 @@ DESCRIPTION = "Answers agentgateway's extAuthz question before every tool \
 call, on 127.0.0.1:49318. The stop state is the parity of a TPM NV counter \
 (odd = stopped); a refusal carries a receipt with the TPM's own NV_Certify of \
 that counter and an AK quote over the boot PCRs, which the service checks \
-before handing it out."
+before handing it out. A stop is lifted only by the operator's release, a \
+record signed with the operator's key, whose public half this package \
+installs."
 HOMEPAGE = "https://github.com/revenue7-eng/tactiq-attest"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
@@ -50,11 +52,19 @@ do_install:append() {
     install -m 0644 ${UNPACKDIR}/tactiq-stop.service ${D}${systemd_system_unitdir}/
     install -d ${D}${nonarch_libdir}/tmpfiles.d
     install -m 0644 ${UNPACKDIR}/tactiq-stop.tmpfiles ${D}${nonarch_libdir}/tmpfiles.d/tactiq-stop.conf
+    # The operator's public key for stop releases, on the dm-verity root.
+    # Development default in pki/dev; a production build points
+    # TACTIQ_STOP_OPERATOR_PUBKEY outside the tree, or tactiq-keygate halts
+    # parsing. Without it the service refuses to start.
+    install -d ${D}${datadir}/tactiq
+    install -m 0644 ${TACTIQ_STOP_OPERATOR_PUBKEY} ${D}${datadir}/tactiq/stop-operator.pem
     rm -rf ${D}${bindir}
 }
+do_install[file-checksums] += "${TACTIQ_STOP_OPERATOR_PUBKEY}:True"
 
 FILES:${PN} = " \
     /opt/tactiq/bin/tactiq-stop \
     ${systemd_system_unitdir}/tactiq-stop.service \
     ${nonarch_libdir}/tmpfiles.d/tactiq-stop.conf \
+    ${datadir}/tactiq/stop-operator.pem \
 "
