@@ -52,3 +52,5 @@ e9a49fa6c9f31e9fcb5456715a13bb799f7b04da0945d67f56dc45f1d22aefc4  stop-receipt-d
 e96f110be6dc7bebbd46e4895af7ff7d288363eed8fac5984a96c70cac391b1a  stop-receipt-dev-20261028/verify-other-nonce.log
 3c0feb85a82deaf3f1b97aad26855520df25a3cc64c7c3bbaa3b488e8218f74f  stop-receipt-dev-20261028/verify-slot-b.log
 f4950e557da825ae776a043ef507206ab37c34cce9ea8bec988b207e807dccac  stop-receipt-dev-20261028/verify.log
+f883483fd32b9b812721cb055b14ecf3b178a4fa37e1e9328d1867afd8cc98ba  llm-latency-20261029.md
+03dcbcf8165751cc0cdd65eedce7e28956bb803f241fefb54311702a0953351c  logs/llm-latency-20261029-board.log
