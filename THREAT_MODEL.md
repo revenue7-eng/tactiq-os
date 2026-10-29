@@ -120,6 +120,13 @@ running production image (see the verification status below).
   of the engine. Its SELinux domain `agentgateway_t` holds one
   `name_connect`, to `tactiq_stop_port_t` (49318), and no DNS
   resolution.
+- An AI agent's SELinux domain (attribute `tactiq_ai_agent_domain`)
+  connects over TCP to the gateway's port only, opens no UDP, raw,
+  packet, SCTP or ICMP socket, and changes no file that governs it:
+  configuration, the operator's stop release, unit files, the SELinux
+  policy, and the executables of the gateway, `tactiq-stop` and the
+  tools (assertions 5 to 8 in `tactiq_fixes`, checked when the policy is
+  built).
 - `tactiq-agent` runs with `IPAddressDeny=any`.
 - The production image recipe does not install `curl`, the shipped
   `chrony.conf` names no time source, and the layer ships no
@@ -136,9 +143,16 @@ production image; the root filesystem of a production image built after the
 network posture change (the last production build predates it); whether
 any network configuration from upstream packages is active in that root
 filesystem, given that `systemd-networkd` and a BusyBox DHCP client are
-both installed; and behaviour on hardware, where a negative test
-(outbound connection attempts from the confined domains, expected to be
-refused with an AVC) is pending.
+both installed; and behaviour on hardware for the confined domains other
+than the reference AI agent, where a negative test (outbound connection
+attempts, expected to be refused with an AVC) is pending. For the
+reference AI agent it has run on a development image (Rock 5A,
+27.10.2026, recorded in tactiq-os-selinux #34): its attempts to run the
+tool, to connect to `tactiq-stop` and to connect to `10.0.0.1:502` were
+each refused with an AVC, and through `agentgateway` a call was answered
+403 with a stop receipt while stopped and 200 while running. That run
+says nothing about a production image, which does not install the
+gateway or the reference agent.
 
 **Known gaps at this stage.**
 
