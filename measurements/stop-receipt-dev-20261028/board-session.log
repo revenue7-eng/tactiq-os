@@ -1,0 +1,62 @@
+tactiq-rock5a login: root
+
+  ▀▀▀▀▀▀▀▀▀▀▀▄   release  TactiQ OS v2.1.0-rc14 (tactiq-image-dev)
+     █  █    █   board    Radxa ROCK 5A
+     █  █    █   slot     A
+     █  █   ▄█   root     dm-verity, dm-0 "rootfs" (as booted)
+     ▀   ▀▀▀▀▄   selinux  enforcing
+                 ima      policy: measure 8, appraise 4, 164 entries measured
+                 tpm      present, TPM 2.0, IFX, firmware 7.87.19691.2
+                 pcr 0-9  sha256 4eed4a2d14df...1d166e8e8542
+                 agent    active, envelopes: 2880 complete
+
+  Reported by this device. Check it from outside with VERIFY-L3 for v2.1.0-rc14
+  and the signed release set; this screen is not a verification.
+
+root@tactiq-rock5a:~# cat /proc/cmdline | tr ' ' '\n' | grep rauc.slot
+rauc.slot=A
+root@tactiq-rock5a:~# lsblk -o NAME,SIZE,LABEL | grep -v mmcblk
+NAME          SIZE LABEL
+sda          28.9G
+`-sda1       28.9G KINGSTON
+nbd0            0B
+nbd1            0B
+nbd2            0B
+nbd3            0B
+nbd4            0B
+nbd5            0B
+nbd6            0B
+nbd7            0B
+nbd8            0B
+nbd9            0B
+nbd10           0B
+nbd11           0B
+nbd12           0B
+nbd13           0B
+nbd14           0B
+nbd15           0B
+root@tactiq-rock5a:~# mkdir -p /run/usb; mount -t vfat /dev/sda1 /run/usb
+root@tactiq-rock5a:~# cat /run/usb/nonce-loto3.txt
+6d341edaec7ca318b51aa39e8a96e10b6a4c150001205d08dfafde0290a2aeb7
+root@tactiq-rock5a:~# /opt/tactiq/bin/tactiq-stop status $(cat /run/usb/nonce-loto3.txt) > /run/usb/receipt-loto3.tqsr
+status receipt: stop counter 8129, Stopped, 647 bytes, bound to the given nonce
+root@tactiq-rock5a:~# cp /data/tactiq/keys/ak.pub /run/usb/ak-board.pub
+root@tactiq-rock5a:~# cp /data/tactiq/keys/device_id /run/usb/device_id-board.txt
+root@tactiq-rock5a:~# tpm2_pcrread sha256:0,1,2,3,4,5,6,7,8,9,10
+  sha256:
+    0 : 0x9BD4AB6216B55C5BBE172F31737ED87C8A585FAA3B45C4CAF225B0778AC3AAFE
+    1 : 0x014CBA493D7119858A983F3A458D54F65F38442D79B4AE4AFBB4BBEDD331DD42
+    2 : 0xE21B703EE69C77476BCCB43EC0336A9A1B2914B378944F7B00A10214CA8FEA93
+    3 : 0xE21B703EE69C77476BCCB43EC0336A9A1B2914B378944F7B00A10214CA8FEA93
+    4 : 0xA6278B42D6D50EC180F4AE9377338D7E8F699E030F6C010736E9C06238D12983
+    5 : 0xE21B703EE69C77476BCCB43EC0336A9A1B2914B378944F7B00A10214CA8FEA93
+    6 : 0xB8D6C3885B7AC27AE97F88F5063EB5016C3BFC82CB561DE8214B5483256CB5DD
+    7 : 0xE21B703EE69C77476BCCB43EC0336A9A1B2914B378944F7B00A10214CA8FEA93
+    8 : 0xB611C2ADF14040DFB28E6B758AD6E0237B2BE22C17352E2FD8A3E5C42014E8B0
+    9 : 0xCFC7D8042593E188C59D2FD523F07A95D06DD3160F0955D8C34B0EB067F517B6
+    10: 0x89BB4F81924338D0492E947625C39ED4A87AC52E7DD123689FE17FD49FA353DF
+root@tactiq-rock5a:~# journalctl -b --no-pager | grep -c 'avc:.*denied'
+0
+root@tactiq-rock5a:~# sync; cd /; umount /run/usb
+root@tactiq-rock5a:/# ^C
+root@tactiq-rock5a:/#

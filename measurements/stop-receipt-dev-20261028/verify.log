@@ -1,0 +1,10 @@
+receipt     receipt.tqsr (647 bytes)
+device      TACTIQ-BENCH-001
+ak          name 000b35c0941662473b6dc78ce636d83dfcaf1bbdfa68bb69121dd9b3c0b414df0a0a
+build       PCR 0, 1, 8 equal to pcr-ref-op1-20261028.json, slot A
+fresh       yes: answers nonce 6d341edaec7ca318b51aa39e8a96e10b6a4c150001205d08dfafde0290a2aeb7
+kind        status answer
+counter     8129 (odd), read and signed by the TPM
+policy      sha256 60e962b74b1bf258d0fe5f21b25cccfb288c9b6f7ab71550dd385b3ebe92063a
+basis       the counter is odd, as the TPM read it; in the build named above every call is refused at an odd counter
+VERDICT     STOPPED
