@@ -1,0 +1,88 @@
+tactiq-rock5a login: root
+
+  ▀▀▀▀▀▀▀▀▀▀▀▄   release  TactiQ OS v2.1.0-rc14 (tactiq-image-dev)
+     █  █    █   board    Radxa ROCK 5A
+     █  █    █   slot     A
+     █  █   ▄█   root     dm-verity, dm-0 "rootfs" (as booted)
+     ▀   ▀▀▀▀▄   selinux  enforcing
+                 ima      policy: measure 8, appraise 4, 164 entries measured
+                 tpm      present, TPM 2.0, IFX, firmware 7.87.19691.2
+                 pcr 0-9  sha256 4eed4a2d14df...1d166e8e8542
+                 agent    active, envelopes: 2880 complete
+
+  Reported by this device. Check it from outside with VERIFY-L3 for v2.1.0-rc14
+  and the signed release set; this screen is not a verification.
+
+root@tactiq-rock5a:~# lsblk | head -n 4
+NAME         MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sda            8:0    1 28.9G  0 disk
+`-sda1         8:1    1 28.9G  0 part
+nbd0          43:0    0    0B  0 disk
+root@tactiq-rock5a:~# mkdir -p /tmp/usb
+root@tactiq-rock5a:~# mount -t vfat -o ro /dev/sda1 /tmp/usb
+root@tactiq-rock5a:~# sha256sum /tmp/usb/mrm/measure-check-20261029.sh
+d79e76a62074f475577faf84d9de0fa5ce5751c7dcc0ae2383724b251a0c780e  /tmp/usb/mrm/measure-check-20261029.sh
+root@tactiq-rock5a:~# cp /tmp/usb/mrm/measure-check-20261029.sh /tmp/mc.sh; chmod +x /tmp/mc.sh
+root@tactiq-rock5a:~# /tmp/mc.sh /tmp/usb/mrm
+
+===== board =====
+6.18.52-yocto-standard-00164-g0e7b072c8239
+VERSION="2.1.0 (hardened-edge)"
+PRETTY_NAME="TactiQ OS 2.1.0 (hardened-edge)"
+rauc.slot=A
+Enforcing
+
+===== tool =====
+path   /bin/tactiq-edge-measure
+88ff2ae7a44cc80bbb9c0fe54c9522c6f7e43edb3252b942ca40d71bd5e5a706  /bin/tactiq-edge-measure
+
+===== model files as seen here =====
+-rwxr-xr-x    1 root     root        730976 Oct 29  2026 /tmp/usb/mrm/test-int8.tflite
+b72506c69015541c68fbef582590fd332f0a85f413c73d8bb31f54df72882dc0  /tmp/usb/mrm/test-int8.tflite
+-rwxr-xr-x    1 root     root         10364 Oct 29  2026 /tmp/usb/mrm/test-float.tflite
+c7a03325c8cf20ba8166b3bcb8a80cffb7767e7604d69911ba0373149c7f0c40  /tmp/usb/mrm/test-float.tflite
+
+===== measure test-int8.tflite =====
+format  tactiq-model-exec/1
+F       b72506c69015541c68fbef582590fd332f0a85f413c73d8bb31f54df72882dc0
+D       b5a4ccc49ca30b1ec47992b26f6251315782f8eac06a86deadb154bed722632d
+nodes   24
+consts  45
+invoke  ok, output int8 count 2
+exit 0
+
+===== measure test-float.tflite =====
+format  tactiq-model-exec/1
+F       c7a03325c8cf20ba8166b3bcb8a80cffb7767e7604d69911ba0373149c7f0c40
+D       117970dea2364d9669c2881c5666c55f41d0b955778bb1d18b0a5cc156df4565
+nodes   7
+consts  7
+invoke  ok, output int8 count 0
+exit 0
+
+===== pcr now =====
+  sha256:
+    10: 0xF718912CDAF9E6E3569E5AA88C5679A2177CE9E0742E8F5E8C9AC3B54A676A1B
+    11: 0x0000000000000000000000000000000000000000000000000000000000000000
+    12: 0xFB7A2F9D70F4B0A320E458FDCACE9C26A63993001335A8DC692A6EE1D35991D0
+    14: 0x0000000000000000000000000000000000000000000000000000000000000000
+
+===== cartridge path =====
+/data/cartridges does not exist
+
+===== cartridge anchor =====
+-rw-r--r--    1 root     root          1931 Apr  5  2011 /etc/tactiq/cartridge-anchor/root-ca.pem
+
+===== ima policy rules naming a pcr =====
+34:measure func=FILE_CHECK mask=MAY_READ pcr=11 obj_type=tactiq_vault_data_t
+35:measure func=FILE_CHECK mask=MAY_READ pcr=11 obj_type=tactiq_site_perm_t
+36:measure func=FILE_CHECK mask=MAY_READ pcr=11 obj_type=tactiq_stop_release_t
+37:measure func=FILE_CHECK mask=MAY_READ pcr=11 obj_type=tactiq_cartridge_t
+38:measure func=FILE_CHECK mask=MAY_READ pcr=12 obj_type=tactiq_agent_state_t
+
+===== ima measurement log =====
+entries 233
+--- lines matching cartridge, tflite or gguf ---
+
+===== done =====
+root@tactiq-rock5a:~#
