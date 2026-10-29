@@ -1,0 +1,37 @@
+# TactiQ OS A/B partition layout, Raspberry Pi 4 Model B
+# Storage: microSD (the Pi 4 boots from it through the VideoCore firmware)
+#
+# Layout:
+#   [GPT primary header]
+#   [U-Boot environment, raw, 0xB00000 (11 MiB), 32 KiB, no partition]
+#   Part 1: firmware  (64MB, vfat) - VideoCore firmware, config.txt,
+#                                   u-boot.bin as kernel8.img
+#   Part 2: boot_a   (256MB, ext4) - signed FIT
+#   Part 3: rootfs_a  (2GB, ext4)  - active root filesystem, dm-verity
+#   Part 4: boot_b   (256MB, ext4) - standby FIT
+#   Part 5: rootfs_b  (2GB, ext4)  - standby root filesystem
+#   Part 6: data      (4GB, ext4)  - persistent data
+#
+# The first partition starts at 12 MiB, as on the RK3588 boards, so the raw
+# environment window at 11 MiB (env-mmc.cfg, tactiq-fw-env-setup.sh) lies
+# in front of every partition on both platforms.
+#
+# The Pi 4 bootloader reads a GPT and takes the firmware from a FAT
+# partition of type Microsoft basic data. GPT is needed anyway: RAUC and
+# U-Boot address the slots by partition label.
+
+part --source bootimg-partition --fstype=vfat --label firmware --part-type EBD0A0A2-B9E5-4433-87C0-68B6B72699C7 --offset 12M --size 64M
+
+# Partition A (active)
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.bootext4" --fstype=ext4 --label boot_a --align 4096 --size 256M --active
+part / --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.ext4.verity" --fstype=none --label rootfs_a --align 4096 --size 2048M --no-fstab-update
+
+# Partition B (standby - same content as A after the initial flash, so that
+# either slot can boot before the first bundle install)
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.bootext4" --fstype=ext4 --label boot_b --align 4096 --size 256M
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.ext4.verity" --fstype=none --label rootfs_b --align 4096 --size 2048M --no-fstab-update
+
+# Persistent data partition (survives A/B updates)
+part /data --fstype=ext4 --label data --align 4096 --size 4096M
+
+bootloader --ptable gpt

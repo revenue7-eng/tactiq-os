@@ -1,0 +1,31 @@
+# bblayers.conf: TactiQ OS build input, rpi4 target (Raspberry Pi 4 Model B).
+#
+# This file is a template. scripts/init-build.sh <layers-dir> <build-dir> rpi4
+# replaces the layer-directory placeholder with the absolute path to the
+# layer set assembled by scripts/setup-layers.sh. Do not edit paths by hand.
+#
+# It differs from conf/bblayers.conf.in (rock5a) in the vendor layers only:
+# meta-raspberrypi and meta-tactiq-bsp-raspberrypi are wired in, and
+# meta-rockchip, meta-tactiq-bsp-rockchip, meta-arm and meta-tensorflow-lite
+# are not. scripts/check-build-input.sh <layers-dir> <build-dir> rpi4
+# compares a generated bblayers.conf against this file.
+
+POKY_BBLAYERS_CONF_VERSION = "2"
+BBPATH = "${TOPDIR}"
+BBFILES ?= ""
+
+BBLAYERS ?= " \
+  ${LAYERS_DIR}/openembedded-core/meta \
+  ${LAYERS_DIR}/meta-openembedded/meta-oe \
+  ${LAYERS_DIR}/meta-openembedded/meta-python \
+  ${LAYERS_DIR}/meta-openembedded/meta-networking \
+  ${LAYERS_DIR}/meta-openembedded/meta-filesystems \
+  ${LAYERS_DIR}/meta-selinux \
+  ${LAYERS_DIR}/meta-security/meta-integrity \
+  ${LAYERS_DIR}/meta-security/meta-tpm \
+  ${LAYERS_DIR}/tactiq-os \
+  ${LAYERS_DIR}/tactiq-os/meta-tactiq-bsp-raspberrypi \
+  ${LAYERS_DIR}/tactiq-os-selinux \
+  ${LAYERS_DIR}/meta-raspberrypi \
+  ${LAYERS_DIR}/meta-rauc \
+  "

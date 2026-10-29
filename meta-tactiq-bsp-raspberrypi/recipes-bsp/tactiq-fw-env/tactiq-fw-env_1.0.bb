@@ -1,0 +1,46 @@
+SUMMARY = "Generate the fw_env.config for the boot medium in use"
+DESCRIPTION = "The U-Boot environment lives in a raw window on the medium the \
+system booted from. This oneshot service derives that medium from the block \
+device carrying the mounted rootfs and writes fw_env.config to \
+/run/tactiq-ubootenv before RAUC touches the environment."
+
+# Raspberry Pi 4 copy of meta-tactiq-bsp-rockchip/recipes-bsp/tactiq-fw-env.
+# The script and the unit are byte-identical to the Rockchip ones
+# (tests/bsp/test_bsp_shared_files.py); their comments speak of Rockchip.
+# On the Pi U-Boot keeps the environment on mmc 0, the SD card, at the same
+# offset and size (env-mmc.cfg in this layer), and the root is on the same
+# card, so deriving the device from the root holds here too.
+HOMEPAGE = "https://github.com/revenue7-eng/tactiq-os"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
+SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
+
+# No upstream tarball: all sources ship in this recipe directory.
+S = "${UNPACKDIR}"
+
+SRC_URI = "file://tactiq-fw-env-setup.sh \
+           file://tactiq-fw-env-setup.service"
+
+inherit systemd
+
+SYSTEMD_SERVICE:${PN} = "tactiq-fw-env-setup.service"
+
+RDEPENDS:${PN} = "libubootenv-bin"
+
+do_install() {
+    install -d ${D}/opt/tactiq/bin
+    install -m 0755 ${UNPACKDIR}/tactiq-fw-env-setup.sh ${D}/opt/tactiq/bin/tactiq-fw-env-setup
+
+    install -d ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/tactiq-fw-env-setup.service ${D}${systemd_system_unitdir}/tactiq-fw-env-setup.service
+
+    # The rootfs is read-only in the target configuration, so the generated
+    # config lives on tmpfs. This symlink keeps the canonical path working for
+    # fw_setenv/fw_printenv and RAUC without passing -c.
+    install -d ${D}${sysconfdir}
+    ln -sf /run/tactiq-ubootenv/fw_env.config ${D}${sysconfdir}/fw_env.config
+}
+
+FILES:${PN} = "${sysconfdir}/fw_env.config \
+               /opt/tactiq/bin/tactiq-fw-env-setup \
+               ${systemd_system_unitdir}/tactiq-fw-env-setup.service"

@@ -17,11 +17,12 @@ makes it change. Intent does not belong in this table.
 | `tactiq-rock5a` | `meta-tactiq-bsp-rockchip/conf/machine/tactiq-rock5a.conf` | yes | RK3588S. Reference hardware for measurements. |
 | `tactiq-rock5a-npu` | `meta-tactiq-bsp-rockchip/conf/machine/tactiq-rock5a-npu.conf` | no | Derives from `tactiq-rock5a`, adds the `npu` override. Never released. |
 | `tactiq-rock5t` | `meta-tactiq-bsp-rockchip/conf/machine/tactiq-rock5t.conf` | no | RK3588. Own devicetree (`rk3588-rock-5t`), U-Boot v2026.10. Boots from eMMC without a TPM; see `measurements/rock5t-stage1-boot-20261009.md`. |
+| `tactiq-rpi4` | `meta-tactiq-bsp-raspberrypi/conf/machine/tactiq-rpi4.conf` | no | Raspberry Pi 4 Model B (BCM2711). linux-yocto with the mainline devicetree (`bcm2711-rpi-4-b`), U-Boot v2026.10 with its own control devicetree, microSD. Build input `conf/*-rpi4.conf.in`. Not booted on a board. |
 
 ## TPM
 
 `MACHINE_FEATURES` carries `tpm2` on `tactiq-generic-arm64`,
-`tactiq-rock5a` and `tactiq-rock5t`. The flag builds kernel and
+`tactiq-rock5a`, `tactiq-rock5t` and `tactiq-rpi4`. The flag builds kernel and
 userspace support into the image. It says nothing about a chip being
 present.
 
@@ -55,6 +56,15 @@ in `BOOT_CHAIN.md` § "Vendor firmware blobs".
 `tactiq-qemu-x86` and `tactiq-generic-arm64` do not boot from this
 path.
 
+Raspberry Pi 4 (`tactiq-rpi4`): the VideoCore firmware from
+`rpi-bootfiles` (meta-raspberrypi), with `config.txt` from `rpi-config`,
+sits on the first partition (vfat, `firmware`) of
+`meta-tactiq-bsp-raspberrypi/files/wic/tactiq-ab-rpi.wks.in` and loads
+`u-boot.bin` from it as `kernel8.img`. Nothing on that partition is
+verified or measured. U-Boot does not use the devicetree the firmware
+passes; it uses its own, which carries the FIT key
+(`meta-tactiq-bsp-raspberrypi/recipes-bsp/u-boot/files/rpi4.cfg`).
+
 ## OP-TEE
 
 No TEE is in the boot path. `u-boot-rockchip_2024.07-kwiboo.bb:42`
@@ -77,5 +87,5 @@ platform has CI coverage that can be checked from this tree.
 enforcing, without a TPM, so without measured boot and without the
 attestation agent: `measurements/rock5t-stage1-boot-20261009.md`.
 
-Bring-up state for `tactiq-generic-arm64` and `tactiq-qemu-x86`:
-`not established`.
+Bring-up state for `tactiq-rpi4`, `tactiq-generic-arm64` and
+`tactiq-qemu-x86`: `not established`.

@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Andrey Lazarev <lazarev@tactiqedge.com>
+Date: Sun, 25 Oct 2026 12:00:00 +0000
+Subject: [PATCH] scripts: allow rpi to build without OF_BOARD
+
+On BCM283x, OF_HAS_PRIOR_STAGE implies OF_BOARD, and U-Boot takes its
+control devicetree from the VideoCore firmware. That tree is assembled by
+the firmware from files on the FAT partition and from config.txt, none of
+which is verified, and it cannot carry the FIT verification key, which is
+inserted into U-Boot's own tree at build time.
+
+The TactiQ Pi 4 build therefore turns OF_BOARD off and uses the tree
+appended to u-boot.bin (OF_SEPARATE). scripts/check-of.sh refuses that
+combination unless the board's SYS_CONFIG_NAME is listed in
+scripts/of_allowlist.txt; list "rpi" there.
+
+Upstream-Status: Inappropriate [TactiQ trust model: the control devicetree must carry the FIT key]
+---
+ scripts/of_allowlist.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/scripts/of_allowlist.txt b/scripts/of_allowlist.txt
+index e82cf55..1ab7dff 100644
+--- a/scripts/of_allowlist.txt
++++ b/scripts/of_allowlist.txt
+@@ -1 +1,2 @@
+ # List of boards which are permitted to use OF_HAS_PRIOR_STAGE without OF_BOARD
++rpi
