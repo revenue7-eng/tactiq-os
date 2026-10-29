@@ -49,4 +49,4 @@ meta-arm             https://git.yoctoproject.org/meta-arm                673e8d
 meta-rockchip        https://git.yoctoproject.org/meta-rockchip           9d02575bfd9ca5e87c394f593f2bbdbdee914d4e  wrynose
 meta-raspberrypi     https://git.yoctoproject.org/meta-raspberrypi        919588393f41b48cb6c5d832aa35e58a19b6762d  wrynose
 meta-tensorflow-lite https://github.com/NobuoTsukamoto/meta-tensorflow-lite 1fc5d5d68763ded53b11feac20fd65fbc6700f3b  main
-tactiq-os-selinux    https://github.com/revenue7-eng/tactiq-os-selinux    023aa7489e2b25d202c93b3473aa105c35734ca0  main
+tactiq-os-selinux    https://github.com/revenue7-eng/tactiq-os-selinux    8e7c5546b5c045e88285d27d22bdbbc8a8e9c4c4  main
