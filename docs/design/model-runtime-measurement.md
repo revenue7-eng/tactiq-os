@@ -1,11 +1,15 @@
 # Design decision: runtime report of the loaded model
 
-Status: **decision recorded, not implemented.**
-Date: 2026-09-29. Tree: `main` @ `1a74449`.
+Status: **the measurement is implemented and cross-checked; the PCR 14 report
+is not implemented.** The runtime computes `F` and `D` and agrees with
+`scripts/mk-model-reference.py` on both, and it extends no PCR. Recorded in
+`measurements/model-exec-crosscheck-20261029.md`.
+Written against `main` @ `1a74449`; the facts in §2 and §8 were re-read from
+the tree and the board later, and each correction below names its evidence.
 
-This document exists to fix an architectural decision before code is written.
-It describes intent. It does not describe the current behaviour of the system.
-Nothing here may be cited as a property of any shipped release.
+This document fixes an architectural decision. Sections 3 to 6 describe
+intent, and section 6 is normative. Nothing here may be cited as a property of
+any shipped release.
 
 ---
 
@@ -80,14 +84,28 @@ add an unpinned input.
 |-----|-------|--------|
 | 0, 1, 4, 6, 8, 9 | SPL and U-Boot, boot chain | `scripts/mk-pcr-reference.py` header |
 | 0-7 | closed with a separator | same |
-| 10 | IMA, executed and mapped code | `tactiq-ima-appraise.policy:66-68` |
-| 11 | IMA, delivered artifacts labelled `tactiq_vault_data_t` | `tactiq-ima-appraise.policy:72` |
-| 12 | IMA, device identity labelled `tactiq_agent_state_t` | `tactiq-ima-appraise.policy:81` |
+| 10 | IMA, executed and mapped code | `tactiq-ima-appraise.policy`, `measure func=BPRM_CHECK` and `MMAP_CHECK` |
+| 11 | IMA, what was consumed: four types, `tactiq_vault_data_t`, `tactiq_site_perm_t`, `tactiq_stop_release_t`, `tactiq_cartridge_t` | same file, the four `pcr=11` rules |
+| 12 | IMA, device identity labelled `tactiq_agent_state_t` | same file, the `pcr=12` rule |
 
-PCR 11 already exists for "what was consumed": the policy comment names
-model and doctrine hashes. The file-level measurement of a model is therefore
-already designed, provided the model is delivered into the vault with that
-label and the policy is loaded (§6, item 1).
+PCR 11 is the channel for "what was consumed", and the file-level measurement
+of a model runs through it today. Corrected against the board: the model is
+read under `tactiq_cartridge_t`, the cartridge type, not under
+`tactiq_vault_data_t`. The cartridge type is measured and never appraised,
+because a cartridge carries its own signature under the Cartridge Signer key
+rather than the IMA key.
+
+Demonstrated in `measurements/cartridge-pcr11-20261030.md`: a signed cartridge
+placed under `/data/cartridges`, labelled by the file context in the SELinux
+layer, moved PCR 11 off zero, and the IMA log carries the model's hash with no
+signature field on that entry.
+
+One property of PCR 11 bounds what may be claimed from it. IMA measures an
+inode once per boot, so the PCR records that these bytes were read during this
+boot, not which process read them or what it built from them. Binding the
+execution plan the runtime actually assembled is the job of the PCR 14 report
+(§5, §6), and is the reason this design exists alongside PCR 11 rather than
+instead of it.
 
 ---
 
@@ -117,6 +135,17 @@ The runtime extends PCR 14.
 - By UAPI convention systemd may write 11, 12, 13 and 15 when built with TPM2
   support. PCR 14 is conventionally used only by shim on UEFI, which does not
   exist in this boot chain. PCR 14 stays free even if the systemd build changes.
+
+The systemd clause is no longer hypothetical, which makes this choice firmer
+rather than weaker. The image carries `systemd 259.5` built `+TPM2`
+(`measurements/logs/llm-latency-20261029-board.log`). Its four PCR measurement
+units are skipped on that boot by `ConditionSecurity=tpm2`, which is unmet at
+the point they run because the TPM device is not up yet, so systemd writes
+nothing. That is an ordering accident, not a guarantee: a build or boot order
+that satisfies the condition would have systemd writing PCR 11, where our four
+IMA rules already extend. A report placed in 11 would then interleave with
+systemd's records against no reference value. PCR 14 avoids this by
+construction.
 
 ---
 
@@ -211,18 +240,58 @@ script refuses it as well.
    (`docs/design/verity-fit-ab.md`), which puts the whole rootfs, runtime
    included, under PCR 8; or a measure-only IMA policy in the production
    image. This is a prerequisite, not part of this design.
+
+   **Satisfied on the dev image, with the anchor in a different PCR than
+   expected above.** The dev image boots the first of the two routes: the FIT
+   is verified against `dev-fit`, the kernel command line carries
+   `dm-mod.create` with the verity root hash and `root=/dev/dm-0`, and the
+   root is mounted through device-mapper. Correction to the sentence above:
+   this does not put the rootfs under PCR 8. The verity parameters live in
+   `/chosen` of the per-slot device tree built by
+   `recipes-kernel/devicetree/tactiq-slot-dtb.bb`, and SPL measures that fdt
+   into **PCR 6**, alongside ATF into PCR 0 and U-Boot into PCR 4; it measures
+   nothing into 8 or 9. A verifier binding the rootfs therefore reads PCR 6,
+   not PCR 8. Evidence: `measurements/logs/llm-latency-20261029-board.log`.
+
+   For the release image the item stays open exactly as written: that image
+   carries no IMA policy, so the runtime binary is not measured there and none
+   of the PCR 11 measurements happen either.
 2. **C API reach.** Confirm against `libtensorflow-lite-c_2.21.0` headers
    whether internal tensors are reachable; if they are, the C API may be
    preferable for a smaller surface.
-3. **systemd TPM2 flag on the current image.** July boot logs show
+3. **systemd TPM2 flag on the current image.** Closed, with the opposite
+   answer to the one the older records suggested. July boot logs show
    `systemd 259.5 ... -TPM2` (`measurements/selinux-enforcing-boot-prod-20260717.log:571`),
-   and coverage files rc7 and rc10 (line 273) record it. Not re-recorded for
-   rc11-rc13. Confirm with `systemctl --version` on the board at the next dev
-   boot. Does not block §5.
+   and coverage files rc7 and rc10 (line 273) record it. On v2.1.0-rc14 the
+   same version is built **`+TPM2`**
+   (`measurements/logs/llm-latency-20261029-board.log`). Nothing is written to
+   a PCR by systemd on that boot, because its four measurement units are
+   skipped by an unmet `ConditionSecurity=tpm2`, but that is boot ordering
+   rather than a property of the build. Consequence recorded in §5: the
+   collision this clause was guarding against is live, and PCR 14 is the
+   answer to it.
 4. **XNNPACK default delegate.** TFLite applies XNNPACK by default in many
    builds, which rewrites the plan. First iteration disables it so the plan
    equals the flatbuffer operator order and `D` is reproducible offline.
-5. **Model location.** The runtime reads the model from the vault
-   (`tactiq_vault_data_t`, PCR 11), not from the benchmark path in the rootfs.
+5. **Model location.** Corrected and closed. The runtime reads the model from
+   a cartridge under `/data/cartridges`, labelled `tactiq_cartridge_t` and
+   measured into PCR 11, not from the vault under `tactiq_vault_data_t` as
+   this item first said, and not from the benchmark path in the rootfs. The
+   difference is not cosmetic: the vault type is appraised under the IMA key,
+   the cartridge type is measured only and carries its own signature under the
+   Cartridge Signer key, which is what keeps the authority to choose a model
+   separate from the authority to run code. Demonstrated in
+   `measurements/cartridge-pcr11-20261030.md`.
 6. **TPM access for the runtime.** A new SELinux domain for the runtime with
    access to `/dev/tpmrm0`, following the existing `tactiq_tpm` module.
+7. **The format covers one runtime family.** `tactiq-model-exec/1` walks
+   operator codes and constant tensors of a TFLite flatbuffer. It does not
+   apply to GGUF weights under a llama.cpp-style runtime, which has no
+   execution plan of that shape, so a second generation of language models at
+   the edge needs its own definition rather than an extension of this one.
+   Whatever that definition is, the unit it covers is the inference
+   configuration and not a single file: target weights, draft weights where
+   speculative decoding is used, and the decoding parameters. Throughput for
+   such a runtime on this board is recorded in
+   `measurements/llm-latency-20261029.md`; no measurement of its loaded model
+   exists.
