@@ -1,0 +1,97 @@
+tactiq-rock5a login: root
+
+  ▀▀▀▀▀▀▀▀▀▀▀▄   release  TactiQ OS v2.1.0-rc14 (tactiq-image-dev)
+     █  █    █   board    Radxa ROCK 5A
+     █  █    █   slot     A
+     █  █   ▄█   root     dm-verity, dm-0 "rootfs" (as booted)
+     ▀   ▀▀▀▀▄   selinux  enforcing
+                 ima      policy: measure 8, appraise 4, 164 entries measured
+                 tpm      present, TPM 2.0, IFX, firmware 7.87.19691.2
+                 pcr 0-9  sha256 4eed4a2d14df...1d166e8e8542
+                 agent    active, envelopes: 2880 complete
+
+  Reported by this device. Check it from outside with VERIFY-L3 for v2.1.0-rc14
+  and the signed release set; this screen is not a verification.
+
+root@tactiq-rock5a:~# lsblk | head -n 4
+NAME         MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sda            8:0    1 28.9G  0 disk
+`-sda1         8:1    1 28.9G  0 part
+nbd0          43:0    0    0B  0 disk
+root@tactiq-rock5a:~# mkdir -p /tmp/usb
+root@tactiq-rock5a:~# mount -t vfat -o ro /dev/sda1 /tmp/usb
+root@tactiq-rock5a:~# sha256sum /tmp/usb/cart/cart-place.sh
+624ea81aec06b4f49d5a32b98c78ee8e728b4145fe4c76a2029bebcab4bb9d0c  /tmp/usb/cart/cart-place.sh
+root@tactiq-rock5a:~# cp /tmp/usb/cart/cart-place.sh /tmp/cp.sh; chmod +x /tmp/cp.sh
+root@tactiq-rock5a:~# /tmp/cp.sh /tmp/usb/cart
+
+===== source =====
+drwxr-xr-x    2 root     root         16384 Oct 30  2026 .
+drwxr-xr-x   10 root     root         32768 Jan  1  1970 ..
+-rwxr-xr-x    1 root     root          2530 Oct 30  2026 cart-place.sh
+-rwxr-xr-x    1 root     root           393 Oct 30  2026 cart-place.sh.sig
+-rwxr-xr-x    1 root     root           216 Oct 30  2026 manifest.json
+-rwxr-xr-x    1 root     root          3362 Oct 30  2026 manifest.json.p7s
+-rwxr-xr-x    1 root     root        730976 Oct 30  2026 test-int8.tflite
+b9eb96de80842cb21b7102170eede711cda62ea8fe8dc7c772ba454f408e02d7  /tmp/usb/cart/manifest.json
+f0f6fa1219831355e05068c0c59a9a47b467c26b2c66708f537559a602c1a1aa  /tmp/usb/cart/manifest.json.p7s
+b72506c69015541c68fbef582590fd332f0a85f413c73d8bb31f54df72882dc0  /tmp/usb/cart/test-int8.tflite
+
+===== before =====
+  sha256:
+    11: 0x0000000000000000000000000000000000000000000000000000000000000000
+ls: /data/cartridges: No such file or directory
+
+===== place =====
+drwxr-xr-x    2 root     root          4096 Oct 12 00:01 .
+drwxr-xr-x    3 root     root          4096 Oct 12 00:01 ..
+-rwxr-xr-x    1 root     root           216 Oct 12 00:01 manifest.json
+-rwxr-xr-x    1 root     root          3362 Oct 12 00:01 manifest.json.p7s
+-rwxr-xr-x    1 root     root        730976 Oct 12 00:01 test-int8.tflite
+
+===== label =====
+drwxr-xr-x    3 root     root          4096 Oct 12 00:01 /data/cartridges
+/data/cartridges/test-int8/manifest.json        system_u:object_r:tactiq_cartridge_t:s0
+/data/cartridges/test-int8/manifest.json.p7s    system_u:object_r:tactiq_cartridge_t:s0
+/data/cartridges/test-int8/test-int8.tflite     system_u:object_r:tactiq_cartridge_t:s0
+
+===== verify signature against the anchor =====
+-rw-r--r--    1 root     root          1931 Apr  5  2011 /etc/tactiq/cartridge-anchor/root-ca.pem
+OK
+id        test-int8
+version   1
+signer    CN=TactiQ OS DEVELOPMENT Cartridge Signer - NOT FOR PRODUCTION,O=TactiQ
+manifest  sha256:b9eb96de80842cb21b7102170eede711cda62ea8fe8dc7c772ba454f408e02d7
+model     test-int8.tflite (730976 bytes, sha256:b72506c69015541c68fbef582590fd332f0a85f413c73d8bb31f54df72882dc0)
+files     1
+exit 0
+
+===== pcr after the signature check =====
+  sha256:
+    11: 0x24D79304B9620EB29C3D70C8AE26A183684C4E0809D5601539B570ED4D7B971A
+
+===== load the model from the cartridge =====
+format  tactiq-model-exec/1
+F       b72506c69015541c68fbef582590fd332f0a85f413c73d8bb31f54df72882dc0
+D       b5a4ccc49ca30b1ec47992b26f6251315782f8eac06a86deadb154bed722632d
+nodes   24
+consts  45
+invoke  ok, output int8 count 2
+exit 0
+
+===== pcr after the load =====
+  sha256:
+    11: 0x24D79304B9620EB29C3D70C8AE26A183684C4E0809D5601539B570ED4D7B971A
+
+===== ima log =====
+entries 237
+--- lines matching cartridge ---
+10 06437457c5fa69bdd1f07020a538c46965337562 ima-sig sha256:0284474e67d845b52e4fe45dcc01f9d47e2d30bc2c6f38b038776256269d79c8 /usr/bin/tactiq-cartridge-verify 030204cc67b7740180216d07f8e03d3d793283c75a9dc689b46cfb53f3a342b2fc21a99650152136e5d9d698a4b4159d0c80daa112fb95e267afc25ceee9841db1ac96b5b40103d7d44bfeefc18946b018d32afdffea384dd3975f80cc2d3b586b3fd29dfb149a829b377157f9d59252d787ee88d14e9be84bac161e2c9012331a3c5af2a4c2878533fcc3ae169f687226a301716ba4fbbd95fe47d6d050f96cfa0d38b240530a473926813c4b10c675def428521507e99622d87c10fc271c9298eca2ed5469ce119f63b4d050370f36928d15e67efe359300cbc3a5810ab33475673ba5f3071f3f30929a099b81f013babc5b79557008d1a43a5cad52716a70cc754ef58c113e9fcaf5bc57d601c7818475a11494ce9842288608d64e0b8447187520d6f0c27e8a1e047b2a6813c190d78cd30a6ddac59b1f0145ccd64cf127d06d18a53f02bab720ee3c79de86a539275c6a3bb50b2b9cdb9ab690a87a5ceb25194e2695bdab208092b3f3ca04633814b429f4c9a1562839c77e849c604c2b2ad55106a6741e9563
+11 f6a43c90ad57bd614cee9d77dd6e1787785882ed ima-sig sha256:b9eb96de80842cb21b7102170eede711cda62ea8fe8dc7c772ba454f408e02d7 /data/cartridges/test-int8/manifest.json
+11 9a9ac13230ae34d9fde53aa0907c4e18d6af2820 ima-sig sha256:f0f6fa1219831355e05068c0c59a9a47b467c26b2c66708f537559a602c1a1aa /data/cartridges/test-int8/manifest.json.p7s
+11 53b9692a5859d9175693c0218607d7b7afa0bbdc ima-sig sha256:b72506c69015541c68fbef582590fd332f0a85f413c73d8bb31f54df72882dc0 /data/cartridges/test-int8/test-int8.tflite
+
+===== selinux denials, last 15 =====
+
+===== done =====
+root@tactiq-rock5a:~#
