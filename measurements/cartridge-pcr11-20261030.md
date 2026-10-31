@@ -1,5 +1,28 @@
 # A signed cartridge measured into PCR 11
 
+## Correction
+
+As first committed, the section "What this establishes" said that a verifier
+replaying the IMA log "reaches the quoted PCR 11". That was wrong. PCR 11 is
+not quoted. The agent's quote selection is `sha256:0,1,2,3,4,5,6,7,8,9`, set
+in `recipes-core/tactiq-agent/files/tactiq-agent.service` and matching the
+`pcr 0-9 sha256` line the board prints; the prover's built-in default is
+narrower still, `sha256:0,1,2,3,4,5,6,7`, and `stop` uses `sha256:0,1,8`. PCR
+10, 11, 12 and 14 are in none of them, in any bank.
+
+What holds is weaker and stated here instead: PCR 11 is readable on the device
+and replayable from the IMA log, and no signed statement covers it. Making it
+part of a signed statement means widening the quote selection, which changes
+the 5-byte selection field inside the canonical message and the composite over
+it, so the verifier's expected selection and the published reference sets
+change in step. The sentence in the body is corrected below.
+
+Everything else in this report stands: the labels, the signature check, the
+PCR movement, the log entries and the absence of denials were all read from
+the board and are in the raw output.
+
+## Summary, superseding an earlier record
+
 Supersedes the state recorded in `model-exec-crosscheck-20261029.md`, which
 reported PCR 11 as a prepared channel with nothing in it. That statement held
 for the boot it describes and no longer describes the mechanism: PCR 11 now
@@ -107,9 +130,10 @@ runtime prints `D` and extends nothing.
 - A cartridge signed under a key that is not the IMA key is read on a release
   kernel under enforcing SELinux, measured into a PCR of its own, and verified
   against an anchor shipped in the read-only image.
-- The file-level half of the claim about model identity is working: a verifier
-  replaying the IMA log reaches the quoted PCR 11 and finds the model's hash in
-  it.
+- The file-level half of the claim about model identity works on the device: a
+  verifier replaying the IMA log reaches the value PCR 11 holds and finds the
+  model's hash in it. Corrected from the first version of this sentence, which
+  called that PCR quoted. It is not: see the correction at the top.
 
 ## What it does not establish
 
@@ -134,3 +158,5 @@ Run again after any of these, not on a date:
   which entries appear and in which order
 - the measurement is repeated on the release image, where the policy is absent
   and the result is expected to differ
+- the quote selection widens past `sha256:0-9`, which is what would turn any of
+  this into a signed statement and would change the reference sets with it
