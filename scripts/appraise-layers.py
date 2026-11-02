@@ -56,6 +56,12 @@ reference). Without a route, any route that counts under --definition will do.
 The routes are written beside the section 3.1.5 block, under "routes", and not
 inside it: section 3.1.5 gives a layer an outcome and a reason and nothing else.
 
+Without --qualifying-hex or --qualifying-sha256-of nothing ties the quote to a
+challenge or to a payload, so it may be a replay of an older one. The report says
+so in a line of its own and in "qualifying_checked": false, rather than staying
+silent. An empty --qualifying-hex is refused: it would match a quote made with no
+qualifying data at all, which is how an unset shell variable would read.
+
 Exit: 0 nothing failed and every required layer is established;
       1 a check failed (signature, qualifying data, RIM, malformed input);
       2 nothing failed, but a required layer is not established.
@@ -164,12 +170,27 @@ def rim_values(a):
                          input=signer, capture_output=True, text=True).stdout
     if RIM_SIGNER_EKU not in eku:
         raise Failed('RIM: signer is not a RIM Signer (EKU)')
-    p = json.load(open(a.rim))['pcr']
+    p = json.load(open(a.rim)).get('pcr')
+    if not isinstance(p, dict):
+        raise Failed('RIM: no pcr object')
+    sel, values = p.get('selection'), p.get('values')
+    if (not isinstance(sel, list) or not sel or
+            not all(type(i) is int and 0 <= i <= 23 for i in sel) or len(set(sel)) != len(sel)):
+        raise Failed('RIM: pcr.selection is not a non-empty list of distinct PCR indices')
+    if not isinstance(values, dict):
+        raise Failed('RIM: pcr.values is not an object')
     vals = {}
-    for i in p['selection']:
-        v = p['values'][str(i)]
-        vals[i] = [bytes.fromhex(x) for x in (v.values() if isinstance(v, dict) else v)]
-    return p['selection'], vals
+    for i in sel:
+        v = values.get(str(i))
+        items = list(v.values()) if isinstance(v, dict) else v
+        if not isinstance(items, list) or not items:
+            raise Failed(f'RIM: PCR {i} has no reference values')
+        for x in items:
+            if not (isinstance(x, str) and len(x) == 64 and
+                    all(c in '0123456789abcdefABCDEF' for c in x)):
+                raise Failed(f'RIM: PCR {i}: {x!r} is not a sha256 value (64 hex digits)')
+        vals[i] = [bytes.fromhex(x) for x in items]
+    return sel, vals
 
 
 def main():
@@ -198,11 +219,17 @@ def main():
     lines = []
 
     q = parse_attest(open(a.attest, 'rb').read())
-    if a.qualifying_hex is not None and q['extra'] != bytes.fromhex(a.qualifying_hex):
-        raise Failed('qualifying data is not the expected value')
-    if a.qualifying_sha256_of and q['extra'] != hashlib.sha256(
-            open(a.qualifying_sha256_of, 'rb').read()).digest():
-        raise Failed('qualifying data is not the sha256 of ' + a.qualifying_sha256_of)
+    qualifying_checked = False
+    if a.qualifying_hex is not None:
+        if not a.qualifying_hex.strip():
+            raise Failed('--qualifying-hex is empty: it would match a quote with no qualifying data')
+        if q['extra'] != bytes.fromhex(a.qualifying_hex):
+            raise Failed('qualifying data is not the expected value')
+        qualifying_checked = True
+    if a.qualifying_sha256_of:
+        if q['extra'] != hashlib.sha256(open(a.qualifying_sha256_of, 'rb').read()).digest():
+            raise Failed('qualifying data is not the sha256 of ' + a.qualifying_sha256_of)
+        qualifying_checked = True
     cmd = ['tpm2_checkquote', '-u', a.ak, '-m', a.attest, '-s', a.sig, '-g', 'sha256',
            '-q', q['extra'].hex()] + (['-f', a.pcr] if a.pcr else [])
     r = subprocess.run(cmd, capture_output=True, text=True)
@@ -210,6 +237,10 @@ def main():
         raise Failed('quote does not verify under ' + a.ak)
     lines.append(f'quote verifies under {a.ak}; resetCount {q["reset"]}, '
                  f'PCRs {",".join(map(str, q["sel"]))}')
+    lines.append('qualifying data equals the expected value' if qualifying_checked else
+                 'qualifying data NOT CHECKED: no --qualifying-hex or --qualifying-sha256-of, '
+                 'so this quote may be a replay' + ('' if q['extra'] else
+                                                     ' (the quote carries no qualifying data)'))
 
     sel = q['sel']
     values = pcr_file(open(a.pcr, 'rb').read(), sel) if a.pcr else None
@@ -290,6 +321,7 @@ def main():
                  b''.join(values[i] for i in sel)).hexdigest(),
              'layers': layers}
     out = {'definition': a.definition, 'policy': a.policy,
+           'qualifying_checked': qualifying_checked,
            'platform_measurement': block, 'routes': routes, 'required_not_established': missing}
     if a.json:
         json.dump(out, open(a.json, 'w'), indent=1)

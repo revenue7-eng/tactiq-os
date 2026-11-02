@@ -54,10 +54,12 @@ def quote_values():
     return tool.pcr_file((EV / "quote.pcr").read_bytes(), att["sel"])
 
 
-def make_rim(d, name, values, signer="rim-signer", alter=None, sel=range(10)):
+def make_rim(d, name, values, signer="rim-signer", alter=None, sel=range(10), raw=None):
     vals = {str(i): [values[i].hex()] for i in sel}
     for i, v in (alter or {}).items():
         vals[str(i)] = [v]
+    for i, v in (raw or {}).items():
+        vals[str(i)] = v
     rim = d / f"{name}.json"
     rim.write_text(json.dumps({"pcr": {"selection": list(sel), "values": vals}}))
     subprocess.run(
@@ -168,6 +170,29 @@ def main():
 
         rc, out, _ = run(d, "--qualifying-hex", "00" * 32)
         check("wrong qualifying data fails", rc == 1, out)
+        rc, out, _ = run(d, "--qualifying-hex", "")
+        check("an empty --qualifying-hex is refused as empty, not compared",
+              rc == 1 and "is empty" in out, out)
+        rc, out, res = run(d, "--qualifying-hex", NONCE)
+        check("a checked nonce is reported as checked",
+              rc == 0 and res["qualifying_checked"] is True and
+              "qualifying data equals the expected value" in out, out)
+        rc, out, res = run(d)
+        check("no qualifying option is reported, not passed over in silence",
+              rc == 0 and res["qualifying_checked"] is False and "NOT CHECKED" in out, out)
+
+        # Section 3.1.5 class of #628 in trace-spec: an empty or mistyped value
+        # must not read as a value that is present.
+        for name, raw, why in (
+                ("empty-string", {8: [""]}, "an empty string"),
+                ("short", {8: ["11" * 31]}, "31 bytes"),
+                ("number", {8: [123]}, "a number"),
+                ("empty-list", {8: []}, "an empty list"),
+                ("not-a-list", {8: values[8].hex()}, "a bare string")):
+            bad = make_rim(d, "bad-" + name, values, raw=raw)
+            rc, out, _ = run(d, rim=bad)
+            check(f"a RIM whose PCR 8 value is {why} fails as malformed",
+                  rc == 1 and "RIM: PCR 8" in out, out)
         bad_sig = d / "quote.sig"
         s = bytearray((EV / "quote.sig").read_bytes())
         s[20] ^= 1
