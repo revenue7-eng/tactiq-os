@@ -1,5 +1,22 @@
 # Development image: a stop receipt checked off the device, against a challenge chosen off the device (2026-10-28)
 
+## Correction
+
+As first committed, "Reproduce" said to build the verifier from tactiq-attest
+at `df8c50c` "or later". That no longer holds. From tactiq-attest `3c57e1f`
+(#29) the stop counter is defined with other attributes (auth write, auth read,
+no owner bits), so that the TPM owner authorization can be closed, and its TPM
+name changed with them. The verifier from that revision on computes the new
+name and refuses this receipt in the main check with `certifies a different NV
+index`. That is the correct answer for a device on the new version; this
+receipt was made on the earlier one.
+
+This record is checked with the verifier of the version that made it,
+tactiq-attest `df8c50c` up to `b9874bf`. Run with `b9874bf`, `check.sh` gives
+`ALL CHECKS PASSED`; run with `101b7a7` it fails the main check and passes both
+controls, as the Horizon section below anticipates. Nothing measured here
+changes: the receipt, the nonce, the reference and the logs are as committed.
+
 ## Questions
 
 1. Can a party other than the device confirm, offline, that the AI agent on
@@ -99,16 +116,19 @@ reflash of the board does not change it: it is about one receipt, made once.
 
 ## Reproduce
 
-Build the verifier from tactiq-attest at `df8c50c` or later:
+Build the verifier from tactiq-attest at `b9874bf` (any revision from
+`df8c50c` up to `b9874bf`; later ones refuse this receipt, see the correction
+at the top). In a clone of tactiq-attest:
 
 ```
-cargo build --release --manifest-path tools/stop-verify/Cargo.toml
+git worktree add ../tactiq-attest-b9874bf b9874bf
+cargo build --release --manifest-path ../tactiq-attest-b9874bf/tools/stop-verify/Cargo.toml
 ```
 
 Then, in this directory:
 
 ```
-sh check.sh /path/to/tools/stop-verify/target/release/tactiq-stop-verify
+sh check.sh /path/to/tactiq-attest-b9874bf/tools/stop-verify/target/release/tactiq-stop-verify
 ```
 
 Expected last line: `ALL CHECKS PASSED`, exit status 0.
