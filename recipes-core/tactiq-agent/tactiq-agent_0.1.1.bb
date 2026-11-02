@@ -34,7 +34,7 @@ SPDX_PACKAGE_SUPPLIER_ref = "SPDX_SUPPLIER_tactiq"
 # 8d77e2ac) and a "must match" comment masked it. Version-parity is the real
 # invariant; a rev mismatch under one envelope version is expected.
 # Keep equal to tactiq-stop's SRCREV: one tree, one Cargo.lock.
-SRCREV = "55cd8d436926a9d13350b0b3829420c2c2ab4f6a"
+SRCREV = "101b7a7a747995f7463e5024132fdefa73ac20cb"
 SRC_URI = "git://github.com/revenue7-eng/tactiq-attest.git;protocol=https;branch=main"
 SRC_URI += "file://tactiq-agent.service"
 
