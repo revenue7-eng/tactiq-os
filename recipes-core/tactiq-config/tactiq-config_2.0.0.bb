@@ -13,6 +13,7 @@ SRC_URI = "file://agent.yaml \
            file://tactiq-log-setup.service \
            file://tactiq-log-setup.sh \
            file://var-volatile-log-journal.mount \
+           file://var-volatile-log-audit.mount \
           "
 
 UNPACKDIR = "${WORKDIR}/sources"
@@ -20,7 +21,7 @@ S = "${UNPACKDIR}"
 
 inherit systemd
 
-SYSTEMD_SERVICE:${PN} = "data.mount data-tactiq-dirs.service tactiq-log-setup.service var-volatile-log-journal.mount"
+SYSTEMD_SERVICE:${PN} = "data.mount data-tactiq-dirs.service tactiq-log-setup.service var-volatile-log-journal.mount var-volatile-log-audit.mount"
 SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 
 do_install() {
@@ -34,6 +35,7 @@ do_install() {
     install -m 0644 ${UNPACKDIR}/data.mount ${D}${systemd_system_unitdir}/data.mount
     install -m 0644 ${UNPACKDIR}/tactiq-log-setup.service ${D}${systemd_system_unitdir}/tactiq-log-setup.service
     install -m 0644 ${UNPACKDIR}/var-volatile-log-journal.mount ${D}${systemd_system_unitdir}/var-volatile-log-journal.mount
+    install -m 0644 ${UNPACKDIR}/var-volatile-log-audit.mount ${D}${systemd_system_unitdir}/var-volatile-log-audit.mount
     install -d ${D}${systemd_unitdir}/system.conf.d
     install -m 0644 ${UNPACKDIR}/10-tactiq-watchdog.conf ${D}${systemd_unitdir}/system.conf.d/10-tactiq-watchdog.conf
 
@@ -60,6 +62,7 @@ FILES:${PN} = " \
     ${systemd_system_unitdir}/data.mount \
     ${systemd_system_unitdir}/tactiq-log-setup.service \
     ${systemd_system_unitdir}/var-volatile-log-journal.mount \
+    ${systemd_system_unitdir}/var-volatile-log-audit.mount \
     ${systemd_unitdir}/journald.conf.d/20-tactiq-journal.conf \
     ${sbindir}/tactiq-log-setup \
     ${systemd_unitdir}/system.conf.d/10-tactiq-watchdog.conf \

@@ -1,0 +1,26 @@
+## TactiQ OS audit rules.
+##
+## The events IACS UR E27 item 13 names, as they exist on this image:
+##   access control      logins and authentication are recorded by PAM
+##                       through libaudit, SELinux denials (AVC) by the
+##                       kernel; neither needs a rule here
+##   operating system    kernel modules, clock changes
+##   backup and restore  installation of an update bundle (rauc)
+##   configuration       the writable configuration on /data, in
+##                       tactiq-data.rules (loaded later, see there); the
+##                       rootfs, /etc included, is dm-verity and cannot
+##                       change
+##   loss of communication
+##                       not applicable: the image has no network link
+##                       whose loss could be recorded
+##
+## Each rule carries a key, so a record can be found with ausearch -k.
+
+## Kernel modules
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules
+
+## Clock
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time
+
+## Update bundles (backup and restore of a slot)
+-w /usr/bin/rauc -p x -k update

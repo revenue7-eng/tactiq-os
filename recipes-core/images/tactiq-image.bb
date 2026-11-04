@@ -151,15 +151,18 @@ IMAGE_INSTALL:append = " \
 # removing setfiles breaks /data labelling on first boot.
 #
 # That package is the library and /etc/libaudit.conf only. The daemon and
-# /etc/audit are the separate package auditd, which this profile does not
-# install: the v2.1.0-rc14 manifest has audit and no auditd.
+# /etc/audit are the separate package auditd, installed below; the
+# v2.1.0-rc14 manifest has audit and no auditd. Its rules, the persistent
+# log on /data and the bound on its size are in recipes-security/audit.
 #
-# NOT ESTABLISHED: that auditd is configured for this platform — rule set,
-# log persistence across reboot, flash wear bounds. Package presence in the
-# manifest is not a working audit subsystem. External claims about logging
-# must not rely on this line.
+# NOT ESTABLISHED until measured on hardware: that a record survives a cold
+# restart, that removing a rule removes its records, and that auditd runs
+# without SELinux denials. Package presence in the manifest is not a
+# working audit subsystem. External claims about logging must not rely on
+# this line.
 # ---------------------------------------------------------------------------
 IMAGE_INSTALL:append = " \
+    auditd \
     libselinux \
     policycoreutils-setfiles \
     policycoreutils-sestatus \

@@ -1,0 +1,13 @@
+## TactiQ OS audit rules for the writable configuration on /data.
+##
+## Not in rules.d and not in audit.rules: these watches need their
+## directories, which data-tactiq-dirs creates after sysinit, while
+## audit.rules is loaded before it. On the first boot of a new device the
+## directories do not exist yet when audit.rules loads, and a watch on a
+## path whose parent is missing is refused. tactiq-audit-data-rules.service
+## loads this file once they exist.
+##
+## No -D here: these rules add to the ones already loaded.
+
+-w /data/site -p wa -k site-config
+-w /data/tactiq/stop -p wa -k stop

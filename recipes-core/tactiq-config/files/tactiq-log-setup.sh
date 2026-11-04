@@ -28,6 +28,7 @@ exec >/dev/console 2>&1
 LOGDIR=/data/log
 JDIR="${LOGDIR}/journal"
 PDIR="${LOGDIR}/pstore"
+ADIR="${LOGDIR}/audit"
 
 rc=0
 
@@ -43,7 +44,7 @@ step() {  # <description> <command...>
     return "${status}"
 }
 
-step "create journal and pstore directories" mkdir -p "${JDIR}" "${PDIR}"
+step "create journal, pstore and audit directories" mkdir -p "${JDIR}" "${PDIR}" "${ADIR}"
 
 # The mount point for the journal. /var/log is a symlink to volatile/log,
 # and /var/volatile/log itself is created by 00-create-volatile.conf, which
@@ -54,9 +55,13 @@ step "create journal and pstore directories" mkdir -p "${JDIR}" "${PDIR}"
 # where /var/volatile is already mounted and the journal has not flushed.
 step "create /var/volatile/log" mkdir -p /var/volatile/log
 step "create the journal mount point" mkdir -p /var/volatile/log/journal
+step "create the audit mount point" mkdir -p /var/volatile/log/audit
 
 # setgid so journald's files stay group-owned by systemd-journal.
 step "set mode on journal directory" chmod 2755 "${JDIR}" || true
+
+# auditd refuses a log directory that others can read.
+step "set mode on audit directory" chmod 0700 "${ADIR}" || true
 
 # Labels come from tactiq_log.fc. A failure here is reported but not fatal:
 # an unlabelled directory is a policy problem, not a reason to lose the
