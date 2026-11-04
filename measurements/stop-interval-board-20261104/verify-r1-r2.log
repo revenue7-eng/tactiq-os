@@ -1,0 +1,11 @@
+first       r1.tqsr: answers nonce 66a2a77a15f4d344578e63a82ae264b2263168192c101f380a23f862e62ecdc1
+second      r2.tqsr: answers nonce dc70031e2af8434e560434954f11b62327a85504264c759ba81e495deaef4bf0
+device      TACTIQ-BENCH-001
+ak          name 000b35c0941662473b6dc78ce636d83dfcaf1bbdfa68bb69121dd9b3c0b414df0a0a
+build       PCR 0, 1, 8 equal to pcr-ref-cnt-20261102.json, slot A, at both ends
+counter     8145 (odd) at both ends, read and signed by the TPM
+tpm boot    resetCount 380, restartCount 0 at both ends: no reboot and no resume in between
+tpm clock   1746147617 to 1746930077 ms, 782460 ms apart (TPM time, not wall time)
+basis       the counter never moved and the TPM did not reboot; in the build named above every call is refused at an odd counter
+not shown   that no command reached a process: that is an observation of the process, not of this device
+VERDICT     HELD

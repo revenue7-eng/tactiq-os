@@ -1,0 +1,67 @@
+# Console of the board over UART (PuTTY, Copy All), three pieces of one run.
+# Piece 1: after boot, r1. Piece 2: r2, recover, trip, r3. Piece 3: after the cold start, r4.
+# Pasted as copied; nothing removed inside a piece.
+
+## piece 1
+tactiq-rock5a login: root
+
+  ▀▀▀▀▀▀▀▀▀▀▀▄   release  TactiQ OS v2.1.0-rc14 (tactiq-image-dev)
+     █  █    █   board    Radxa ROCK 5A
+     █  █    █   slot     A
+     █  █   ▄█   root     dm-verity, dm-0 "rootfs" (as booted)
+     ▀   ▀▀▀▀▄   selinux  enforcing
+                 ima      policy: measure 8, appraise 4, 164 entries measured
+                 tpm      present, TPM 2.0, IFX, firmware 7.87.19691.2
+                 pcr 0-9  sha256 500aba3e6917...4336866a0bec
+                 agent    active, envelopes: 2880 complete
+
+  Reported by this device. Check it from outside with VERIFY-L3 for v2.1.0-rc14
+  and the signed release set; this screen is not a verification.
+
+root@tactiq-rock5a:~# mkdir -p /run/usb; mount -t vfat /dev/sda1 /run/usb; ls -l /run/usb/stopiv
+-rwxr-xr-x    1 root     root            65 Nov  4  2026 n1.txt
+-rwxr-xr-x    1 root     root            65 Nov  4  2026 n2.txt
+-rwxr-xr-x    1 root     root            65 Nov  4  2026 n3.txt
+-rwxr-xr-x    1 root     root            65 Nov  4  2026 n4.txt
+-rwxr-xr-x    1 root     root            35 Nov  4  2026 release
+-rwxr-xr-x    1 root     root            72 Nov  4  2026 release.sig
+root@tactiq-rock5a:~# /opt/tactiq/bin/tactiq-stop status $(cat /run/usb/stopiv/n1.txt) > /run/usb/stopiv/r1.tqsr
+status receipt: stop counter 8145, Stopped, 646 bytes, bound to the given nonce
+root@tactiq-rock5a:~#
+
+## piece 2
+root@tactiq-rock5a:~# /opt/tactiq/bin/tactiq-stop status $(cat /run/usb/stopiv/n2.txt) > /run/usb/stopiv/r2.tqsr
+status receipt: stop counter 8145, Stopped, 648 bytes, bound to the given nonce
+root@tactiq-rock5a:~# mkdir -p /data/tactiq/stop; cp /run/usb/stopiv/release /run/usb/stopiv/release.sig /data/tactiq/stop/
+root@tactiq-rock5a:~# /opt/tactiq/bin/tactiq-stop recover
+stop counter 8145 -> 8146: Running
+service confirms: calls pass
+root@tactiq-rock5a:~# /opt/tactiq/bin/tactiq-stop trip
+stop counter 8146 -> 8147: Stopped
+service confirms: calls are refused
+root@tactiq-rock5a:~# /opt/tactiq/bin/tactiq-stop status $(cat /run/usb/stopiv/n3.txt) > /run/usb/stopiv/r3.tqsr
+status receipt: stop counter 8147, Stopped, 647 bytes, bound to the given nonce
+root@tactiq-rock5a:~# sync
+root@tactiq-rock5a:~#
+
+## piece 3
+tactiq-rock5a login: root
+
+  ▀▀▀▀▀▀▀▀▀▀▀▄   release  TactiQ OS v2.1.0-rc14 (tactiq-image-dev)
+     █  █    █   board    Radxa ROCK 5A
+     █  █    █   slot     A
+     █  █   ▄█   root     dm-verity, dm-0 "rootfs" (as booted)
+     ▀   ▀▀▀▀▄   selinux  enforcing
+                 ima      policy: measure 8, appraise 4, 164 entries measured
+                 tpm      present, TPM 2.0, IFX, firmware 7.87.19691.2
+                 pcr 0-9  sha256 500aba3e6917...4336866a0bec
+                 agent    active, envelopes: 2880 complete
+
+  Reported by this device. Check it from outside with VERIFY-L3 for v2.1.0-rc14
+  and the signed release set; this screen is not a verification.
+
+root@tactiq-rock5a:~# mkdir -p /run/usb; mount -t vfat /dev/sda1 /run/usb
+root@tactiq-rock5a:~# /opt/tactiq/bin/tactiq-stop status $(cat /run/usb/stopiv/n4.txt) > /run/usb/stopiv/r4.tqsr
+status receipt: stop counter 8147, Stopped, 649 bytes, bound to the given nonce
+root@tactiq-rock5a:~# sync; cd /; umount /run/usb
+root@tactiq-rock5a:/#

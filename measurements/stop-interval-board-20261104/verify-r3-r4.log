@@ -1,0 +1,2 @@
+tactiq-stop-verify: interval: the TPM was reset in between (resetCount 380 then 381): a reboot, after which any build may have run
+VERDICT     REFUSED
