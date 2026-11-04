@@ -1,0 +1,2 @@
+tactiq-stop-verify: interval: the second receipt is not later by the TPM clock (1746930077 then 1746147617 ms)
+VERDICT     REFUSED
