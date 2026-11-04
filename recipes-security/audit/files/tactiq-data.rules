@@ -9,5 +9,6 @@
 ##
 ## No -D here: these rules add to the ones already loaded.
 
--w /data/site -p wa -k site-config
--w /data/tactiq/stop -p wa -k stop
+## Syscall form, not -w: see 30-tactiq.rules.
+-a always,exit -F arch=b64 -F dir=/data/site -F perm=wa -k site-config
+-a always,exit -F arch=b64 -F dir=/data/tactiq/stop -F perm=wa -k stop

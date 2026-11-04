@@ -15,6 +15,13 @@
 ##                       whose loss could be recorded
 ##
 ## Each rule carries a key, so a record can be found with ausearch -k.
+##
+## Watches are written as syscall rules (-a always,exit -F path= or dir=
+## -F perm=), not as -w. For a -w rule auditctl prints "Old style watch
+## rules are slower" and, when run as a service, also tries to send that
+## line to /dev/log, which auditctl_t may not write: on the bench board
+## (2026-11-04) the -w form left one SELinux denial per boot. The syscall
+## form loads silently and records the same events.
 
 ## Kernel modules
 -a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules
@@ -23,4 +30,4 @@
 -a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time
 
 ## Update bundles (backup and restore of a slot)
--w /usr/bin/rauc -p x -k update
+-a always,exit -F arch=b64 -F path=/usr/bin/rauc -F perm=x -k update
