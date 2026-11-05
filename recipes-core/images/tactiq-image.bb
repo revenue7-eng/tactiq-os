@@ -155,11 +155,12 @@ IMAGE_INSTALL:append = " \
 # v2.1.0-rc14 manifest has audit and no auditd. Its rules, the persistent
 # log on /data and the bound on its size are in recipes-security/audit.
 #
-# Measured on the development image on the bench board (2026-11-04, slot B,
-# cold start): a record survives a cold restart, and with its rule removed
-# the same event leaves no record. NOT ESTABLISHED: that auditd runs without
-# SELinux denials (the -w form of the rules left one; the syscall form that
-# replaced it is not yet measured), and anything about the release image.
+# Measured on the development image on the bench board: a record survives a
+# cold restart, and with its rule removed the same event leaves no record
+# (2026-11-04, slot B); with the syscall form of the rules, a boot leaves no
+# SELinux denial (2026-11-05, slot A, cold start; counted in the journal and
+# in audit.log after the last DAEMON_START). NOT ESTABLISHED: anything about
+# the release image.
 # Package presence in the manifest is not a working audit subsystem.
 # External claims about logging must not rely on this line.
 # ---------------------------------------------------------------------------
