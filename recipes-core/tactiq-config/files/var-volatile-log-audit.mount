@@ -1,0 +1,27 @@
+# The audit log is bound in from the data partition, as the journal is
+# (var-volatile-log-journal.mount, whose header explains why Where= is the
+# real path under /var/volatile and not /var/log/audit).
+#
+# auditd then writes its upstream default, /var/log/audit/audit.log, and
+# auditd.conf is left as shipped. auditd requires this unit
+# (audit_%.bbappend): if the bind fails, auditd fails with it instead of
+# writing into the volatile /var/log and losing the record at the next
+# reboot.
+[Unit]
+Description=Persistent audit log on the TactiQ data partition
+DefaultDependencies=no
+RequiresMountsFor=/data /var/volatile
+Requires=tactiq-log-setup.service
+After=tactiq-log-setup.service
+Before=auditd.service
+Conflicts=umount.target
+Before=umount.target
+
+[Mount]
+What=/data/log/audit
+Where=/var/volatile/log/audit
+Type=none
+Options=bind
+
+[Install]
+WantedBy=sysinit.target

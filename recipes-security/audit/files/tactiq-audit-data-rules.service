@@ -1,0 +1,14 @@
+[Unit]
+Description=Load TactiQ audit rules for the data partition
+Documentation=file:///etc/audit/tactiq-data.rules
+Requires=auditd.service
+After=auditd.service audit-rules.service data-tactiq-dirs.service
+Requires=data-tactiq-dirs.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=@AUDITCTL@ -R /etc/audit/tactiq-data.rules
+
+[Install]
+WantedBy=multi-user.target
