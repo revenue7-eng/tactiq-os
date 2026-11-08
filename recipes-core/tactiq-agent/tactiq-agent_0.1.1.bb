@@ -121,7 +121,6 @@ do_install:append() {
     # a forgery.
     install -d -m 0700 -o tactiq-agent -g tactiq-agent ${D}/data/tactiq/keys
     install -d -m 0750 -o tactiq-agent -g tactiq-agent ${D}/data/tactiq/audit
-    install -d -m 0755 -o tactiq-agent -g tactiq-agent ${D}/data/tactiq/certs
     install -d -m 0700 -o tactiq-agent -g tactiq-agent ${D}/data/tactiq/counter
 
     # cargo installs to ${bindir}; the agent belongs under /opt/tactiq with the
