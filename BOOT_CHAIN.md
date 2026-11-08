@@ -155,15 +155,36 @@ attacker with write access to the boot media could install a
 correctly-signed image from an earlier release that has a known
 vulnerability and downgrade the system into an exploitable state.
 
-The defense is a generation counter that the bootloader compares
-between the running slot and a candidate slot, refusing to boot a
-candidate whose generation is lower than what the platform has
-already accepted. RAUC's bundle metadata supports this; U-Boot can
-enforce it through environment-stored counters.
+On the reference board the defense is a rollback floor held in the
+TPM (`CONFIG_FIT_ROLLBACK_TPM`, patch `0010` in `recipes-bsp/u-boot`).
+Each configuration of the kernel FIT carries a `rollback-index` inside
+its signed node (`linux-yocto-fitimage.bbappend`; the value is
+`TACTIQ_ROLLBACK_INDEX` in `release-rev.inc`). After the configuration
+signature verifies, U-Boot refuses a configuration whose index is below
+the floor and goes on to the other slot. The floor is a TPM NV bit
+field under the platform hierarchy: only U-Boot writes it, before the
+platform hierarchy is locked, and the TPM lets it only go up. U-Boot
+raises it to the index of a configuration only when the OS has
+confirmed the slot and U-Boot has booted that same configuration from
+that slot before (recorded in `fit_seen_A` and `fit_seen_B`), so a
+slot that has just been written never raises the floor on its first
+boot, whoever wrote it. The index is raised at a declared security
+boundary, not with every release.
 
-The machinery exists at the RAUC layer but the
-generation counter check at the bootloader is not enforced. This
-is tracked alongside FIT image signing.
+Separately, RAUC refuses to install a bundle older than the installed
+release (`min-bundle-version` in `system.conf`). That check is on
+installation; the floor is on boot, and also covers an older image
+written to a slot by other means.
+
+Measured on the development build:
+`measurements/rollback-floor-dev-20261108.md` and
+`measurements/rollback-seen-dev-20261109.md`. No release up to
+v2.1.0-rc14 carries either check. The development key is public, so
+that an older release does not boot holds only under the release key.
+An attacker who can write the loader area replaces the loader that
+enforces the floor; against that attacker the floor holds only once the
+loader is authenticated by the boot ROM (`THREAT_MODEL.md`, physical
+attacker).
 
 ## Kernel command line
 
@@ -249,9 +270,9 @@ verified, in dependency order:
    reference hardware and with which key, and what is still not
    covered (`extlinux.conf`, an unsigned FIT, SPL).
 
-4. **Anti-rollback generation counter enforcement.** Wire the
-   generation counter from RAUC bundle metadata through to a
-   bootloader-enforced check.
+4. **Anti-rollback enforcement.** Done on the development build: a
+   rollback floor in the TPM, enforced by U-Boot on the kernel FIT
+   (§ Anti-rollback). Not yet in a release.
 
 5. **On-disk IMA appraisal policy.** Deploy the policy that covers
    `/opt/tactiq/` and the `tactiq-*` systemd unit files, so that

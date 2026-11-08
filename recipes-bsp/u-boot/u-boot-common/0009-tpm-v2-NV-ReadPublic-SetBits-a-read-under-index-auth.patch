@@ -1,0 +1,288 @@
+Upstream-Status: Pending
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Thu, 5 Nov 2026 15:42:33 +0000
+Subject: [PATCH 09/10] tpm: v2: NV ReadPublic, SetBits, a read under index
+ auth, a platform define
+
+Four NV primitives for an index the bootloader owns and the OS can read:
+
+- tpm2_nv_read_public(): TPM2_NV_ReadPublic, for the attribute word and
+  the data size of an index, with no authorization.
+- tpm2_nv_read_value_auth_index(): TPM2_NV_Read authorized by the index
+  with an empty password, so a TPMA_NV_AUTHREAD index stays readable after
+  the platform hierarchy is disabled; tpm2_nv_read_value() always uses
+  platform authorization.
+- tpm2_nv_set_bits(): TPM2_NV_SetBits under platform authorization, for a
+  bit field the TPM only ever sets bits in. Refused once the platform
+  hierarchy is disabled.
+- tpm2_nv_define_platform_index(): TPM2_NV_DefineSpace under platform
+  authorization with an empty authValue and no policy. Unlike
+  tpm2_nv_define_space() it sends the TPM2B_AUTH parameter that precedes
+  publicInfo.
+
+tpm2_rc_is() compares a response code without its handle, session or
+parameter number, so TPM2_RC_HANDLE matches 0x18b from NV_ReadPublic on
+an undefined index.
+---
+ include/tpm-v2.h |  81 +++++++++++++++++++++++++++
+ lib/tpm-v2.c     | 141 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 222 insertions(+)
+
+diff --git a/include/tpm-v2.h b/include/tpm-v2.h
+index 1f1d7ec6..d887e2e5 100644
+--- a/include/tpm-v2.h
++++ b/include/tpm-v2.h
+@@ -222,11 +222,13 @@ enum tpm2_command_codes {
+ 	TPM2_CC_HIERCHANGEAUTH	= 0x0129,
+ 	TPM2_CC_NV_DEFINE_SPACE	= 0x012a,
+ 	TPM2_CC_PCR_SETAUTHPOL	= 0x012C,
++	TPM2_CC_NV_SET_BITS	= 0x0135,
+ 	TPM2_CC_NV_WRITE	= 0x0137,
+ 	TPM2_CC_NV_WRITELOCK	= 0x0138,
+ 	TPM2_CC_DAM_RESET	= 0x0139,
+ 	TPM2_CC_DAM_PARAMETERS	= 0x013A,
+ 	TPM2_CC_NV_READ         = 0x014E,
++	TPM2_CC_NV_READ_PUBLIC	= 0x0169,
+ 	TPM2_CC_GET_CAPABILITY	= 0x017A,
+ 	TPM2_CC_GET_RANDOM      = 0x017B,
+ 	TPM2_CC_PCR_READ	= 0x017E,
+@@ -526,6 +528,85 @@ u32 tpm2_nv_read_value(struct udevice *dev, u32 index, void *data, u32 count);
+ u32 tpm2_nv_write_value(struct udevice *dev, u32 index, const void *data,
+ 			u32 count);
+ 
++/**
++ * tpm2_nv_define_platform_index() - Define an NV index under the platform
++ *
++ * Sends TPM2_NV_DefineSpace authorized by the platform hierarchy with an
++ * empty password, with an empty authValue and no authPolicy for the new
++ * index. The command carries the TPM2B_AUTH parameter that precedes
++ * publicInfo; tpm2_nv_define_space() does not.
++ *
++ * @dev:	TPM device
++ * @index:	Index, without the NV handle type
++ * @size:	Size of the index data in bytes
++ * @attributes:	Attribute word; must include TPMA_NV_PLATFORMCREATE
++ * Return: code of the operation
++ */
++u32 tpm2_nv_define_platform_index(struct udevice *dev, u32 index, u16 size,
++				  u32 attributes);
++
++/**
++ * tpm2_nv_read_public() - Read the public area of an NV index
++ *
++ * Sends TPM2_NV_ReadPublic, which needs no authorization.
++ *
++ * @dev:	TPM device
++ * @index:	Index, without the NV handle type (as for tpm2_nv_read_value())
++ * @attributes:	Returns the attribute word, TPMA_NV_WRITTEN included
++ * @data_size:	Returns the size of the index data in bytes
++ * Return: code of the operation; TPM2_RC_HANDLE in the low bits (see
++ *	   tpm2_rc_is()) when no index is defined at @index
++ */
++u32 tpm2_nv_read_public(struct udevice *dev, u32 index, u32 *attributes,
++			u16 *data_size);
++
++/**
++ * tpm2_nv_read_value_auth_index() - Read NV data under the index's own auth
++ *
++ * Like tpm2_nv_read_value(), but authorized by the index with an empty
++ * password (TPMA_NV_AUTHREAD) instead of by the platform hierarchy, so it
++ * works after the platform hierarchy is disabled.
++ *
++ * @dev:	TPM device
++ * @index:	Index, without the NV handle type
++ * @data:	Place to put data
++ * @count:	Number of bytes of data
++ * Return: code of the operation
++ */
++u32 tpm2_nv_read_value_auth_index(struct udevice *dev, u32 index, void *data,
++				  u32 count);
++
++/**
++ * tpm2_nv_set_bits() - OR bits into an NV bit field under platform auth
++ *
++ * Sends TPM2_NV_SetBits authorized by the platform hierarchy with an empty
++ * password. Bits once set cannot be cleared. Refused with TPM_LIB_ERROR when
++ * the platform hierarchy is already disabled.
++ *
++ * @dev:	TPM device
++ * @index:	Index, without the NV handle type
++ * @bits:	Bits to set
++ * Return: code of the operation
++ */
++u32 tpm2_nv_set_bits(struct udevice *dev, u32 index, u64 bits);
++
++/**
++ * tpm2_rc_is() - Compare a TPM response code, ignoring its position fields
++ *
++ * A format-one response code carries the number of the handle, session or
++ * parameter it refers to; this compares only the error itself.
++ *
++ * @rc:		Response code
++ * @err:	Error to compare with, for instance TPM2_RC_HANDLE
++ * Return: true if @rc is @err
++ */
++static inline bool tpm2_rc_is(u32 rc, u32 err)
++{
++	if (rc & TPM2_RC_FMT1)
++		return (rc & 0xbf) == err;
++	return rc == err;
++}
++
+ /**
+  * Issue a TPM2_PCR_Read command.
+  *
+diff --git a/lib/tpm-v2.c b/lib/tpm-v2.c
+index b203b967..cbb4bdf7 100644
+--- a/lib/tpm-v2.c
++++ b/lib/tpm-v2.c
+@@ -445,6 +445,147 @@ u32 tpm2_nv_write_value(struct udevice *dev, u32 index, const void *data,
+ 	return tpm_sendrecv_command(dev, command_v2, response, &response_len);
+ }
+ 
++u32 tpm2_nv_define_platform_index(struct udevice *dev, u32 index, u16 size,
++				  u32 attributes)
++{
++	u8 command_v2[COMMAND_BUFFER_SIZE] = {
++		/* header 10 bytes */
++		tpm_u16(TPM2_ST_SESSIONS),	/* TAG */
++		tpm_u32(10 + 4 + 13 + 2 + 2 + 14),/* Length */
++		tpm_u32(TPM2_CC_NV_DEFINE_SPACE),/* Command code */
++
++		/* handles 4 bytes */
++		tpm_u32(TPM2_RH_PLATFORM),	/* authHandle */
++
++		/* AUTH_SESSION 13 bytes */
++		tpm_u32(9),			/* Authorization size */
++		tpm_u32(TPM2_RS_PW),		/* Session handle */
++		tpm_u16(0),			/* Size of <nonce> */
++		0,				/* Attributes: Cont/Excl/Rst */
++		tpm_u16(0),			/* Size of <hmac/password> */
++
++		/* auth: TPM2B_AUTH, empty */
++		tpm_u16(0),
++
++		/* publicInfo: TPM2B_NV_PUBLIC */
++		tpm_u16(14),			/* size */
++		tpm_u32(HR_NV_INDEX + index),	/* nvIndex */
++		tpm_u16(TPM2_ALG_SHA256),	/* nameAlg */
++		tpm_u32(attributes),		/* attributes */
++		tpm_u16(0),			/* authPolicy: empty */
++		tpm_u16(size),			/* dataSize */
++	};
++
++	return tpm_sendrecv_command(dev, command_v2, NULL, NULL);
++}
++
++u32 tpm2_nv_read_public(struct udevice *dev, u32 index, u32 *attributes,
++			u16 *data_size)
++{
++	u8 command_v2[COMMAND_BUFFER_SIZE] = {
++		tpm_u16(TPM2_ST_NO_SESSIONS),	/* TAG */
++		tpm_u32(10 + 4),		/* Length */
++		tpm_u32(TPM2_CC_NV_READ_PUBLIC),/* Command code */
++		tpm_u32(HR_NV_INDEX + index),	/* nvIndex */
++	};
++	size_t response_len = COMMAND_BUFFER_SIZE;
++	u8 response[COMMAND_BUFFER_SIZE];
++	u16 public_size, policy_size;
++	u32 handle;
++	int ret;
++
++	ret = tpm_sendrecv_command(dev, command_v2, response, &response_len);
++	if (ret)
++		return ret;
++
++	/*
++	 * TPM2B_NV_PUBLIC after the 10-byte header: size, nvIndex, nameAlg,
++	 * attributes, authPolicy (TPM2B), dataSize.
++	 */
++	if (unpack_byte_string(response, response_len, "wddw",
++			       10, &public_size, 12, &handle,
++			       18, attributes, 22, &policy_size))
++		return TPM_LIB_ERROR;
++	if (handle != HR_NV_INDEX + index)
++		return TPM_LIB_ERROR;
++	if (unpack_byte_string(response, response_len, "w",
++			       24 + policy_size, data_size))
++		return TPM_LIB_ERROR;
++
++	return 0;
++}
++
++u32 tpm2_nv_read_value_auth_index(struct udevice *dev, u32 index, void *data,
++				  u32 count)
++{
++	u8 command_v2[COMMAND_BUFFER_SIZE] = {
++		/* header 10 bytes */
++		tpm_u16(TPM2_ST_SESSIONS),	/* TAG */
++		tpm_u32(10 + 8 + 4 + 9 + 4),	/* Length */
++		tpm_u32(TPM2_CC_NV_READ),	/* Command code */
++
++		/* handles 8 bytes */
++		tpm_u32(HR_NV_INDEX + index),	/* authHandle: the index */
++		tpm_u32(HR_NV_INDEX + index),	/* nvIndex */
++
++		/* AUTH_SESSION */
++		tpm_u32(9),			/* Authorization size */
++		tpm_u32(TPM2_RS_PW),		/* Session handle */
++		tpm_u16(0),			/* Size of <nonce> */
++		0,				/* Attributes: Cont/Excl/Rst */
++		tpm_u16(0),			/* Size of <hmac/password> */
++
++		tpm_u16(count),			/* Number of bytes */
++		tpm_u16(0),			/* Offset */
++	};
++	size_t response_len = COMMAND_BUFFER_SIZE;
++	u8 response[COMMAND_BUFFER_SIZE];
++	int ret;
++	u16 tag;
++	u32 size, code;
++
++	ret = tpm_sendrecv_command(dev, command_v2, response, &response_len);
++	if (ret)
++		return ret;
++	if (unpack_byte_string(response, response_len, "wdds",
++			       0, &tag, 2, &size, 6, &code,
++			       16, data, count))
++		return TPM_LIB_ERROR;
++
++	return 0;
++}
++
++u32 tpm2_nv_set_bits(struct udevice *dev, u32 index, u64 bits)
++{
++	struct tpm_chip_priv *priv = dev_get_uclass_priv(dev);
++	u8 command_v2[COMMAND_BUFFER_SIZE] = {
++		/* header 10 bytes */
++		tpm_u16(TPM2_ST_SESSIONS),	/* TAG */
++		tpm_u32(10 + 8 + 4 + 9 + 8),	/* Length */
++		tpm_u32(TPM2_CC_NV_SET_BITS),	/* Command code */
++
++		/* handles 8 bytes */
++		tpm_u32(TPM2_RH_PLATFORM),	/* authHandle */
++		tpm_u32(HR_NV_INDEX + index),	/* nvIndex */
++
++		/* AUTH_SESSION */
++		tpm_u32(9),			/* Authorization size */
++		tpm_u32(TPM2_RS_PW),		/* Session handle */
++		tpm_u16(0),			/* Size of <nonce> */
++		0,				/* Attributes: Cont/Excl/Rst */
++		tpm_u16(0),			/* Size of <hmac/password> */
++
++		/* bits: UINT64, big-endian */
++		tpm_u32((u32)(bits >> 32)),
++		tpm_u32((u32)bits),
++	};
++
++	if (priv->plat_hier_disabled)
++		return TPM_LIB_ERROR;
++
++	return tpm_sendrecv_command(dev, command_v2, NULL, NULL);
++}
++
+ u32 tpm2_pcr_read(struct udevice *dev, u32 idx, unsigned int idx_min_sz,
+ 		  u16 algorithm, void *data, u32 digest_len,
+ 		  unsigned int *updates)

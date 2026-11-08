@@ -260,13 +260,13 @@ CI secrets: they are held offline on encrypted removable media, and
 release images are built and signed on a workstation disconnected from
 the network (`RELEASE_INTEGRITY.md` §2.3).
 
-**Anti-rollback.** RAUC bundle metadata supports a generation
-counter, and the bootloader can be configured to refuse to boot a
-candidate slot whose generation is lower than the platform has
-already accepted. The machinery exists; the bootloader-enforced
-check is not yet wired in v2.1.0-rc3. Without this enforcement, a
-correctly-signed older bundle can be downgraded onto a device.
-This is tracked alongside the FIT signing work.
+**Anti-rollback.** RAUC refuses to install a bundle older than the
+installed release (`min-bundle-version`), and U-Boot refuses to boot a
+kernel FIT whose signed rollback index is below a floor held in the TPM
+(`BOOT_CHAIN.md` § Anti-rollback). The boot check is measured on the
+development build. Neither is in a release up to v2.1.0-rc14, so on
+those releases a correctly signed older image can still be put back on
+a device.
 
 **Delivery model.** RAUC's verification is signature-anchored and
 channel-independent: the bundle file can be delivered through any

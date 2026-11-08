@@ -33,6 +33,7 @@ SRC_URI += "file://fit-signature.cfg"
 SRC_URI += "file://tpm-spi.cfg"
 SRC_URI += "file://measured-boot.cfg"
 SRC_URI += "file://tpm-lock.cfg"
+SRC_URI += "file://fit-rollback.cfg"
 SRC_URI += "file://spl-measured-boot.cfg"
 SRC_URI += "file://machine-id.cfg"
 SRC_URI += "file://tools.cfg"
@@ -90,7 +91,7 @@ do_configure() {
     fi
     lockdown=""
     [ "${TACTIQ_UBOOT_CONSOLE}" = "1" ] || lockdown="${UNPACKDIR}/console-lockdown.cfg"
-    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/tpm-lock.cfg ${UNPACKDIR}/spl-measured-boot.cfg ${UNPACKDIR}/machine-id.cfg ${UNPACKDIR}/tools.cfg ${UNPACKDIR}/net-off.cfg ${lockdown}
+    ${S}/scripts/kconfig/merge_config.sh -O ${B} -m ${B}/.config ${UNPACKDIR}/env-mmc.cfg ${UNPACKDIR}/boot-ab.cfg ${UNPACKDIR}/env-lockdown.cfg ${UNPACKDIR}/fit-signature.cfg ${UNPACKDIR}/tpm-spi.cfg ${UNPACKDIR}/measured-boot.cfg ${UNPACKDIR}/tpm-lock.cfg ${UNPACKDIR}/fit-rollback.cfg ${UNPACKDIR}/spl-measured-boot.cfg ${UNPACKDIR}/machine-id.cfg ${UNPACKDIR}/tools.cfg ${UNPACKDIR}/net-off.cfg ${lockdown}
     dtb="${TACTIQ_FIT_DTB}"
     sed -e "s|@FIT_CONF_A@|conf-${dtb}|g" -e "s|@FIT_CONF_B@|conf-${dtb%.dtb}-b.dtb|g" \
         ${UNPACKDIR}/${TACTIQ_UBOOT_ENV} > ${S}/tactiq-boot.env
@@ -107,8 +108,10 @@ do_configure() {
         bbfatal "CONFIG_TPM_V2 did not survive olddefconfig"
     grep -q '^CONFIG_MEASURED_BOOT_LOCK_PLATFORM=y$' ${B}/.config || \
         bbfatal "CONFIG_MEASURED_BOOT_LOCK_PLATFORM did not survive olddefconfig: the OS would get the TPM platform hierarchy"
-    grep -q '^CONFIG_ENV_FLAGS_LIST_STATIC="BOOT_ORDER:sw,BOOT_A_LEFT:dw,BOOT_B_LEFT:dw"$' ${B}/.config || \
-        bbfatal "CONFIG_ENV_FLAGS_LIST_STATIC is not the A/B list: with ENV_WRITEABLE_LIST nothing would be imported from the saved environment"
+    grep -q '^CONFIG_FIT_ROLLBACK_TPM=y$' ${B}/.config || \
+        bbfatal "CONFIG_FIT_ROLLBACK_TPM did not survive olddefconfig: an older signed FIT would boot"
+    grep -q '^CONFIG_ENV_FLAGS_LIST_STATIC="BOOT_ORDER:sw,BOOT_A_LEFT:dw,BOOT_B_LEFT:dw,fit_seen_A:sw,fit_seen_B:sw"$' ${B}/.config || \
+        bbfatal "CONFIG_ENV_FLAGS_LIST_STATIC is not the A/B list with fit_seen_A and fit_seen_B: with ENV_WRITEABLE_LIST nothing would be imported from the saved environment, and without fit_seen the rollback floor would never be raised"
     ! grep -q '^CONFIG_NET=y$' ${B}/.config || \
         bbfatal "CONFIG_NET is still set: net-off.cfg did not apply"
     if [ "${TACTIQ_UBOOT_CONSOLE}" != "1" ]; then
@@ -220,7 +223,7 @@ SRC_URI:remove:tactiq-rock5t = " \
     file://0004-arm64-dts-rk3588s-rock-5a-reserve-a-TPM-event-log-ar.patch \
     file://0005-rockchip-rk3588s-rock-5a-measure-the-images-SPL-load.patch \
     file://0006-rockchip-add-vm-uuid-derived-from-the-SoC-cpuid.patch \
-    file://tpm-spi.cfg file://measured-boot.cfg file://tpm-lock.cfg \
+    file://tpm-spi.cfg file://measured-boot.cfg file://tpm-lock.cfg file://fit-rollback.cfg \
     file://spl-measured-boot.cfg file://machine-id.cfg"
 SRC_URI:append:tactiq-rock5t = " file://rock5t.cfg"
 
