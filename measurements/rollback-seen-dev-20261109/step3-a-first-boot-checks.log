@@ -1,0 +1,76 @@
+root@tactiq-rock5a:~# fw_printenv BOOT_ORDER BOOT_A_LEFT BOOT_B_LEFT fit_seen_A fit_seen_B
+BOOT_ORDER=A B
+BOOT_A_LEFT=3
+BOOT_B_LEFT=3
+fit_seen_A=efd85a60626936e590dd177d462e6ef1870c191b65b88b7aab5c2b9a7e1530b0
+fit_seen_B=314f6c0df260aa1cb649f6718cef911e354f9d1898aac3b2aec6c39a600fefa4
+root@tactiq-rock5a:~# tpm2_nvread 0x1500018 -C 0x1500018 -s 8 | od -b
+0000000 000 000 000 000 000 000 000 001
+0000010
+root@tactiq-rock5a:~# journalctl -b | grep -i 'avc.*tactiq_agent_t'
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+root@tactiq-rock5a:~# journalctl -b -u tactiq-agent | grep -i -e 'read-only' -e 'denied' -e 'error'
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+root@tactiq-rock5a:~# awk '/DAEMON_START/{c=0} /avc.*tactiq_agent_t/{c++} END{print c}' /var/log/audit/audit.log
+0
+root@tactiq-rock5a:~# systemctl is-active tactiq-agent
+active
+root@tactiq-rock5a:~# systemctl status tactiq-agent --no-pager | head -n 12
+* tactiq-agent.service - TactiQ Attestation Agent
+     Loaded: loaded (/usr/lib/systemd/system/tactiq-agent.service; enabled; preset: enabled)
+    Drop-In: /run/systemd/system.control/tactiq-agent.service.d
+             `-50-IPAddressAllow.conf
+     Active: active (running) since Mon 2026-10-12 00:00:05 UTC; 2min 27s ago
+ Invocation: 54a264d111dc4f15b04f164545fadfd2
+       Docs: file:///usr/share/doc/tactiq-os/ATTESTATION.md
+    Process: 473 ExecStartPre=/bin/cp /sys/kernel/security/tpm0/binary_bios_measurements /run/tactiq-agent/boot.bios.log (code=exited, status=0/SUCCESS)
+    Process: 475 ExecStartPre=/bin/chown tactiq-agent:tactiq-agent /run/tactiq-agent/boot.bios.log (code=exited, status=0/SUCCESS)
+   Main PID: 478 (tactiq-agent)
+      Tasks: 1 (limit: 4701)
+     Memory: 5.6M (max: 128M, available: 122.3M, peak: 11.8M)
+root@tactiq-rock5a:~# exit
+logout
++q6E616D65
+TactiQ OS 2.1.0 tactiq-rock5a ttyS2
+
+Type 'root' to login with superuser privileges (no password will be asked).
+
+tactiq-rock5a login: root
+
+  ▀▀▀▀▀▀▀▀▀▀▀▄   release  TactiQ OS v2.1.0-rc14 (tactiq-image-dev)
+     █  █    █   board    Radxa ROCK 5A
+     █  █    █   slot     A
+     █  █   ▄█   root     dm-verity, dm-0 "rootfs" (as booted)
+     ▀   ▀▀▀▀▄   selinux  enforcing
+                 ima      policy: measure 8, appraise 4, 174 entries measured
+                 tpm      present, TPM 2.0, IFX, firmware 7.87.19691.2
+                 pcr 0-9  sha256 1ff4563672d0...ad7751a5409e
+                 agent    active, envelopes: 2880 complete
+
+  Reported by this device. Check it from outside with VERIFY-L3 for v2.1.0-rc14
+  and the signed release set; this screen is not a verification.
+
+root@tactiq-rock5a:~# systemctl cat tactiq-agent | grep -i -e ReadWritePaths -e StateDirectory -e ExecStart=
+ExecStart=/opt/tactiq/bin/tactiq-agent run
+ReadWritePaths=/data/tactiq/keys /data/tactiq/counter /data/tactiq/audit
+root@tactiq-rock5a:~# journalctl -b -u tactiq-agent --no-pager | tail -n 8
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+Oct 12 00:00:07 tactiq-rock5a tactiq-agent[478]: attested TACTIQ-BENCH-001 counter=137271181312 -> /data/tactiq/audit/137271181312.msg
+Oct 12 00:00:35 tactiq-rock5a tactiq-agent[478]: attested TACTIQ-BENCH-001 counter=137271181313 -> /data/tactiq/audit/137271181313.msg
+Oct 12 00:01:05 tactiq-rock5a tactiq-agent[478]: attested TACTIQ-BENCH-001 counter=137271181314 -> /data/tactiq/audit/137271181314.msg
+Oct 12 00:01:35 tactiq-rock5a tactiq-agent[478]: attested TACTIQ-BENCH-001 counter=137271181315 -> /data/tactiq/audit/137271181315.msg
+Oct 12 00:02:05 tactiq-rock5a tactiq-agent[478]: attested TACTIQ-BENCH-001 counter=137271181316 -> /data/tactiq/audit/137271181316.msg
+Oct 12 00:02:35 tactiq-rock5a tactiq-agent[478]: attested TACTIQ-BENCH-001 counter=137271181317 -> /data/tactiq/audit/137271181317.msg
+Oct 12 00:03:05 tactiq-rock5a tactiq-agent[478]: attested TACTIQ-BENCH-001 counter=137271181318 -> /data/tactiq/audit/137271181318.msg
+Oct 12 00:03:35 tactiq-rock5a tactiq-agent[478]: attested TACTIQ-BENCH-001 counter=137271181319 -> /data/tactiq/audit/137271181319.msg
+root@tactiq-rock5a:~# date
+Mon Oct 12 00:04:26 UTC 2026
+root@tactiq-rock5a:~# ls -l /data/tactiq/audit | tail -n 3
+-rw-r--r--    1 tactiq-agent tactiq-agent      1610 Oct 12 00:00 boot-8bc412e988388c103cd13de4bf954f01d7a8f33716e0fcf828073982694ede15.bios.log
+-rw-r--r--    1 tactiq-agent tactiq-agent      1610 Oct 12 00:00 boot-96dad9e6a9236ce47273f4c0f5932c660439711cb6de198e934c4adf46d15910.bios.log
+-rw-r--r--    1 tactiq-agent tactiq-agent      1610 Oct 12 00:00 boot-f7befbf183d8ddd6f910ebe47fee2d1c779022eb1f9165f81267028a10114500.bios.log
+root@tactiq-rock5a:~# ls -l /data/tactiq/audit/*.msg | tail -n 3
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:04 /data/tactiq/audit/137271181320.msg
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:04 /data/tactiq/audit/137271181321.msg
+-rw-r--r--    1 tactiq-agent tactiq-agent        93 Oct 12 00:05 /data/tactiq/audit/137271181322.msg
+root@tactiq-rock5a:~#

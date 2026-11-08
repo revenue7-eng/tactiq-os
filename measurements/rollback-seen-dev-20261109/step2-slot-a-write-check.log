@@ -1,0 +1,12 @@
+BOOT_ORDER=A B
+BOOT_A_LEFT=3
+BOOT_B_LEFT=3
+fit_seen_A=
+fit_seen_B=314f6c0df260aa1cb649f6718cef911e354f9d1898aac3b2aec6c39a600fefa4
+root@tactiq-rock5a:~# dd if=/dev/mmcblk0p1 bs=1M count=256 2>/dev/null | sha256sum
+ba9e2791736066e9c56701669600ba35ce41419924e41c74841293becb5d7ebc  -
+root@tactiq-rock5a:~# dd if=/dev/mmcblk0p2 bs=4096 count=111914 2>/dev/null | sha256sum
+eb0fcec4d00cd9bbce96f79d25a8c7348cfe54fe71af6f4b5a31b5aed80ca08c  -
+root@tactiq-rock5a:~# grep /run/usb /proc/mounts
+/dev/sda1 /run/usb vfat rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro 0 0
+root@tactiq-rock5a:~#
