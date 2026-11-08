@@ -90,8 +90,11 @@ cannot cause unauthorized code to run.
 **Known gaps at this stage.** The attestation agent currently shipped
 is a stub (`recipes-core/tactiq-agent/files/tactiq-agent-stub.sh`); the
 mTLS path described in `DESIGN_PRINCIPLES.md` is the design target, not
-a running implementation. Anti-rollback on RAUC bundles
-(generation counter) is not yet wired. Update bundle delivery channel
+a running implementation. RAUC refuses a bundle older than the
+installed release (`min-bundle-version`), and U-Boot refuses a kernel
+FIT below the rollback floor in the TPM (`BOOT_CHAIN.md`
+§ Anti-rollback); neither is in a release up to v2.1.0-rc14. Update
+bundle delivery channel
 authenticity beyond signature verification (e.g. authenticated transport
 to a known update endpoint) is per-deployment configuration, not
 distro-level enforcement.
@@ -317,16 +320,19 @@ storage:
   extend exactly the PCR values that a verifier or a TPM policy
   expects. Sealing keys to PCR values protects against changes to the
   stages after SPL, not against a replaced SPL.
-- Writing only a boot partition is enough to roll back to an older
-  `fitImage` signed with the same key: FIT signatures carry no
-  rollback index. The kernel devicetree and kernel digests in PCR 0 and
-  PCR 8 change, so remote attestation detects the rollback; the device
-  itself does not refuse it.
+- Writing only a boot partition with an older `fitImage` signed with
+  the same key: the bootloader refuses it once the rollback floor in
+  the TPM has been raised above its index (`BOOT_CHAIN.md`
+  § Anti-rollback). An image at or above the floor still boots, and so
+  does any older image on a release that does not carry the floor (up
+  to v2.1.0-rc14). The kernel devicetree and kernel digests in PCR 0
+  and PCR 8 change, so remote attestation sees such a write either way.
 
 Closing the first two requires fusing the OTP key, so that the SPL
 which starts the measurement chain is one the boot ROM has
-authenticated. Closing the third requires a rollback policy for FIT
-images.
+authenticated. Until then the third is closed only against an attacker
+who cannot also write the loader area, because the loader is what
+enforces the floor.
 
 **Well-resourced physical attacker.** Has access to chip-level
 laboratory: decapsulation, side-channel analysis rigs, fault injection

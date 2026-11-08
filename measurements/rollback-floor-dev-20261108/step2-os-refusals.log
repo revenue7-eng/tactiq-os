@@ -1,0 +1,71 @@
+tactiq-rock5a login: root
+
+  ▀▀▀▀▀▀▀▀▀▀▀▄   release  TactiQ OS v2.1.0-rc14 (tactiq-image-dev)
+     █  █    █   board    Radxa ROCK 5A
+     █  █    █   slot     A
+     █  █   ▄█   root     dm-verity, dm-0 "rootfs" (as booted)
+     ▀   ▀▀▀▀▄   selinux  enforcing
+                 ima      policy: measure 8, appraise 4, 167 entries measured
+                 tpm      present, TPM 2.0, IFX, firmware 7.87.19691.2
+                 pcr 0-9  sha256 ba9236210f08...69d6b518b665
+                 agent    active, envelopes: 2880 complete
+
+  Reported by this device. Check it from outside with VERIFY-L3 for v2.1.0-rc14
+  and the signed release set; this screen is not a verification.
+
+root@tactiq-rock5a:~# tpm2_nvreadpublic 0x1500018
+0x1500018:
+  name: 000bc1bbe8bca9a0203ab15b4f9cff9faa36e0ec295f0415f68b8f38a634fa54bfac
+  hash algorithm:
+    friendly: sha256
+    value: 0xB
+  attributes:
+    friendly: ppwrite|nt=0x1|ppread|authread|platformcreate
+    value: 0x40050021
+  size: 8
+
+root@tactiq-rock5a:~# tpm2_nvsetbits 0x1500018 -C p -i 0x1
+WARNING:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_SetBits.c:312:Esys_NV_SetBits_Finish() Received TPM Error
+ERROR:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_SetBits.c:111:Esys_NV_SetBits() Esys Finish ErrorCode (0x00000185)
+ERROR: Esys_NV_SetBits(0x185) - tpm:handle(1):hierarchy is not enabled or is not correct for the use
+ERROR: Unable to run tpm2_nvsetbits
+root@tactiq-rock5a:~# tpm2_nvsetbits 0x1500018 -C o -i 0x1
+WARNING:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_SetBits.c:312:Esys_NV_SetBits_Finish() Received TPM Error
+ERROR:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_SetBits.c:111:Esys_NV_SetBits() Esys Finish ErrorCode (0x00000149)
+ERROR: Esys_NV_SetBits(0x149) - tpm:error(2.0): NV access authorization fails in command actions
+ERROR: Unable to run tpm2_nvsetbits
+root@tactiq-rock5a:~# tpm2_nvsetbits 0x1500018 -C 0x1500018 -i 0x1
+WARNING:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_SetBits.c:312:Esys_NV_SetBits_Finish() Received TPM Error
+ERROR:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_SetBits.c:111:Esys_NV_SetBits() Esys Finish ErrorCode (0x0000012f)
+ERROR: Esys_NV_SetBits(0x12F) - tpm:error(2.0): authValue or authPolicy is not available for selected entity
+ERROR: Unable to run tpm2_nvsetbits
+root@tactiq-rock5a:~# tpm2_nvundefine 0x1500018 -C p
+WARNING:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_UndefineSpace.c:305:Esys_NV_UndefineSpace_Finish() Received TPM Error
+ERROR:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_UndefineSpace.c:108:Esys_NV_UndefineSpace() Esys Finish ErrorCode (0x00000185)
+ERROR: Failed to release NV area at index 0x1500018
+ERROR: Esys_NV_UndefineSpace(0x185) - tpm:handle(1):hierarchy is not enabled or is not correct for the use
+ERROR: Unable to run tpm2_nvundefine
+root@tactiq-rock5a:~# tpm2_nvundefine 0x1500018 -C o
+WARNING:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_UndefineSpace.c:305:Esys_NV_UndefineSpace_Finish() Received TPM Error
+ERROR:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_UndefineSpace.c:108:Esys_NV_UndefineSpace() Esys Finish ErrorCode (0x00000149)
+ERROR: Failed to release NV area at index 0x1500018
+ERROR: Esys_NV_UndefineSpace(0x149) - tpm:error(2.0): NV access authorization fails in command actions
+ERROR: Unable to run tpm2_nvundefine
+root@tactiq-rock5a:~# tpm2_nvread 0x1500018 -C 0x1500018 -s 8
+WARNING:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_Read.c:315:Esys_NV_Read_Finish() Received TPM Error
+ERROR:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_NV_Read.c:105:Esys_NV_Read() Esys Finish ErrorCode (0x0000014a)
+ERROR: Esys_NV_Read(0x14A) - tpm:error(2.0): an NV Index is used before being initialized or the state saved by TPM2_ShutdownSTATE could not be restored
+ERROR: Failed to read NVRAM area at index 0x1500018
+ERROR: Unable to run tpm2_nvread
+root@tactiq-rock5a:~# tpm2_nvreadpublic 0x1500018
+0x1500018:
+  name: 000bc1bbe8bca9a0203ab15b4f9cff9faa36e0ec295f0415f68b8f38a634fa54bfac
+  hash algorithm:
+    friendly: sha256
+    value: 0xB
+  attributes:
+    friendly: ppwrite|nt=0x1|ppread|authread|platformcreate
+    value: 0x40050021
+  size: 8
+
+root@tactiq-rock5a:~#

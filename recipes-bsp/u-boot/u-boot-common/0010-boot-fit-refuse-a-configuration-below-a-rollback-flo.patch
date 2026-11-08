@@ -1,0 +1,414 @@
+Upstream-Status: Pending
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: TactiQ OS BSP <bsp@tactiqedge.com>
+Date: Sun, 8 Nov 2026 21:03:47 +0000
+Subject: [PATCH] boot: fit: refuse a configuration below a rollback floor held
+ in the TPM
+
+A FIT signature tells U-Boot who signed an image, not when: an older
+configuration signed with the same key verifies as well as the current
+one, so writing an older boot and root slot, or pointing BOOT_ORDER at the
+slot that holds one, rolls the device back.
+
+Add CONFIG_FIT_ROLLBACK_TPM. After the configuration signature verifies,
+fit_image_load() reads the configuration's u32 "rollback-index" (0 when
+absent), once per bootm on the kernel load, and refuses the configuration
+when the index is below a floor kept in a TPM NV bit field. The node is
+signed with the configuration, so the index cannot be changed without
+breaking the signature.
+
+The floor N is the N lowest bits set; the TPM only sets bits, so the floor
+cannot go down, and the field holds 64 levels. A counter would not do: its
+first increment starts it at the highest value any counter on the TPM has
+held. The index is defined under the platform hierarchy with
+bits|ppwrite|ppread|authread|platformcreate: written only with platform
+authorization, which the OS never holds once the platform hierarchy is
+disabled before handover (CONFIG_MEASURED_BOOT_LOCK_PLATFORM), and read
+with its own empty authorization. U-Boot defines it when it is absent and
+refuses to boot when an index with any other attribute set or size is at
+the same handle.
+
+The floor is raised only to the index of the configuration just verified,
+only when the environment variable fit_rollback_raise is 1 (the boot
+script sets it for a slot the OS has confirmed), and only when this
+bootloader has booted the same configuration from the same slot before.
+The last configuration booted from each slot is recorded, as the SHA-256
+of its signature values, in fit_seen_A or fit_seen_B. A confirmed counter
+alone is not enough: a system that predates this change installs a slot
+with the counter of a confirmed one, and raising the floor on the first
+boot of such a slot leaves no slot to fall back to if it then fails. With
+the record, a slot written by anyone raises the floor only after it has
+booted once and the OS has confirmed it. Any TPM failure refuses the
+configuration.
+---
+ boot/Kconfig        |  37 +++++++
+ boot/Makefile       |   1 +
+ boot/fit-rollback.c | 247 ++++++++++++++++++++++++++++++++++++++++++++
+ boot/image-fit.c    |  10 ++
+ include/image.h     |  17 +++
+ 5 files changed, 312 insertions(+)
+ create mode 100644 boot/fit-rollback.c
+
+diff --git a/boot/Kconfig b/boot/Kconfig
+index 910d892b..cc51b247 100644
+--- a/boot/Kconfig
++++ b/boot/Kconfig
+@@ -147,6 +147,43 @@ config FIT_SIGNATURE_MAX_SIZE
+ 	  device memory. Assure this size does not extend past expected storage
+ 	  space.
+ 
++config FIT_ROLLBACK_TPM
++	bool "Refuse FIT configurations below a rollback floor held in the TPM"
++	depends on FIT_SIGNATURE && TPM_V2
++	help
++	  Read the u32 "rollback-index" property of the FIT configuration
++	  being booted (0 when absent) and refuse the configuration when the
++	  index is below a floor kept in a TPM NV bit field. Floor N is
++	  stored as the N lowest bits set, so the TPM itself keeps it from
++	  going down; the field holds 64 levels.
++
++	  The index is defined under the platform hierarchy, written only
++	  with platform authorization and read with its own empty
++	  authorization. Platform authorization exists only until the
++	  platform hierarchy is disabled before the OS starts
++	  (MEASURED_BOOT_LOCK_PLATFORM), so the OS can read the floor but
++	  cannot raise, lower or delete it. The bootloader defines the
++	  index when it is absent and refuses to boot when an index with
++	  other attributes sits at the same handle.
++
++	  The floor is raised only to the index of a configuration whose
++	  signature has just been verified, only when the environment
++	  variable "fit_rollback_raise" is "1" (the boot script sets it for a
++	  slot that the OS has confirmed), and only when the same
++	  configuration was booted from the same slot before. The last
++	  configuration booted from each slot is recorded in "fit_seen_A" or
++	  "fit_seen_B" (the slot is "rauc_slot"); both must be importable
++	  from the saved environment (ENV_FLAGS_LIST_STATIC). Any TPM failure
++	  refuses the boot.
++
++config FIT_ROLLBACK_TPM_NV_INDEX
++	hex "TPM NV index of the FIT rollback floor"
++	depends on FIT_ROLLBACK_TPM
++	default 0x500018
++	help
++	  NV index of the floor, without the NV handle type byte (0x500018
++	  is handle 0x01500018).
++
+ config FIT_CIPHER
+ 	bool "Enable ciphering data in a FIT uImages"
+ 	depends on DM
+diff --git a/boot/Makefile b/boot/Makefile
+index 7fb56e7e..498d5731 100644
+--- a/boot/Makefile
++++ b/boot/Makefile
+@@ -53,6 +53,7 @@ obj-$(CONFIG_$(PHASE_)MULTI_DTB_FIT) += boot_fit.o common_fit.o
+ obj-$(CONFIG_$(PHASE_)IMAGE_PRE_LOAD) += image-pre-load.o
+ obj-$(CONFIG_$(PHASE_)IMAGE_SIGN_INFO) += image-sig.o
+ obj-$(CONFIG_$(PHASE_)FIT_SIGNATURE) += image-fit-sig.o
++obj-$(CONFIG_FIT_ROLLBACK_TPM) += fit-rollback.o
+ obj-$(CONFIG_$(PHASE_)FIT_CIPHER) += image-cipher.o
+ 
+ obj-$(CONFIG_CMD_ADTIMG) += image-android-dt.o
+diff --git a/boot/fit-rollback.c b/boot/fit-rollback.c
+new file mode 100644
+index 00000000..8c4dac01
+--- /dev/null
++++ b/boot/fit-rollback.c
+@@ -0,0 +1,247 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Rollback floor for FIT configurations, held in a TPM NV bit field that
++ * only the bootloader can write.
++ *
++ * A configuration carries a u32 "rollback-index" inside its signed node. The
++ * floor is the number of consecutive low bits set in the NV field: the TPM
++ * only ever sets bits, so the floor cannot go down. The index is written
++ * under platform authorization, which the OS never has once the platform
++ * hierarchy is disabled before handover (MEASURED_BOOT_LOCK_PLATFORM).
++ *
++ * The floor is raised only for a configuration this bootloader has already
++ * handed to the kernel once from the same slot, and which the OS has since
++ * confirmed (the boot script sets fit_rollback_raise). The bootloader keeps,
++ * per slot, an identifier of the last configuration it booted there
++ * (fit_seen_A, fit_seen_B). A slot written by anyone, however its counter
++ * was set, therefore never raises the floor on its first boot.
++ */
++
++#include <dm.h>
++#include <env.h>
++#include <hexdump.h>
++#include <image.h>
++#include <log.h>
++#include <tpm-v2.h>
++#include <tpm_api.h>
++#include <linux/libfdt.h>
++#include <u-boot/sha256.h>
++
++#define ROLLBACK_PROP		"rollback-index"
++#define ROLLBACK_LEVELS		64
++#define FLOOR_INDEX		CONFIG_FIT_ROLLBACK_TPM_NV_INDEX
++#define FLOOR_SIZE		8
++#define SEEN_PREFIX		"fit_seen_"
++#define CONF_ID_LEN		(SHA256_SUM_LEN * 2)
++
++/* The exact attribute set of the floor index, TPMA_NV_WRITTEN aside. */
++#define FLOOR_ATTRS	(TPMA_NV_BITS | TPMA_NV_PPWRITE | TPMA_NV_PPREAD | \
++			 TPMA_NV_AUTHREAD | TPMA_NV_PLATFORMCREATE)
++
++static int floor_from_bits(u64 bits, uint *floor)
++{
++	uint n = 0;
++
++	while (n < ROLLBACK_LEVELS && (bits & (1ULL << n)))
++		n++;
++	/* Only n low bits may be set; anything else was not written by us. */
++	if (n < ROLLBACK_LEVELS && (bits >> n))
++		return -EINVAL;
++	*floor = n;
++
++	return 0;
++}
++
++static int floor_read(struct udevice *dev, uint *floor)
++{
++	u32 attrs;
++	u16 size;
++	u8 buf[FLOOR_SIZE];
++	u64 bits;
++	u32 rc;
++
++	rc = tpm2_nv_read_public(dev, FLOOR_INDEX, &attrs, &size);
++	if (tpm2_rc_is(rc, TPM2_RC_HANDLE)) {
++		rc = tpm2_nv_define_platform_index(dev, FLOOR_INDEX,
++						   FLOOR_SIZE, FLOOR_ATTRS);
++		if (rc) {
++			printf("rollback: cannot define floor index (0x%x)\n",
++			       rc);
++			return -EIO;
++		}
++		printf("rollback: floor index defined\n");
++		*floor = 0;
++		return 0;
++	}
++	if (rc) {
++		printf("rollback: cannot read floor index (0x%x)\n", rc);
++		return -EIO;
++	}
++	if ((attrs & ~TPMA_NV_WRITTEN) != FLOOR_ATTRS || size != FLOOR_SIZE) {
++		printf("rollback: floor index has attributes 0x%08x size %u, expected 0x%08x size %u\n",
++		       attrs, size, FLOOR_ATTRS, FLOOR_SIZE);
++		return -EPERM;
++	}
++	if (!(attrs & TPMA_NV_WRITTEN)) {
++		*floor = 0;
++		return 0;
++	}
++
++	rc = tpm2_nv_read_value_auth_index(dev, FLOOR_INDEX, buf, FLOOR_SIZE);
++	if (rc) {
++		printf("rollback: cannot read floor (0x%x)\n", rc);
++		return -EIO;
++	}
++	bits = ((u64)be32_to_cpup((__be32 *)buf) << 32) |
++		be32_to_cpup((__be32 *)(buf + 4));
++	if (floor_from_bits(bits, floor)) {
++		printf("rollback: floor field 0x%016llx is not a run of low bits\n",
++		       bits);
++		return -EPERM;
++	}
++
++	return 0;
++}
++
++/*
++ * Identify a configuration by the SHA-256 of its signature values. They
++ * cover the configuration node and every image it names, so a change of
++ * kernel, devicetree (and with it the root hash) or index gives a new
++ * identifier.
++ */
++static int conf_id(const void *fit, int conf_noffset, char *id)
++{
++	u8 sum[SHA256_SUM_LEN];
++	sha256_context ctx;
++	int noffset, found = 0;
++
++	sha256_starts(&ctx);
++	fdt_for_each_subnode(noffset, fit, conf_noffset) {
++		const char *name = fit_get_name(fit, noffset, NULL);
++		const void *val;
++		int len;
++
++		if (strncmp(name, FIT_SIG_NODENAME, strlen(FIT_SIG_NODENAME)))
++			continue;
++		val = fdt_getprop(fit, noffset, FIT_VALUE_PROP, &len);
++		if (!val || len <= 0)
++			return -EINVAL;
++		sha256_update(&ctx, val, len);
++		found = 1;
++	}
++	if (!found)
++		return -ENOENT;
++	sha256_finish(&ctx, sum);
++	*bin2hex(id, sum, sizeof(sum)) = '\0';
++
++	return 0;
++}
++
++int fit_rollback_check(const void *fit, int conf_noffset, bool verified)
++{
++	char id[CONF_ID_LEN + 1], var[sizeof(SEEN_PREFIX) + 1];
++	const char *slot = NULL;
++	struct udevice *dev;
++	const fdt32_t *prop;
++	uint floor, index;
++	bool seen = false;
++	int len, ret;
++	u32 rc;
++
++	prop = fdt_getprop(fit, conf_noffset, ROLLBACK_PROP, &len);
++	if (!prop) {
++		index = 0;
++	} else if (len != sizeof(*prop)) {
++		printf("rollback: '%s' is not a u32\n", ROLLBACK_PROP);
++		return -EINVAL;
++	} else {
++		index = fdt32_to_cpu(*prop);
++	}
++	if (index > ROLLBACK_LEVELS) {
++		printf("rollback: index %u is above %u\n", index,
++		       ROLLBACK_LEVELS);
++		return -EINVAL;
++	}
++
++	/*
++	 * Only a verified configuration booted from a named slot is tracked;
++	 * anything else can never raise the floor.
++	 */
++	if (verified) {
++		const char *s = env_get("rauc_slot");
++
++		if (s && (!strcmp(s, "A") || !strcmp(s, "B"))) {
++			ret = conf_id(fit, conf_noffset, id);
++			if (ret) {
++				printf("rollback: no signature value to identify the configuration (%d)\n",
++				       ret);
++				return ret;
++			}
++			slot = s;
++			snprintf(var, sizeof(var), SEEN_PREFIX "%s", slot);
++			s = env_get(var);
++			seen = s && !strcmp(s, id);
++		}
++	}
++
++	ret = uclass_first_device_err(UCLASS_TPM, &dev);
++	if (ret) {
++		printf("rollback: no TPM (%d)\n", ret);
++		return ret;
++	}
++	rc = tpm_auto_start(dev);
++	if (rc) {
++		printf("rollback: TPM start failed (0x%x)\n", rc);
++		return -EIO;
++	}
++
++	ret = floor_read(dev, &floor);
++	if (ret)
++		return ret;
++
++	if (index < floor) {
++		printf("rollback: index %u is below floor %u, refused\n",
++		       index, floor);
++		return -EPERM;
++	}
++
++	if (verified && index > floor && env_get_yesno("fit_rollback_raise") == 1 &&
++	    !seen) {
++		printf("rollback: slot %s has not booted this image before, floor not raised\n",
++		       slot ? slot : "?");
++	} else if (verified && index > floor &&
++		   env_get_yesno("fit_rollback_raise") == 1) {
++		u64 bits = index == ROLLBACK_LEVELS ? ~0ULL :
++			   (1ULL << index) - 1;
++
++		rc = tpm2_nv_set_bits(dev, FLOOR_INDEX, bits);
++		if (rc) {
++			printf("rollback: cannot raise floor to %u (0x%x)\n",
++			       index, rc);
++			return -EIO;
++		}
++		ret = floor_read(dev, &floor);
++		if (ret)
++			return ret;
++		if (floor != index) {
++			printf("rollback: floor reads %u after raising to %u\n",
++			       floor, index);
++			return -EIO;
++		}
++		printf("rollback: floor raised to %u\n", floor);
++	}
++
++	printf("   Rollback index %u, floor %u ... OK\n", index, floor);
++
++	/*
++	 * Remember what this slot booted. A failure to save does not stop the
++	 * boot; it only means the floor cannot be raised for this image.
++	 */
++	if (slot && !seen) {
++		if (env_set(var, id) || env_save())
++			printf("rollback: cannot record the image of slot %s; the floor stays at %u\n",
++			       slot, floor);
++	}
++
++	return 0;
++}
+diff --git a/boot/image-fit.c b/boot/image-fit.c
+index 26e9323d..9035e81c 100644
+--- a/boot/image-fit.c
++++ b/boot/image-fit.c
+@@ -2211,6 +2211,16 @@ int fit_image_load(struct bootm_headers *images, ulong addr,
+ 			puts("OK\n");
+ 		}
+ 
++#if !defined(USE_HOSTCC) && IS_ENABLED(CONFIG_FIT_ROLLBACK_TPM)
++		/* Once per bootm: the kernel is the first image loaded. */
++		if (image_type == IH_TYPE_KERNEL &&
++		    fit_rollback_check(fit, cfg_noffset,
++				       FIT_IMAGE_ENABLE_VERIFY && images->verify)) {
++			bootstage_error(bootstage_id + BOOTSTAGE_SUB_HASH);
++			return -EACCES;
++		}
++#endif
++
+ 		bootstage_mark(BOOTSTAGE_ID_FIT_CONFIG);
+ 
+ 		noffset = fit_conf_get_prop_node(fit, cfg_noffset, prop_name,
+diff --git a/include/image.h b/include/image.h
+index 1de0a840..7c190022 100644
+--- a/include/image.h
++++ b/include/image.h
+@@ -1461,6 +1461,23 @@ int fit_image_verify_with_data(const void *fit, int image_noffset,
+ int fit_image_verify(const void *fit, int noffset);
+ #if CONFIG_IS_ENABLED(FIT_SIGNATURE)
+ int fit_config_verify(const void *fit, int conf_noffset);
++
++/**
++ * fit_rollback_check() - Hold a FIT configuration against the rollback floor
++ *
++ * Reads the "rollback-index" property of the configuration (0 when absent)
++ * and compares it with the floor kept in the TPM (FIT_ROLLBACK_TPM). When
++ * @verified is true, the environment variable "fit_rollback_raise" is "1"
++ * and the slot named by "rauc_slot" booted this configuration before
++ * (recorded in "fit_seen_<slot>"), raises the floor to the index first.
++ * Records the configuration in "fit_seen_<slot>" when it was not.
++ *
++ * @fit:	FIT blob
++ * @conf_noffset: Offset of the configuration node
++ * @verified:	The configuration signature has been verified
++ * Return: 0 if the configuration may boot, -ve on refusal or TPM failure
++ */
++int fit_rollback_check(const void *fit, int conf_noffset, bool verified);
+ int fit_config_verify_with_key_blob(const void *fit, int conf_noffset,
+ 				    const void *key_blob);
+ #else

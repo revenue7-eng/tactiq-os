@@ -379,20 +379,20 @@ This closes the kernel-command-line gap named in both
 separate item. FIT signing does not provide anti-rollback by itself —
 a correctly signed older image is, by signature alone, still valid.
 
-Anti-rollback is implemented through the RAUC bundle generation
-counter (RAUC machinery is in place; bootloader enforcement is not).
-After §3 integration, the bootloader checks the RAUC slot's recorded
-generation counter against the platform's accepted minimum, recorded
-in U-Boot environment. The minimum increases when an update succeeds;
-slots whose recorded generation is below the minimum are refused at
-boot.
+Anti-rollback has two parts. RAUC refuses to install a bundle older
+than the installed release (`min-bundle-version` in `system.conf`).
+U-Boot refuses to boot a kernel FIT configuration whose signed
+`rollback-index` is below a floor held in a TPM NV index that only the
+bootloader can write (`BOOT_CHAIN.md` § Anti-rollback). The floor is
+not kept in the U-Boot environment, which the OS can write.
 
-The U-Boot environment storing the minimum-generation counter must
-itself be protected; the simplest mechanism is to store it in a TPM
-NV index analogous to the attestation freshness counter in
-`ATTESTATION.md` § "Freshness mechanism". This binds rollback
-resistance to the TPM-backed monotonic counter — a hardware property
-rather than a software-stored value.
+For a release this means: its rollback index is
+`TACTIQ_ROLLBACK_INDEX` in `recipes-core/tactiq-release/release-rev.inc`
+and travels with the tag. The index, and with it the floor on devices
+that confirm the release, is raised only at a declared security
+boundary; a device that has accepted a release with index N no longer
+boots any release with a lower index. Neither part is in a release up
+to v2.1.0-rc14.
 
 ### 3.6 What this section does not cover
 

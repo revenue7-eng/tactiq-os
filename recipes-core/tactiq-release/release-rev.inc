@@ -14,3 +14,16 @@
 
 TACTIQ_OS_RELEASE_REV = "v2.1.0-rc14"
 TACTIQ_OS_RELEASE_DATE = "2026-10-12"
+
+# Rollback index written into every configuration of the kernel FIT
+# (recipes-kernel/linux/linux-yocto-fitimage.bbappend) and held by U-Boot
+# against the floor in the TPM (CONFIG_FIT_ROLLBACK_TPM). Raised only at a
+# declared security boundary, not with every release: a device that has
+# confirmed a slot with index N refuses every image below N for good, the
+# A/B fallback to it included. 0 to 64.
+# The first release with the floor carries 2, not 1: the development
+# bench where the floor was measured is at floor 2
+# (measurements/rollback-seen-dev-20261109.md) and has to boot the release
+# to measure it. No device in the field had a floor before this release,
+# so the value matters only in its order against later ones.
+TACTIQ_ROLLBACK_INDEX ?= "2"
