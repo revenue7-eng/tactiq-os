@@ -45,7 +45,7 @@ recipes-core/tactiq-config/tactiq-config_2.0.0.bb oelint.var.mandatoryvar.DESCRI
 recipes-core/tactiq-config/tactiq-config_2.0.0.bb oelint.var.mandatoryvar.HOMEPAGE 1
 recipes-core/tactiq-release/release-derived.inc oelint.vars.noncoreoverride 2
 recipes-core/tactiq-release/release-rev.inc oelint.bbclass.underscores 1
-recipes-core/tactiq-release/release-rev.inc oelint.vars.noncoreoverride 2
+recipes-core/tactiq-release/release-rev.inc oelint.vars.noncoreoverride 3
 recipes-devtools/btrfs-tools/btrfs-tools_6.19.1.bbappend oelint.append.protvars.SRCREV 2
 recipes-devtools/btrfs-tools/btrfs-tools_6.19.1.bbappend oelint.vars.noncoreoverride 5
 recipes-devtools/btrfs-tools/btrfs-tools_6.19.1.bbappend oelint.vars.srcurimutualex 1
@@ -56,6 +56,7 @@ recipes-kernel/devicetree/tactiq-slot-dtb.bb oelint.file.underscores 1
 recipes-kernel/devicetree/tactiq-slot-dtb.bb oelint.var.mandatoryvar.DESCRIPTION 1
 recipes-kernel/devicetree/tactiq-slot-dtb.bb oelint.var.mandatoryvar.HOMEPAGE 1
 recipes-kernel/devicetree/tactiq-slot-dtb.bb oelint.var.mandatoryvar.SRC_URI 1
+recipes-kernel/linux/linux-yocto-fitimage.bbappend oelint.vars.noncoreoverride 1
 recipes-kernel/linux/linux-yocto_%.bbappend oelint.vars.noncoreoverride 23
 recipes-security/keyutils/keyutils_%.bbappend oelint.vars.noncoreoverride 1
 recipes-support/chrony/chrony_%.bbappend oelint.vars.noncoreoverride 1
