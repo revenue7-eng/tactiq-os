@@ -57,6 +57,26 @@ jobs:
           scandir: './scripts'
           severity: warning
 
+  invisible-chars:
+    name: No invisible Unicode in tracked files
+    runs-on: ubuntu-24.04
+    # Tags-block code points, bidirectional controls and zero-width
+    # characters change what a reader (human or model) takes a file to say
+    # without changing what is shown. Code here is written partly by AI
+    # agents, and an agent that read a poisoned source can carry one into a
+    # patch. The test builds every refused input at run time and must fail
+    # if any class or range bound stops being caught.
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Checker tests
+        run: python3 -I tests/invisible/test_check_invisible_chars.py
+      - name: Scan tracked files
+        run: python3 -I scripts/check-invisible-chars.py
+
   yaml-validate:
     name: YAML + config validation
     runs-on: ubuntu-24.04
