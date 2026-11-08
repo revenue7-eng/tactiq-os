@@ -21,4 +21,9 @@ TACTIQ_OS_RELEASE_DATE = "2026-10-12"
 # declared security boundary, not with every release: a device that has
 # confirmed a slot with index N refuses every image below N for good, the
 # A/B fallback to it included. 0 to 64.
-TACTIQ_ROLLBACK_INDEX ?= "1"
+# The first release with the floor carries 2, not 1: the development
+# bench where the floor was measured is at floor 2
+# (measurements/rollback-seen-dev-20261109.md) and has to boot the release
+# to measure it. No device in the field had a floor before this release,
+# so the value matters only in its order against later ones.
+TACTIQ_ROLLBACK_INDEX ?= "2"
