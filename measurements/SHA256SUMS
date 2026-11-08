@@ -84,3 +84,5 @@ de894b91f8d3930666997f9e79902bb2c465046b050104c615806a5e1c1d7dd6  persistent-aud
 c9d10ae19c482c108d96c5cb7577a36bf4e770b0a89f7a64ef56a40a6a7e96ff  persistent-audit-board-20261105/board-session-2.log
 ce43bf595536cb0734fa2c3fd78e38945973ef5da4b7aa4a3cc3d0adfa78a395  persistent-audit-board-20261105/pcr-match.log
 a1ad67e46ecb928c57970f60d8f2ab226693e4924c40337f94c00b0115379f4b  persistent-audit-board-20261105/pcr-ref-audit2-20261105.json
+9a9235be4a097136460bbc74c52325da5300ea4dbffe24f9e539437e72529cff  tpm-v1-retire-board-20261109.md
+c58ecdbd66e7225fce753dc13f96751b4faaaecb53b83d54e28482c4ed9e768c  tpm-v1-retire-board-20261109/board-session.log
