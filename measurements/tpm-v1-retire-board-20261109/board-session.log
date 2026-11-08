@@ -1,0 +1,105 @@
+root@tactiq-rock5a:~# tpm2_getcap handles-persistent
+- 0x81010001
+- 0x81010002
+- 0x81010100
+root@tactiq-rock5a:~# tpm2_readpublic -c 0x81010001 | grep -E '^name:|^type|value|curve|scheme'
+name: 000b737031a2f0e4e52d6ea339de7ba696c182ee0bf68cfbbafa99ba709fc45abe7e
+  value: sha256
+  value: fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|decrypt
+type:
+  value: ecc
+curve-id:
+  value: NIST p256
+  value: null
+  value: (null)
+scheme:
+  value: null
+scheme-halg:
+  value: (null)
+  value: aes
+  value: cfb
+root@tactiq-rock5a:~# tpm2_readpublic -c 0x81010002 | grep -E '^name:|^type|value|curve|scheme'
+name: 000b60ece7b62a9ba769e46a597605c2cd575844c2aa59953801d423c3c143bca2ea
+  value: sha256
+  value: fixedtpm|fixedparent|sensitivedataorigin|userwithauth|sign
+type:
+  value: ecc
+curve-id:
+  value: NIST p256
+  value: null
+  value: (null)
+scheme:
+  value: ecdsa
+scheme-halg:
+  value: sha256
+  value: null
+  value: (null)
+root@tactiq-rock5a:~# tpm2_readpublic -c 0x81010003 | grep -E '^name:|^type|value|curve|scheme'
+WARNING:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/api/Esys_ReadPublic.c:320:Esys_ReadPublic_Finish() Received TPM Error
+ERROR:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/esys_tr.c:278:Esys_TR_FromTPMPublic_Finish() Error ReadPublic ErrorCode (0x0000018b)
+ERROR:esys:/usr/src/debug/tpm2-tss/4.1.3/src/tss2-esys/esys_tr.c:402:Esys_TR_FromTPMPublic() Error TR FromTPMPublic ErrorCode (0x0000018b)
+ERROR: Esys_TR_FromTPMPublic(0x18B) - tpm:handle(1):the handle is not correct for the use
+ERROR: Unable to run tpm2_readpublic
+root@tactiq-rock5a:~# tpm2_readpublic -c 0x81010100 | grep -E '^name:|^type|value|curve|scheme'
+name: 000b35c0941662473b6dc78ce636d83dfcaf1bbdfa68bb69121dd9b3c0b414df0a0a
+  value: sha256
+  value: fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|sign
+type:
+  value: ecc
+curve-id:
+  value: NIST p256
+  value: null
+  value: (null)
+scheme:
+  value: ecdsa
+scheme-halg:
+  value: sha256
+  value: null
+  value: (null)
+root@tactiq-rock5a:~# tpm2_evictcontrol -C o -c 0x81010002
+persistent-handle: 0x81010002
+action: evicted
+root@tactiq-rock5a:~# tpm2_getcap handles-persistent
+- 0x81010001
+- 0x81010100
+root@tactiq-rock5a:~# tpm2_evictcontrol -C o -c 0x81010001
+persistent-handle: 0x81010001
+action: evicted
+root@tactiq-rock5a:~# tpm2_getcap handles-persistent
+- 0x81010100
+root@tactiq-rock5a:~# tpm2_readpublic -c 0x81010100 | grep -E '^name:'
+name: 000b35c0941662473b6dc78ce636d83dfcaf1bbdfa68bb69121dd9b3c0b414df0a0a
+root@tactiq-rock5a:~# cat /etc/tactiq-release
+TACTIQ_OS_VERSION=2.1.0
+TACTIQ_OS_CODENAME=hardened-edge
+TACTIQ_BUILD_MACHINE=tactiq-rock5a
+TACTIQ_META_TACTIQ_GIT=v2.1.0-rc14
+TACTIQ_IMAGE_NAME=tactiq-image-dev
+TACTIQ_RELEASE_DATE=2026-10-12
+root@tactiq-rock5a:~# systemctl status tactiq-agent --no-pager -n 10
+* tactiq-agent.service - TactiQ Attestation Agent
+     Loaded: loaded (/usr/lib/systemd/system/tactiq-agent.service; enabled; preset: enabled)
+    Drop-In: /run/systemd/system.control/tactiq-agent.service.d
+             `-50-IPAddressAllow.conf
+     Active: active (running) since Mon 2026-10-12 00:00:04 UTC; 1h 43min ago
+ Invocation: 0e3849cb970f42dab9779ae6ed73ead9
+       Docs: file:///usr/share/doc/tactiq-os/ATTESTATION.md
+    Process: 472 ExecStartPre=/bin/cp /sys/kernel/security/tpm0/binary_bios_measurements /run/tactiq-agent/boot.bios.log (code=exited, status=0/SUCCESS)
+    Process: 474 ExecStartPre=/bin/chown tactiq-agent:tactiq-agent /run/tactiq-agent/boot.bios.log (code=exited, status=0/SUCCESS)
+   Main PID: 477 (tactiq-agent)
+      Tasks: 1 (limit: 4701)
+     Memory: 10.5M (max: 128M, available: 117.4M, peak: 14M)
+        CPU: 15.614s
+     CGroup: /system.slice/tactiq-agent.service
+             `-477 /opt/tactiq/bin/tactiq-agent run
+
+Oct 12 01:38:35 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849861 -> /data/tactiq/audit/137220849861.msg
+Oct 12 01:39:05 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849862 -> /data/tactiq/audit/137220849862.msg
+Oct 12 01:39:35 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849863 -> /data/tactiq/audit/137220849863.msg
+Oct 12 01:40:05 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849864 -> /data/tactiq/audit/137220849864.msg
+Oct 12 01:40:35 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849865 -> /data/tactiq/audit/137220849865.msg
+Oct 12 01:41:05 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849866 -> /data/tactiq/audit/137220849866.msg
+Oct 12 01:41:35 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849867 -> /data/tactiq/audit/137220849867.msg
+Oct 12 01:42:05 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849868 -> /data/tactiq/audit/137220849868.msg
+Oct 12 01:42:35 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849869 -> /data/tactiq/audit/137220849869.msg
+Oct 12 01:43:05 tactiq-rock5a tactiq-agent[477]: attested TACTIQ-BENCH-001 counter=137220849870 -> /data/tactiq/audit/137220849870.msg
