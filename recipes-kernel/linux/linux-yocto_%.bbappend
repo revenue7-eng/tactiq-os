@@ -32,6 +32,13 @@ SRC_URI += "file://tactiq-pstore.cfg"
 # integration/LAYERS.lock: linux-yocto_6.18.bb there sets SRCREV_machine and
 # SRCREV_meta, so a separate SRCREV pin here would only duplicate it. A
 # kernel bump is an openembedded-core bump, reviewed with a CVE scan.
+#
+# Exception: a CVE fix may be carried as a patch in SRC_URI (section 1),
+# with a "CVE: CVE-YYYY-NNNNN" line in its header so cve-check records it,
+# when the CVE is reachable in our configuration (a network path on an
+# image with a network interface, or an enabled subsystem) and the
+# openembedded-core pin has no fix. SRCREV is still not set here. The
+# patch is removed by the openembedded-core bump that carries the fix.
 
 # ===========================================================================
 # 3. extlinux configuration (tactiq-extlinux-deploy.bbclass)
