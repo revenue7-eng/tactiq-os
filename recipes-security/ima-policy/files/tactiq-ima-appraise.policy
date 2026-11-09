@@ -9,10 +9,15 @@ dont_appraise fsmagic=0x9fa0
 dont_appraise fsmagic=0x62656572
 # DEBUGFS_MAGIC
 dont_appraise fsmagic=0x64626720
-# TMPFS_MAGIC
-dont_appraise fsmagic=0x01021994
-# RAMFS_MAGIC
-dont_appraise fsmagic=0x858458f6
+# TMPFS_MAGIC: reads from tmpfs are not appraised, since nothing written
+# there at run time is signed (memfd lives here too). Execution and executable mappings from tmpfs
+# are: without func=FILE_CHECK this rule also exempted BPRM_CHECK and
+# MMAP_CHECK, and a program written to /tmp ran without appraisal.
+dont_appraise fsmagic=0x01021994 func=FILE_CHECK
+# RAMFS_MAGIC: same as tmpfs. No ramfs is mounted on the image, but root can
+# mount one, and a whole-filesystem exemption would run its programs
+# without appraisal.
+dont_appraise fsmagic=0x858458f6 func=FILE_CHECK
 # DEVPTS_SUPER_MAGIC
 dont_appraise fsmagic=0x1cd1
 # BIFMT
@@ -30,10 +35,13 @@ dont_appraise fsmagic=0x27e0eb
 # Cgroup2
 dont_appraise fsmagic=0x63677270
 
+# Every appraise rule below carries appraise_type=imasig: only a signature
+# under a key the kernel trusts is accepted. Without it a sha256 digest in
+# security.ima passed as well, and root can write one.
 # Appraise libraries
-appraise func=MMAP_CHECK mask=MAY_EXEC
+appraise func=MMAP_CHECK mask=MAY_EXEC appraise_type=imasig
 # Appraise executables
-appraise func=BPRM_CHECK
+appraise func=BPRM_CHECK appraise_type=imasig
 
 # TactiQ: appraise reads of files labeled tactiq_vault_data_t. The type is
 # defined in tactiq_vault.te and assigned by restorecon; the data partition is
@@ -41,7 +49,7 @@ appraise func=BPRM_CHECK
 # lives there. This one covers delivered artifacts signed under the .ima
 # key -- reference values, update bundles. Cartridges (model weights) are not
 # here: they carry their own signature and have their own type, below.
-appraise func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t
+appraise func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t appraise_type=imasig
 
 # ---------------------------------------------------------------------------
 # TactiQ: measurement rules (2026-09-03, verified on rock5a slot B, counter 73).

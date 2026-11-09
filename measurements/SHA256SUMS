@@ -100,3 +100,9 @@ be53fa005d3ea8d13977bfeb2f948bdb7d6c24edb2af6c5733d5b24db2d51c6b  rollback-seen-
 19367a864220d2a79171fd820be7825323414efa8ea54c76c98dd831d3778cd2  rollback-seen-dev-20261109/step3-a-first-boot-and-raise.log
 1bfba3b40206dacd64cac58b1c45ebf416645f9f45924c3cd4fd9c3d68a1e511  rollback-seen-dev-20261109/step3-a-first-boot-checks.log
 099c7b5e39b280f2435de39e5ec81a5ee7d18d2c5aef7df98d1a43dd4fd98bf9  rollback-seen-dev-20261109/step4-b-refused.log
+a8954e5681a83b536eca9352297aadc482217ae80449fade245a3dd483710c4b  ima-imasig-board-20261109.md
+08fae0ac7e9041eaf4c9462ef3de60f06b2a4eca53c4470866d8c46cca39be5a  ima-imasig-board-20261109/before-old-image.log
+6d0e656093a1de8ad6cd1c1cc9e015e7051470cefc2440a72c9bab3310843812  ima-imasig-board-20261109/write-and-boot-b.log
+09e3962615a1986dca225ee3207baf7a4a0927bf746e43374e0408393e140ade  ima-imasig-board-20261109/checks-b.log
+84880b0be4d8e5436cccf0c8fb37af5f5fa6734c6565ff7862ce391b2c88758d  ima-imasig-board-20261109/pcr-b.log
+dc17e41db1ce31feee7ae40d5a183c8f5cf3d017ce212a6081866fd344357b3b  ima-imasig-board-20261109/pcr-ref-imasig-20261109.json

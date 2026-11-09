@@ -84,8 +84,10 @@ not deterministic. The certificate comes out the same in every respect
 that matters: extensions, criticality, issuer. What the branch reproduces
 is the procedure, not the file.
 
-Appraisal runs in `ima_appraise=log`. `KERNEL_HARDENING.md` records what
-the switch to `enforce` is waiting on.
+The development image enforces appraisal: its command line carries no
+`ima_appraise=`, and the kernel default is enforce. Since this key is
+public, that shows the policy at work, not that a file came from TactiQ.
+`KERNEL_HARDENING.md` records the state.
 
 ## pki/dev/module-signing/ — kernel module signing
 

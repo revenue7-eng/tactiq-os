@@ -1,0 +1,53 @@
+tactiq-rock5a login: root
+
+  ▀▀▀▀▀▀▀▀▀▀▀▄   release  TactiQ OS v2.1.0-rc14 (tactiq-image-dev)
+     █  █    █   board    Radxa ROCK 5A
+     █  █    █   slot     B
+     █  █   ▄█   root     dm-verity, dm-0 "rootfs" (as booted)
+     ▀   ▀▀▀▀▄   selinux  enforcing
+                 ima      policy: measure 8, appraise 4, 167 entries measured
+                 tpm      present, TPM 2.0, IFX, firmware 7.87.19691.2
+                 pcr 0-9  sha256 29973b946388...53dff6096e89
+                 agent    active, envelopes: 2880 complete
+
+  Reported by this device. Check it from outside with VERIFY-L3 for v2.1.0-rc14
+  and the signed release set; this screen is not a verification.
+
+root@tactiq-rock5a:~# getenforce
+Enforcing
+root@tactiq-rock5a:~# grep -c 'appraise_type=imasig' /sys/kernel/security/ima/policy
+4
+root@tactiq-rock5a:~# cat /data/imasig-check/signed.txt
+tactiq-imasig-signed
+root@tactiq-rock5a:~# cat /data/imasig-check/probe.txt
+cat: can't open '/data/imasig-check/probe.txt': Permission denied
+root@tactiq-rock5a:~# cp /bin/busybox /tmp/bb
+root@tactiq-rock5a:~# /tmp/bb echo tmpfs-ran
+-sh: /tmp/bb: Permission denied
+root@tactiq-rock5a:~# mkdir -p /run/rfs
+root@tactiq-rock5a:~# mount -t ramfs none /run/rfs
+root@tactiq-rock5a:~# cp /bin/busybox /run/rfs/bb
+root@tactiq-rock5a:~# /run/rfs/bb echo ramfs-ran
+-sh: /run/rfs/bb: Permission denied
+root@tactiq-rock5a:~# umount /run/rfs
+root@tactiq-rock5a:~# grep -n -E 'type=DAEMON_START|type=INTEGRITY_DATA' /var/log/audit/audit.log | tail -n 12
+12107:type=DAEMON_START msg=audit(1791763204.017:1310): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=370 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+12267:type=DAEMON_START msg=audit(1791763204.010:1310): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=371 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+12412:type=DAEMON_START msg=audit(1791763204.013:1310): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=378 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+12557:type=DAEMON_START msg=audit(1791763204.095:1310): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=373 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+12660:type=DAEMON_START msg=audit(1791763204.242:1310): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=371 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+14495:type=DAEMON_START msg=audit(1791763203.911:7113): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=368 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+16765:type=DAEMON_START msg=audit(1791763204.024:1310): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=370 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+16867:type=DAEMON_START msg=audit(1791763203.835:7113): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=370 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+16970:type=DAEMON_START msg=audit(1791763204.003:1310): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=368 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+17121:type=DAEMON_START msg=audit(1791763204.086:1310): op=start ver=4.1.4 format=enriched kernel=6.18.52-yocto-standard-00164-g0e7b072c8239 auid=4294967295 pid=369 uid=0 ses=4294967295 subj=system_u:system_r:auditd_t:s0 res=successAUID="unset" UID="root"
+17222:type=INTEGRITY_DATA msg=audit(1791763291.360:133): pid=663 uid=0 auid=4294967295 ses=4294967295 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 op=appraise_data cause=IMA-signature-required comm="cat" name="/data/imasig-check/probe.txt" dev="mmcblk0p5" ino=20 res=0 errno=0UID="root" AUID="unset"
+17227:type=INTEGRITY_DATA msg=audit(1791763305.088:134): pid=687 uid=0 auid=4294967295 ses=4294967295 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 op=appraise_data cause=IMA-signature-required comm="sh" name="/tmp/bb" dev="tmpfs" ino=13 res=0 errno=0UID="root" AUID="unset"
+root@tactiq-rock5a:~# journalctl -b -u tactiq-agent -n 2 --no-pager
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+Oct 12 00:02:06 tactiq-rock5a tactiq-agent[476]: attested TACTIQ-BENCH-001 counter=137405399044 -> /data/tactiq/audit/137405399044.msg
+Oct 12 00:02:36 tactiq-rock5a tactiq-agent[476]: attested TACTIQ-BENCH-001 counter=137405399045 -> /data/tactiq/audit/137405399045.msg
+root@tactiq-rock5a:~# journalctl -b --no-pager | grep -c 'avc:.*denied'
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+0
+root@tactiq-rock5a:~#
