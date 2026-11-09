@@ -1,0 +1,64 @@
+root@tactiq-rock5a:~# cat /etc/tactiq-release
+TACTIQ_OS_VERSION=2.1.0
+TACTIQ_OS_CODENAME=hardened-edge
+TACTIQ_BUILD_MACHINE=tactiq-rock5a
+TACTIQ_META_TACTIQ_GIT=v2.1.0-rc14
+TACTIQ_IMAGE_NAME=tactiq-image-dev
+TACTIQ_RELEASE_DATE=2026-10-12
+root@tactiq-rock5a:~# CL=$(cat /proc/cmdline); se=$(getenforce 2>/dev/null || echo NO-SELINUX); P=/sys/kernel/security/ima/policy; if [ -r $P ]; then ima="appraise-rules=$(grep -c '^appraise ' $P) measure-rules=$(grep -c '^measure ' $P)"; else ima=NO-POLICY-READ; fi; ip=$(echo "$CL" | sed -n 's/.*ima_appraise=\([^ ]*\).*/\1/p'); [ -z "$ip" ] && ip=none; rt=$(echo "$CL" | sed -n 's/.*\(root=[^ ]*\).*/\1/p'); dm=$(cat /sys/block/dm-*/dm/name 2>/dev/null | tr '\n' ' '); [ -z "$dm" ] && dm=NONE; sl=$(echo "$CL" | sed -n 's/.*rauc\.slot=\([^ ]*\).*/\1/p'); printf 'SELINUX %s\nIMA     %s cmdline=%s\nROOT    %s\nDM      %s\nSLOT    %s\n' "$se" "$ima" "$ip" "$rt" "$dm" "$sl"
+SELINUX Enforcing
+IMA     appraise-rules=4 measure-rules=8 cmdline=none
+ROOT    root=/dev/dm-0
+DM      rootfs
+SLOT    B
+root@tactiq-rock5a:~# printf 'tactiq-imasig-probe\n' > /data/tpm-v1-retire/probe.txt
+root@tactiq-rock5a:~# printf 'tactiq-imasig-probe\n' > /tmp/probe.txt
+root@tactiq-rock5a:~# sha256sum /tmp/probe.txt
+d584202a29e6085d48422b83180ee8a7ad7256926bf4a9fd4517f5296b71aea9  /tmp/probe.txt
+root@tactiq-rock5a:~# cat /data/tpm-v1-retire/probe.txt
+cat: can't open '/data/tpm-v1-retire/probe.txt': Permission denied
+root@tactiq-rock5a:~# setfattr -n security.ima -v 0x0404d584202a29e6085d48422b83180ee8a7ad7256926bf4a9fd4517f5296b71aea9 /data/tpm-v1-retire/probe.txt
+root@tactiq-rock5a:~# getfattr -n security.ima -e hex /data/tpm-v1-retire/probe.txt
+getfattr: Removing leading '/' from absolute path names
+# file: data/tpm-v1-retire/probe.txt
+security.ima=0x0404d584202a29e6085d48422b83180ee8a7ad7256926bf4a9fd4517f5296b71aea9
+
+root@tactiq-rock5a:~# cat /data/tpm-v1-retire/probe.txt
+tactiq-imasig-probe
+root@tactiq-rock5a:~# grep 'probe.txt' /data/log/audit/audit.log | grep INTEGRITY_DATA | tail -n 3
+type=INTEGRITY_DATA msg=audit(1791768397.228:138): pid=1734 uid=0 auid=4294967295 ses=4294967295 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 op=appraise_data cause=missing-hash comm="cat" name="/data/tpm-v1-retire/probe.txt" dev="mmcblk0p5" ino=21 res=0 errno=0UID="root" AUID="unset"
+root@tactiq-rock5a:~# grep probe.txt /sys/kernel/security/ima/ascii_runtime_measurements
+11 c55176b14a43091b47f510d3f597c2ed6dddc207 ima-sig sha256:d584202a29e6085d48422b83180ee8a7ad7256926bf4a9fd4517f5296b71aea9 /data/tpm-v1-retire/probe.txt
+root@tactiq-rock5a:~# grep -E ' (/tmp|/run|/dev/shm|/data|/var/volatile) ' /proc/mounts
+tmpfs /dev/shm tmpfs rw,seclabel,nosuid,nodev 0 0
+tmpfs /run tmpfs rw,seclabel,nosuid,nodev,size=801176k,nr_inodes=819200,mode=755 0 0
+tmpfs /tmp tmpfs rw,seclabel,nosuid,nodev,size=2002936k,nr_inodes=1048576 0 0
+tmpfs /var/volatile tmpfs rw,rootcontext=system_u:object_r:var_t:s0,seclabel,relatime 0 0
+/dev/mmcblk0p5 /data ext4 rw,fscontext=system_u:object_r:tactiq_data_fs_t:s0,seclabel,nosuid,nodev,noexec,noatime 0 0
+root@tactiq-rock5a:~# getfattr -n security.ima -e hex /opt/tactiq/bin/tactiq-agent
+getfattr: Removing leading '/' from absolute path names
+# file: opt/tactiq/bin/tactiq-agent
+security.ima=0x030204cc67b774018023020de1f9fe06987968ed2b12d0a60a6b97921d4aa1d53f00dc52cac73752a190d5608b4820efcc365e15982437b715d883d13580c8cca02174718551e4089cae6b83f74d8d183e882a6ecb047b5a0a2c6b35428c974482d07fbf600adffc7f3b39137608fe5de73c3302a0bbf01c5b3c04ed95cc658e56269d3b00f8037fc0e0078fd23e0bd8e6ee616c375aabe06b7106ee1a7da450c6636dd0c1e6d9773badb3b12dd792e93b4164aef803607095d52bab225a2fa6d278016d0a8f5f2b587d2087f5ef6db9cc9c85fb23fe00bbfda704d63fb61f80b9c9e80475a7babeea034c5b5c8299000b2a9a5159e122ef8f46a3e7a00b5589286fb86b177f0e3089d2aac2c8f7b7fd3f83ff2d72c5f160f8e9bdd732f6118985139cc6acac8267e76443b7183ce415de727dc2ffa07f39ed2d35b0d3362e3e9aaead88cbe9eb67d8e20dceb27828ed5f91d3cc2488a2ebc8f7a71d8e883c937b8229b9628d2a5811d412aa31ed8d2b7334193bd2c70f0a9830ae993705a2e6d83d9b4d757b0ca336
+
+root@tactiq-rock5a:~# grep -c 'op=appraise_data' /data/log/audit/audit.log
+4
+root@tactiq-rock5a:~# getfattr -R -n security.ima -e hex /usr /opt /etc 2>/dev/null | grep -c '^security.ima=0x03'
+5768
+root@tactiq-rock5a:~# getfattr -R -n security.ima -e hex /usr /opt /etc 2>/dev/null | grep -c -E '^security.ima=0x0[124]'
+0
+root@tactiq-rock5a:~# find /usr /opt /etc -type f | wc -l
+4936
+root@tactiq-rock5a:~# find /usr /opt /etc -type f | while read f; do getfattr -n security.ima "$f" >/dev/null 2>&1 || echo "$f"; done > /tmp/unsigned.txt
+root@tactiq-rock5a:~# wc -l < /tmp/unsigned.txt
+4
+root@tactiq-rock5a:~# head -n 30 /tmp/unsigned.txt
+/usr/lib/systemd/system/system-systemdx2dveritysetup.slice
+/usr/lib/systemd/system/system-systemdx2dmutex2dconsole.slice
+/usr/lib/systemd/system/system-systemdx2dcryptsetup.slice
+/etc/machine-id
+root@tactiq-rock5a:~# getfattr -R -n security.ima -e hex /data 2>/dev/null | grep -c -E '^security.ima=0x0[124]'
+0
+root@tactiq-rock5a:~# getfattr -R -n security.ima -e hex /data 2>/dev/null | grep -c '^security.ima=0x03'
+0
+root@tactiq-rock5a:~# grep ramfs /proc/mounts
+root@tactiq-rock5a:~#

@@ -102,21 +102,36 @@ remote verifier, once the attestation framework is fully
 implemented, can ask for a TPM quote over PCR 10 and validate that
 the running set of measured files matches an expected reference.
 
-What this does not yet mean: IMA appraisal is not enforced.
+IMA appraisal is enforced on the development image.
 `CONFIG_IMA_APPRAISE=y` enables the kernel machinery, and the
 development image deploys the on-disk policy
 (`recipes-security/ima-policy/files/tactiq-ima-appraise.policy`,
 installed as `/etc/ima/ima-policy`) with its rootfs signed at build
-time. What keeps it from blocking is the boot argument: that image
-boots with `ima_appraise=log`, so a failed appraisal is recorded and
-the access proceeds.
+time. Its command line carries no `ima_appraise=` argument. With
+`CONFIG_IMA_APPRAISE_BOOTPARAM=y` and no argument the kernel keeps its
+default, enforce (`ima_appraise = IMA_APPRAISE_ENFORCE` in
+`security/integrity/ima/ima_main.c`), so a failed appraisal blocks the
+access. The argument used to come from a `tactiq-dev-policy` override
+in `local.conf`, outside the tree; the override was removed (see
+`tactiq-rockchip-rk3588.inc`), and since then the image carries no
+argument and enforces.
 
-The remaining step to `ima_appraise=enforce` is `/data/tactiq`. The
-policy appraises reads of `tactiq_vault_data_t`, which after the label
-split covers delivered artifacts alone: device identity and the agent
-envelopes carry types of their own and are not appraised. What remains
-is that anything delivered onto the partition must arrive signed. That
-an enforcing boot passes has not been measured.
+What is appraised: execution and executable mappings on every
+filesystem but the pseudo filesystems the policy names, and reads of
+`tactiq_vault_data_t`, which after the label split covers delivered
+artifacts alone: device identity and the agent envelopes carry types
+of their own and are not appraised. Each appraised access requires a
+signature (`appraise_type=imasig`); a digest in `security.ima` is
+refused. Reads from tmpfs and ramfs are exempt; execution from them is
+not.
+Anything delivered onto `/data/tactiq` must arrive with a signature in
+`security.ima`.
+
+What enforcement shows on this image: the development signer is
+public by design (`pki/README.md`), so anyone can sign a file the
+image accepts. Enforcement here shows that the policy and the signed
+rootfs work together; keeping out a file signed by someone else needs
+a production signer. The record is `measurements/ima-imasig-board-20261109.md`.
 
 A production image is unaffected by any of the above: it applies
 neither the signing class nor the policy.

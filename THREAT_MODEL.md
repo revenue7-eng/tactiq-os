@@ -280,9 +280,12 @@ configured (`CONFIG_IMA_APPRAISE=y`, PCR 10). The development image
 ships an on-disk policy at `/etc/ima/ima-policy`; it appraises every
 executable and mapped library through `BPRM_CHECK` and `MMAP_CHECK`,
 which covers `/opt/tactiq/` and the tactiq systemd units without
-naming them. That image boots with `ima_appraise=log`, so IMA
-records violations but does not
-enforce on file access.
+naming them. That image enforces: its command line carries no
+`ima_appraise=`, the kernel default is enforce, and each appraised
+access requires a signature, not a digest. Its signer is the public
+development key, so this holds the image to its own policy and does
+not stop anyone who signs with that key. A production image carries
+no policy.
 
 ### Physical attacker
 

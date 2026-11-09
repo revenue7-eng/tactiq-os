@@ -201,13 +201,16 @@ sha256sum -c SHA256SUMS
   means the SoC boot ROM does not enforce a public-key root for the
   first loaded stage. OTP burn is the last step in the boot chain
   hardening sequence because it is irreversible.
-- IMA userspace appraisal: deployed in the development image, not
-  enforcing. `tactiq-image-dev` signs its rootfs at build time and
+- IMA userspace appraisal: enforced in the development image.
+  `tactiq-image-dev` signs its rootfs at build time and
   ships `recipes-security/ima-policy/files/tactiq-ima-appraise.policy`
   as `/etc/ima/ima-policy`; the signing key is `pki/dev/ima-signer`,
   in-tree by the same design property as the RAUC development key.
-  The image boots with `ima_appraise=log`: violations are recorded,
-  nothing is blocked. The policy appraises reads of
+  The image's command line carries no `ima_appraise=`, so the kernel
+  enforces its default: a failed appraisal blocks the access, and each
+  appraised access requires a signature, not a digest. Because the
+  signing key is in-tree, enforcement here shows the mechanism, not
+  where a file came from. The policy appraises reads of
   `tactiq_vault_data_t`, which after the label split covers delivered
   artifacts alone; anything delivered onto `/data/tactiq` must arrive
   signed. A production image applies neither the
