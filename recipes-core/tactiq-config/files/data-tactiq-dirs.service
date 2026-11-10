@@ -13,11 +13,10 @@ RemainAfterExit=yes
 ExecStart=/bin/sh -c '\
     mkdir -p /data/tactiq /data/site; \
     restorecon -Rv /data; \
-    for d in keys counter audit certs; do mkdir -p /data/tactiq/$d; done; \
+    for d in keys counter audit; do mkdir -p /data/tactiq/$d; done; \
     restorecon -Rv /data/tactiq; \
     chmod 0700 /data/tactiq/keys /data/tactiq/counter; \
     chmod 0750 /data/tactiq/audit; \
-    chmod 0755 /data/tactiq/certs; \
     chown -R tactiq-agent:tactiq-agent /data/tactiq; \
     mkdir -p /data/tactiq/stop; \
     restorecon -v /data/tactiq/stop; \
