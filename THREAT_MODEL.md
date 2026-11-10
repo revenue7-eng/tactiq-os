@@ -228,8 +228,8 @@ exploitation. Compiler hardening (`relro`, `bind-now`, PIE,
 PRODUCTION" in the image recipe), which loosens default user posture.
 The production profile that removes this is tracked but not yet a
 separate published artifact. Kernel module signing is enabled
-(`CONFIG_MODULE_SIG=y`) but not enforced (`CONFIG_MODULE_SIG_FORCE` is
-phase-3 work in `tactiq-security.cfg`).
+(`CONFIG_MODULE_SIG=y`) and enforced by `module.sig_enforce=1` on the
+signed kernel command line.
 
 ### Compromised userspace daemon
 
@@ -272,10 +272,14 @@ replacement at runtime. SELinux, with `selinux=1 enforcing=1` as the
 default policy, applies even to the root user — root is not a SELinux
 bypass.
 
-**Known gaps at this stage.** Lockdown is in integrity mode in rc3;
-confidentiality mode (`CONFIG_LOCK_DOWN_KERNEL_FORCE_CONFIDENTIALITY=y`),
-which additionally blocks kernel memory reads and is relevant against
-key extraction, is phase-3 work. IMA appraisal at the kernel level is
+**Known gaps at this stage.** Lockdown runs in confidentiality mode
+(`lockdown=confidentiality` on the signed kernel command line), which
+also blocks kernel memory reads; until 2026-11-10 it was built in but
+enforced nothing (`CONFIG_LOCK_DOWN_KERNEL_FORCE_NONE=y`, no mode on the
+command line). Lockdown does not stop a kernel exploit: code running in
+the kernel is outside what any LSM enforces. User namespaces and
+io_uring, the common ways for an unprivileged process to reach such
+code, are removed (`KERNEL_HARDENING.md`). IMA appraisal at the kernel level is
 configured (`CONFIG_IMA_APPRAISE=y`, PCR 10). The development image
 ships an on-disk policy at `/etc/ima/ima-policy`; it appraises every
 executable and mapped library through `BPRM_CHECK` and `MMAP_CHECK`,

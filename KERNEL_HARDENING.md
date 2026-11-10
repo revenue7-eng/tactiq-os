@@ -71,14 +71,20 @@ labels share a host; that is not the current shape. If a future
 deployment introduces multi-tenant scenarios, the policy will be
 extended.
 
-**Lockdown LSM in integrity mode.** Lockdown restricts what the
-kernel allows even to the root user — module loading, kexec, direct
-hardware access, kernel memory inspection. The current configuration
-runs lockdown in integrity mode, which blocks modifications that
-could compromise the running kernel. Confidentiality mode, which
-additionally blocks reads of kernel memory and is the relevant
-posture against key-extraction attacks, is a Phase 3 transition (see
-below).
+**Lockdown LSM in confidentiality mode.** Lockdown restricts what the
+kernel allows even to the root user: module loading, kexec, direct
+hardware access, kernel memory inspection. The mode is set on the
+kernel command line, `lockdown=confidentiality`, in the `/chosen`
+bootargs of each slot device tree inside the signed FIT
+(`tactiq-slot-dtb.bb`), so it is covered by the FIT signature and by
+the PCR 1 measurement of the FIT. Confidentiality mode blocks both
+modification and reads of kernel memory.
+
+Until 2026-11-10 the kernel configuration carried
+`CONFIG_LOCK_DOWN_KERNEL_FORCE_NONE=y` and the command line set no
+mode: lockdown was built in and enforced nothing. Earlier text here
+said integrity mode; that was wrong. Board measurement:
+`measurements/lockdown-userns-board-20261110.md`.
 
 **LSMs not currently in the stack.** Landlock and BPF-LSM are not
 currently in the LSM stack. The current SELinux + lockdown
@@ -142,17 +148,36 @@ transition that follows the on-disk IMA policy deployment.
 
 ## Module signing
 
-Kernel module signing infrastructure is in place:
-`CONFIG_MODULE_SIG=y`, `CONFIG_MODULE_SIG_SHA256=y`. This means the
-kernel knows how to verify module signatures. It does not yet mean
-that unsigned modules are rejected — that requires
-`CONFIG_MODULE_SIG_FORCE=y`, which is a Phase 3 transition.
+Kernel module signing is in place: `CONFIG_MODULE_SIG=y`,
+`CONFIG_MODULE_SIG_SHA256=y`, and unsigned modules are refused.
+Enforcement is `module.sig_enforce=1` on the kernel command line, in the
+same signed bootargs as the lockdown mode; lockdown refuses unsigned
+modules as well. `CONFIG_MODULE_SIG_FORCE` stays unset, so the kernel
+configuration does not decide enforcement and the signed command line
+does.
 
-The current behavior: signed modules verify successfully, unsigned
-modules load with a kernel warning. Under Phase 3 force mode,
-unsigned modules will be refused. The transition is gated on a
-deployed signing keyring on production machines and validation that
-all modules the runtime requires are signed by that keyring.
+## Entry points for unprivileged kernel exploits
+
+`CONFIG_USER_NS` is unset. User namespaces let an unprivileged process
+hold capabilities inside a namespace, which is the usual way such a
+process reaches kernel code paths otherwise closed to it. systemd
+sandboxing does not need them: PID 1 creates mount, PID and network
+namespaces as root, and no unit in the image uses `PrivateUsers=`.
+
+io_uring is refused to every process by
+`sysctl.kernel.io_uring_disabled=2` on the signed kernel command line.
+`CONFIG_IO_URING` is only settable with `CONFIG_EXPERT`, so the code is
+built in and refused at runtime rather than compiled out; the
+`# CONFIG_IO_URING is not set` line in `tactiq-security.cfg` has no
+effect. No component of the image uses io_uring.
+
+`CONFIG_USERFAULTFD` and `CONFIG_KEXEC` are unset, and unprivileged BPF
+is off by default (`CONFIG_BPF_UNPRIV_DEFAULT_OFF=y`).
+`CONFIG_BPF_SYSCALL` stays enabled: systemd uses BPF for the
+`IPAddressDeny=` of the agent unit.
+
+None of this stops a kernel exploit once code runs in the kernel; it
+narrows how an unprivileged process gets there.
 
 ## Memory and execution hardening
 
@@ -226,18 +251,15 @@ The gap is not yet closed; it is named so that it is not invisible.
 
 ## Kernel command line
 
-Kernel command-line parameters are passed by the bootloader to the
-kernel at boot. Until FIT image signing is in place (tracked in the
-boot chain area), command-line parameters travel through an
-unsigned bootloader and are therefore modifiable by anyone who can
-write to the boot media. Once FIT signing is implemented,
-command-line parameters become part of the signed FIT payload and
-are protected against modification along with the kernel image
-itself.
-
-This is mentioned because the kernel command line is part of the
-chain of trust, not a separate concern — and the current state is
-that this part of the chain is not yet anchored.
+The kernel command line is the `/chosen` `bootargs` of each slot device
+tree, written by `tactiq-slot-dtb.bb`. The device trees travel inside
+the signed FIT that U-Boot verifies before it boots the kernel
+(`BOOT_CHAIN.md`), and the boot environment sets no `bootargs` variable
+(`tactiq-boot-fit.env`). The lockdown mode, module signature
+enforcement and the io_uring refusal described above are therefore
+covered by the FIT signature. A command line typed at a U-Boot console
+replaces the signed one and gives a PCR 1 that matches no reference;
+U-Boot is built without a console unless `TACTIQ_UBOOT_CONSOLE = "1"`.
 
 ## Phase 3 transitions
 
@@ -245,13 +267,12 @@ The kernel security fragment marks several configurations as
 "Phase 3" in its inline comments. These are the transitions that
 move the posture from current to enforcing:
 
-- `CONFIG_MODULE_SIG_FORCE=y` — unsigned kernel modules are rejected
-  at load time, not only warned about.
 - `CONFIG_IMA_APPRAISE_MODSIG=y` — IMA appraisal extends to kernel
   module signatures.
-- `CONFIG_LOCK_DOWN_KERNEL_FORCE_CONFIDENTIALITY=y` — lockdown moves
-  from integrity mode to confidentiality mode, additionally
-  blocking reads of kernel memory.
+
+Module signature enforcement and lockdown confidentiality mode were
+Phase 3 items; since 2026-11-10 both are set on the signed kernel
+command line (see above).
 
 The transitions are gated on the userspace prerequisites being in
 place: a deployed module-signing keyring on production machines, an

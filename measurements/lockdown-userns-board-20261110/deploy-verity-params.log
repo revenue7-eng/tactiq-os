@@ -1,0 +1,42 @@
+andrew@UserHome-PC49:/mnt/c/Users/UserHome/Downloads$ ls -l --time-style=full-iso /home/andrew/dev-build-rc11/tmp/deploy/images/tactiq-rock5a/ | grep -E 'verity-params|ext4.verity|bootext4|fitImage'
+-rw-r--r-- 1 andrew andrew   41119719 2026-11-10 01:48:24.079134641 +0400 fitImage
+lrwxrwxrwx 1 andrew andrew         13 2026-11-10 01:48:24.095582337 +0400 fitImage-its--6.18.52-yocto-standard-00164-g0e7b072c8239-r0-tactiq-rock5a-20261109213531.its -> fit-image.its
+lrwxrwxrwx 1 andrew andrew         13 2026-11-10 01:48:24.095582337 +0400 fitImage-its-tactiq-rock5a -> fit-image.its
+-rw-r--r-- 1 andrew andrew        351 2026-11-10 00:43:30.000000000 +0400 tactiq-image-dev-tactiq-rock5a.ext4.verity-params
+-rw-r--r-- 1 andrew andrew  268435456 2026-11-10 01:48:44.676282377 +0400 tactiq-image-dev-tactiq-rock5a.rootfs-20261109213531.bootext4
+-rw-r--r-- 1 andrew andrew  458399744 2026-11-10 01:47:55.382119320 +0400 tactiq-image-dev-tactiq-rock5a.rootfs-20261109213531.ext4.verity
+-rw-r--r-- 1 andrew andrew        554 2026-11-10 01:47:56.833535512 +0400 tactiq-image-dev-tactiq-rock5a.rootfs-20261109213531.ext4.verity-info
+-rw-r--r-- 1 andrew andrew        351 2026-11-10 01:47:56.833535512 +0400 tactiq-image-dev-tactiq-rock5a.rootfs-20261109213531.ext4.verity-params
+lrwxrwxrwx 1 andrew andrew         61 2026-11-10 01:48:44.684506251 +0400 tactiq-image-dev-tactiq-rock5a.rootfs.bootext4 -> tactiq-image-dev-tactiq-rock5a.rootfs-20261109213531.bootext4
+lrwxrwxrwx 1 andrew andrew         64 2026-11-10 01:47:56.833535512 +0400 tactiq-image-dev-tactiq-rock5a.rootfs.ext4.verity -> tactiq-image-dev-tactiq-rock5a.rootfs-20261109213531.ext4.verity
+lrwxrwxrwx 1 andrew andrew         69 2026-11-10 01:47:56.833535512 +0400 tactiq-image-dev-tactiq-rock5a.rootfs.ext4.verity-info -> tactiq-image-dev-tactiq-rock5a.rootfs-20261109213531.ext4.verity-info
+lrwxrwxrwx 1 andrew andrew         71 2026-11-10 01:47:56.833535512 +0400 tactiq-image-dev-tactiq-rock5a.rootfs.ext4.verity-params -> tactiq-image-dev-tactiq-rock5a.rootfs-20261109213531.ext4.verity-params
+andrew@UserHome-PC49:/mnt/c/Users/UserHome/Downloads$ cat /home/andrew/dev-build-rc11/tmp/deploy/images/tactiq-rock5a/*.ext4.verity-params
+VERITY_UUID=
+VERITY_HASH_TYPE=1
+VERITY_DATA_BLOCKS=111038
+VERITY_DATA_BLOCK_SIZE=4096
+VERITY_HASH_BLOCKS=876
+VERITY_HASH_BLOCK_SIZE=4096
+VERITY_HASH_ALGORITHM=sha256
+VERITY_SALT=8a7b98d830ac3bf9daa968b9c322bc1e6d9300c632f8f610be59dd67d2c4d797
+VERITY_ROOT_HASH=dc3773c9fb41215544dc38e616e3d5e40612a2ecacf3892d9fcda12c53e85b3b
+VERITY_DATA_SECTORS=888304VERITY_UUID=
+VERITY_HASH_TYPE=1
+VERITY_DATA_BLOCKS=111038
+VERITY_DATA_BLOCK_SIZE=4096
+VERITY_HASH_BLOCKS=876
+VERITY_HASH_BLOCK_SIZE=4096
+VERITY_HASH_ALGORITHM=sha256
+VERITY_SALT=8a7b98d830ac3bf9daa968b9c322bc1e6d9300c632f8f610be59dd67d2c4d797
+VERITY_ROOT_HASH=c8863c26860b5ec1390fc0768a3e5de97371dff349a8967a80e01e370d932e7b
+VERITY_DATA_SECTORS=888304VERITY_UUID=
+VERITY_HASH_TYPE=1
+VERITY_DATA_BLOCKS=111038
+VERITY_DATA_BLOCK_SIZE=4096
+VERITY_HASH_BLOCKS=876
+VERITY_HASH_BLOCK_SIZE=4096
+VERITY_HASH_ALGORITHM=sha256
+VERITY_SALT=8a7b98d830ac3bf9daa968b9c322bc1e6d9300c632f8f610be59dd67d2c4d797
+VERITY_ROOT_HASH=c8863c26860b5ec1390fc0768a3e5de97371dff349a8967a80e01e370d932e7b
+VERITY_DATA_SECTORS=888304
