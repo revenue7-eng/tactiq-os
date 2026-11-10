@@ -1,0 +1,4 @@
+root@tactiq-rock5a:~# cat /sys/module/module/parameters/sig_enforce
+Y
+root@tactiq-rock5a:~# dd if=/dev/mem of=/dev/null bs=1 count=1
+dd: can't open '/dev/mem': Operation not permitted

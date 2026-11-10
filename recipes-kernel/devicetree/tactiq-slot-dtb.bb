@@ -29,7 +29,11 @@ TACTIQ_SLOT_B_DEV ?= "/dev/mmcblk0p4"
 # sets per board from the SoC cpuid (u-boot patch 0008). Without it a
 # read-only root gets a random machine-id each boot, and the persistent
 # journal keeps a directory per boot that its size limit never covers.
-TACTIQ_COMMON_BOOTARGS ?= "ro rootwait rootfstype=ext4 earlycon panic=5 console=tty1 console=ttyS2,1500000n8 systemd.machine_id=firmware"
+# lockdown=confidentiality: root cannot read or write kernel memory or load
+# unsigned code into the kernel. module.sig_enforce=1: unsigned modules are
+# refused. sysctl.kernel.io_uring_disabled=2: io_uring refused to every
+# process. All three sit here so they are covered by the FIT signature.
+TACTIQ_COMMON_BOOTARGS ?= "ro rootwait rootfstype=ext4 earlycon panic=5 console=tty1 console=ttyS2,1500000n8 systemd.machine_id=firmware lockdown=confidentiality module.sig_enforce=1 sysctl.kernel.io_uring_disabled=2"
 
 # do_image_verity, not do_image_complete: the latter includes do_image_wic,
 # which depends on the boot image, which will depend on the FIT, which depends

@@ -73,6 +73,18 @@ IMAGE_CMD:bootext4 () {
 	   [ "${TACTIQ_VERITY_IMAGE}" != "${PN}" ]; then
 		bbfatal "TACTIQ_VERITY_IMAGE is '${TACTIQ_VERITY_IMAGE}' but this image is '${PN}': set TACTIQ_VERITY_IMAGE = \"${PN}\""
 	fi
+	# The FIT must carry the root hash of the rootfs this run built. A device
+	# tree made from the parameters of an earlier rootfs boots into a verity
+	# failure on the board; refuse it here.
+	if [ "${TACTIQ_BOOT_METHOD}" = "fit" ] && \
+	   [ "${PREFERRED_PROVIDER_virtual/dtb}" = "tactiq-slot-dtb" ]; then
+		params="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.ext4.verity-params"
+		[ -f "$params" ] || bbfatal "no verity parameters of this rootfs: $params"
+		root_hash="$(sed -n "s/^VERITY_ROOT_HASH=//p" "$params")"
+		[ -n "$root_hash" ] || bbfatal "VERITY_ROOT_HASH empty in $params"
+		grep -a -q "sha256 $root_hash " "${DEPLOY_DIR_IMAGE}/${TACTIQ_BOOT_KERNEL_FILE}" || \
+			bbfatal "${TACTIQ_BOOT_KERNEL_FILE} does not carry root hash $root_hash of this rootfs"
+	fi
 	boot_root="${TACTIQ_BOOTEXT4_ROOT}"
 	rm -rf "$boot_root"
 	install -d "$boot_root/boot/extlinux"
