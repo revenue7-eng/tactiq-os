@@ -1,0 +1,59 @@
+root@tactiq-rock5a:~# CL=$(cat /proc/cmdline); se=$(getenforce 2>/dev/null || echo NO-SELINUX); P=/sys/kernel/security/ima/policy; if [ -r $P ]; then ima="appraise-rules=$(grep -c '^appraise ' $P) measure-rules=$(grep -c '^measure ' $P)"; else ima=NO-POLICY-READ; fi; ip=$(echo "$CL" | sed -n 's/.*ima_appraise=\([^ ]*\).*/\1/p'); [ -z "$ip" ] && ip=none; rt=$(echo "$CL" | sed -n 's/.*\(root=[^ ]*\).*/\1/p'); dm=$(cat /sys/block/dm-*/dm/name 2>/dev/null | tr '\n' ' '); [ -z "$dm" ] && dm=NONE; sl=$(echo "$CL" | sed -n 's/.*rauc\.slot=\([^ ]*\).*/\1/p'); printf 'SELINUX %s\nIMA     %s cmdline=%s\nROOT    %s\nDM      %s\nSLOT    %s\n' "$se" "$ima" "$ip" "$rt" "$dm" "$sl"
+SELINUX Enforcing
+IMA     appraise-rules=4 measure-rules=8 cmdline=none
+ROOT    root=/dev/dm-0
+DM      rootfs
+SLOT    B
+root@tactiq-rock5a:~# cat /etc/tactiq-release
+TACTIQ_OS_VERSION=2.1.0
+TACTIQ_OS_CODENAME=hardened-edge
+TACTIQ_BUILD_MACHINE=tactiq-rock5a
+TACTIQ_META_TACTIQ_GIT=v2.1.0-rc14
+TACTIQ_IMAGE_NAME=tactiq-image-dev
+TACTIQ_RELEASE_DATE=2026-10-12
+root@tactiq-rock5a:~# systemctl is-active tactiq-stop agentgateway
+active
+active
+root@tactiq-rock5a:~# systemctl start tactiq-refagent
+root@tactiq-rock5a:~# journalctl -u tactiq-refagent -n 6 -o short-precise --no-pager
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+Oct 12 00:25:54.050414 tactiq-rock5a tactiq-refagent[993]: exec: denied (Permission denied), as the policy requires
+Oct 12 00:25:54.050414 tactiq-rock5a tactiq-refagent[993]: stop: denied (Permission denied), as the policy requires
+Oct 12 00:25:54.050414 tactiq-rock5a tactiq-refagent[993]: plant: denied (Permission denied), as the policy requires
+Oct 12 00:25:54.050414 tactiq-rock5a tactiq-refagent[993]: gateway: HTTP/1.1 403 Forbidden, body 643 bytes, body is a TQSR stop receipt
+Oct 12 00:25:54.053447 tactiq-rock5a systemd[1]: tactiq-refagent.service: Deactivated successfully.
+Oct 12 00:25:54.053824 tactiq-rock5a systemd[1]: Finished TactiQ reference agent: try the tool around and through agentgateway (development image).
+root@tactiq-rock5a:~# systemctl stop tactiq-stop
+root@tactiq-rock5a:~# systemctl is-active tactiq-stop
+inactive
+root@tactiq-rock5a:~# systemctl start tactiq-refagent
+root@tactiq-rock5a:~# journalctl -u tactiq-refagent -n 6 -o short-precise --no-pager
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+Oct 12 00:26:23.950330 tactiq-rock5a tactiq-refagent[1052]: exec: denied (Permission denied), as the policy requires
+Oct 12 00:26:23.950330 tactiq-rock5a tactiq-refagent[1052]: stop: denied (Permission denied), as the policy requires
+Oct 12 00:26:23.950330 tactiq-rock5a tactiq-refagent[1052]: plant: denied (Permission denied), as the policy requires
+Oct 12 00:26:23.950330 tactiq-rock5a tactiq-refagent[1052]: gateway: HTTP/1.1 403 Forbidden, body 29 bytes
+Oct 12 00:26:23.951721 tactiq-rock5a systemd[1]: tactiq-refagent.service: Deactivated successfully.
+Oct 12 00:26:23.952103 tactiq-rock5a systemd[1]: Finished TactiQ reference agent: try the tool around and through agentgateway (development image).
+root@tactiq-rock5a:~# systemctl start tactiq-stop
+root@tactiq-rock5a:~# kill -STOP $(systemctl show -p MainPID --value tactiq-stop)
+root@tactiq-rock5a:~# systemctl start tactiq-refagent
+journalctl -u tactiq-refagent -n 6 -o shoroot@tactiq-rock5a:~# journalctl -u tactiq-refagent -n 6 -o short-precise --no-pager
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+Oct 12 00:27:03.495058 tactiq-rock5a tactiq-refagent[1113]: exec: denied (Permission denied), as the policy requires
+Oct 12 00:27:03.495058 tactiq-rock5a tactiq-refagent[1113]: stop: denied (Permission denied), as the policy requires
+Oct 12 00:27:03.495058 tactiq-rock5a tactiq-refagent[1113]: plant: denied (Permission denied), as the policy requires
+Oct 12 00:27:03.495058 tactiq-rock5a tactiq-refagent[1113]: gateway: HTTP/1.1 403 Forbidden, body 29 bytes
+Oct 12 00:27:03.497032 tactiq-rock5a systemd[1]: tactiq-refagent.service: Deactivated successfully.
+Oct 12 00:27:03.497444 tactiq-rock5a systemd[1]: Finished TactiQ reference agent: try the tool around and through agentgateway (development image).
+root@tactiq-rock5a:~# kill -CONT $(systemctl show -p MainPID --value tactiq-stop)
+root@tactiq-rock5a:~# systemctl start tactiq-refagent
+root@tactiq-rock5a:~# journalctl -u tactiq-refagent -n 6 -o short-precise --no-pager
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+Oct 12 00:27:33.987879 tactiq-rock5a tactiq-refagent[1161]: exec: denied (Permission denied), as the policy requires
+Oct 12 00:27:33.987879 tactiq-rock5a tactiq-refagent[1161]: stop: denied (Permission denied), as the policy requires
+Oct 12 00:27:33.987879 tactiq-rock5a tactiq-refagent[1161]: plant: denied (Permission denied), as the policy requires
+Oct 12 00:27:33.987879 tactiq-rock5a tactiq-refagent[1161]: gateway: HTTP/1.1 403 Forbidden, body 644 bytes, body is a TQSR stop receipt
+Oct 12 00:27:33.990135 tactiq-rock5a systemd[1]: tactiq-refagent.service: Deactivated successfully.
+Oct 12 00:27:33.990556 tactiq-rock5a systemd[1]: Finished TactiQ reference agent: try the tool around and through agentgateway (development image).
+root@tactiq-rock5a:~#
