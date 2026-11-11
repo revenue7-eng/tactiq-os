@@ -35,7 +35,7 @@
 # includes wrynose.
 
 bitbake              https://github.com/openembedded/bitbake              51fd94a67fa17650a9ff623492005972bbc7d26f  2.18
-openembedded-core    https://github.com/openembedded/openembedded-core    0f03c732a0a2d0506b41b1abe60b3f368b2300dc  wrynose
+openembedded-core    https://github.com/openembedded/openembedded-core    2285da08068a6d1b4a64c9a52d85a58be50e4679  wrynose
 meta-yocto           https://git.yoctoproject.org/meta-yocto              7c25b11156553145fa6b241a2d4f65d94438f804  wrynose
 meta-openembedded    https://github.com/openembedded/meta-openembedded    47d7dbdd10890bbd429bc0cccbe14435c37e5af1  wrynose
 meta-selinux         https://git.yoctoproject.org/meta-selinux            1c3a699f363167571ab39fecb0fe6f56691a4e20  wrynose
