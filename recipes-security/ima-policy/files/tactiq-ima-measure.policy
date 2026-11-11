@@ -1,0 +1,76 @@
+#
+# TactiQ OS IMA policy of the release image: measure, never appraise.
+#
+# Installed as /etc/ima/ima-policy by tactiq-ima-measure-policy in every
+# image that does not sign its rootfs (tactiq-image). The development image
+# installs tactiq-ima-appraise.policy instead, through ima-evm-rootfs.
+#
+# The rules below are the measurement section of tactiq-ima-appraise.policy,
+# copied line for line: what a release measures is what the development
+# image measures, so a reference value taken on one holds for the other.
+# tests/ima/test_ima_policies.py fails when the two differ. Change the
+# measurement rules in both files together.
+#
+# No appraise rule: a release image is not signed (no IMA key is in it), so
+# any appraise rule would refuse its own files.
+#
+# ---------------------------------------------------------------------------
+# TactiQ: measurement rules (2026-09-03, verified on rock5a slot B, counter 73).
+# Without these PCR 10 holds boot_aggregate only and the attestation carries
+# no runtime content. dont_measure mirrors the dont_appraise set of
+# tactiq-ima-appraise.policy,
+# tmpfs (0x01021994) included -- revisit if /tmp binaries should be logged.
+# ---------------------------------------------------------------------------
+dont_measure fsmagic=0x9fa0
+dont_measure fsmagic=0x62656572
+dont_measure fsmagic=0x64626720
+dont_measure fsmagic=0x01021994
+dont_measure fsmagic=0x858458f6
+dont_measure fsmagic=0x1cd1
+dont_measure fsmagic=0x42494e4d
+dont_measure fsmagic=0x73636673
+dont_measure fsmagic=0xf97cff8c
+dont_measure fsmagic=0x6e736673
+dont_measure fsmagic=0xde5e81e4
+dont_measure fsmagic=0x27e0eb
+dont_measure fsmagic=0x63677270
+
+# What executed
+measure func=BPRM_CHECK
+measure func=MMAP_CHECK mask=MAY_EXEC
+measure func=MODULE_CHECK
+
+# What was consumed: vault data into its own PCR so the verifier checks
+# model/doctrine hashes independently of code-measurement churn in PCR 10.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_vault_data_t pcr=11
+
+# Site network permission (tactiq-netperm) into the same PCR as other
+# consumed data, measured but never appraised: it carries its own signature
+# under a key IMA does not know. The type is defined in the SELinux layer
+# (tactiq_netperm.te); this line and that module must ship together, since
+# a rule naming a type the loaded policy lacks is rejected.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_site_perm_t pcr=11
+
+# The operator's stop release (tactiq-stop), same class as the site
+# permission: measured into PCR 11, never appraised, since it carries its own
+# signature under the operator's key. The type is defined in the SELinux
+# layer (tactiq_stop.te 1.1.0); this line and that module ship together.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_stop_release_t pcr=11
+
+# Cartridges (model weights) under /data/cartridges, same class as the site
+# permission: measured into PCR 11, never appraised. The cartridge carries its
+# own signature, checked by the Edge daemon against its anchor list; a key in
+# .ima would also validate executables. The kernel measurement is independent
+# of the daemon, which reports the active cartridge separately (PCR 14). The
+# type is defined in the SELinux layer (tactiq_edge_daemon.te); this line and
+# that module ship together.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_cartridge_t pcr=11
+
+# Device identity into a PCR of its own. keys and counter are produced on the
+# device, so nothing signs them and they are never appraised; each is a single
+# inode measured once per boot, so the aggregate is stable within a boot. It is
+# kept out of PCR 10 so the code aggregate stays comparable against a code-only
+# reference. The envelopes under audit/ are deliberately absent from this file:
+# a new inode every cycle would extend a PCR without bound against no reference
+# value, and an envelope quoting a PCR it just extended proves nothing.
+measure func=FILE_CHECK mask=MAY_READ obj_type=tactiq_agent_state_t pcr=12

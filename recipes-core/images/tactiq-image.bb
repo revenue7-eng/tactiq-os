@@ -83,6 +83,14 @@ IMAGE_INSTALL:append = " \
     tactiq-netperm \
     tactiq-cartridge-anchor \
 "
+# IMA measures and does not appraise: a release image is not signed with an
+# IMA key, so it carries the measurement rules of the development policy and
+# no appraise rule (tactiq-ima-measure-policy). An image that signs its rootfs
+# (ima-evm-rootfs, the development profile) installs its own policy, with the
+# same measurement rules and appraisal, and does not get this package.
+# Evaluated when IMAGE_INSTALL is read, after a recipe that requires this one
+# has set IMAGE_CLASSES.
+IMAGE_INSTALL:append = " ${@'' if bb.utils.contains('IMAGE_CLASSES', 'ima-evm-rootfs', True, False, d) else 'tactiq-ima-measure-policy'}"
 # No agentgateway here. The tool path (agentgateway, its config, tactiq-stop)
 # is installed in the development image only, until a release image has an
 # operator channel to stop and resume tool calls: without one the gateway

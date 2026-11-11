@@ -235,6 +235,22 @@ jobs:
       - name: Run generator tests
         run: python3 tests/repro/test_mk_repro_report.py
 
+  ima-policy-tests:
+    name: IMA policies measure the same
+    runs-on: ubuntu-24.04
+    # The release image measures with tactiq-ima-measure.policy, the
+    # development image with tactiq-ima-appraise.policy. Their measurement
+    # rules are one decision in two files; this fails when they differ, or
+    # when the release policy gains an appraise rule.
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Compare the two policies
+        run: python3 tests/ima/test_ima_policies.py
+
   rim-tests:
     name: RIM generator tests
     runs-on: ubuntu-24.04
