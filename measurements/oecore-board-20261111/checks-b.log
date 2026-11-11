@@ -1,0 +1,51 @@
+tactiq-rock5a login: root
+
+  ▀▀▀▀▀▀▀▀▀▀▀▄   release  TactiQ OS v2.1.0-rc14 (tactiq-image-dev)
+     █  █    █   board    Radxa ROCK 5A
+     █  █    █   slot     B
+     █  █   ▄█   root     dm-verity, dm-0 "rootfs" (as booted)
+     ▀   ▀▀▀▀▄   selinux  enforcing
+                 ima      policy: measure 8, appraise 4, 167 entries measured
+                 tpm      present, TPM 2.0, IFX, firmware 7.87.19691.2
+                 pcr 0-9  sha256 c758ac619f01...458681de1d1a
+                 agent    active, envelopes: 2880 complete
+
+  Reported by this device. Check it from outside with VERIFY-L3 for v2.1.0-rc14
+  and the signed release set; this screen is not a verification.
+
+root@tactiq-rock5a:~# uname -r
+6.18.54-yocto-standard-00166-g689a631dc030
+root@tactiq-rock5a:~# openssl version
+OpenSSL 3.5.9 29 Sep 2026 (Library: OpenSSL 3.5.9 29 Sep 2026)
+root@tactiq-rock5a:~# getenforce
+Enforcing
+root@tactiq-rock5a:~# cat /sys/block/dm-*/dm/name
+rootfs
+root@tactiq-rock5a:~# journalctl -b --no-pager | grep -c 'avc:.*denied'
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+0
+root@tactiq-rock5a:~# systemctl is-active tactiq-agent tactiq-stop agentgateway
+active
+active
+active
+root@tactiq-rock5a:~# systemctl cat tactiq-agent --no-pager | grep ReadWritePaths
+ReadWritePaths=/data/tactiq/keys /data/tactiq/counter /data/tactiq/audit
+root@tactiq-rock5a:~# journalctl -b -u tactiq-agent --no-pager | tail -n 3
+Journal file /var/volatile/log/journal/2f6341a921d88b7cafaaddb252d7162f/system@00065d99614bf17a-5e2a5530388e2c2e.journal~ is truncated, ignoring file.
+Oct 12 00:00:36 tactiq-rock5a tactiq-agent[458]: attested TACTIQ-BENCH-001 counter=137539616769 -> /data/tactiq/audit/137539616769.msg
+Oct 12 00:01:06 tactiq-rock5a tactiq-agent[458]: attested TACTIQ-BENCH-001 counter=137539616770 -> /data/tactiq/audit/137539616770.msg
+Oct 12 00:01:36 tactiq-rock5a tactiq-agent[458]: attested TACTIQ-BENCH-001 counter=137539616771 -> /data/tactiq/audit/137539616771.msg
+root@tactiq-rock5a:~# tpm2_pcrread sha256:0,1,2,3,4,5,6,7,8,9,10
+  sha256:
+    0 : 0x9BD4AB6216B55C5BBE172F31737ED87C8A585FAA3B45C4CAF225B0778AC3AAFE
+    1 : 0xE777EFF2A7053F506132591EA9D123AE626CC95402589315877F08DBDACE5183
+    2 : 0xE21B703EE69C77476BCCB43EC0336A9A1B2914B378944F7B00A10214CA8FEA93
+    3 : 0xE21B703EE69C77476BCCB43EC0336A9A1B2914B378944F7B00A10214CA8FEA93
+    4 : 0x70D266D6BD707CDDCC1CB9FE002F6792E2394DA2731A6A3C6672B1133B791EC4
+    5 : 0xE21B703EE69C77476BCCB43EC0336A9A1B2914B378944F7B00A10214CA8FEA93
+    6 : 0xB8D6C3885B7AC27AE97F88F5063EB5016C3BFC82CB561DE8214B5483256CB5DD
+    7 : 0xE21B703EE69C77476BCCB43EC0336A9A1B2914B378944F7B00A10214CA8FEA93
+    8 : 0xABCC724B2036C80FC6C7693A77CEEF4BDACC606D311849772EC4019746F3ED88
+    9 : 0xCFC7D8042593E188C59D2FD523F07A95D06DD3160F0955D8C34B0EB067F517B6
+    10: 0xEDAA3A6C933DD688224109A8C42FEA6989E274B036F8E9A2CBF471FFB277B8DE
+root@tactiq-rock5a:~#
