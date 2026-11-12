@@ -132,6 +132,16 @@ jobs:
             --dev-recipe recipes-core/images/tactiq-image-dev.bb --static
           python3 tests/nodev/test_check_release_no_dev.py
 
+      - name: Every "not built" CVE status names code a build can check
+        run: |
+          # The image build checks each named path against the compiled
+          # kernel sources (tactiq-cve-status-check.bbclass). A
+          # not-applicable-config entry with no path would pass unchecked;
+          # it fails here instead.
+          python3 scripts/check-cve-status.py \
+            --status conf/distro/include/tactiq-cve-status.inc --static
+          python3 tests/cvestatus/test_check_cve_status.py
+
       - name: Assert production image profile is hardened
         run: |
           set -e
