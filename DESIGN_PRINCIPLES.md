@@ -214,7 +214,8 @@ artifacts of the current release:
 - FIPS 140-3 or Common Criteria certification.
 - IMA appraisal enforced in a production image. The development image
   signs its rootfs, ships the policy and enforces it, under the public
-  development signer; a production image carries neither.
+  development signer; a production image carries neither the
+  signatures nor an appraise rule.
 - `dm-verity` on rootfs. Tracked in the kernel fragment as phase 3.
 - A threat model document. The consolidated adversary model is now
   published in [`THREAT_MODEL.md`](THREAT_MODEL.md). It is a v0.1

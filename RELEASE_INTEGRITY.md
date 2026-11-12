@@ -719,10 +719,13 @@ A verifier appraising a device against a RIM:
   an application-layer concern, restated from `THREAT_MODEL.md` § TCB.
 - **Device identity.** Which physical device holds which attestation
   key is an endorsement of the device, not of the build.
-- **Runtime measurements.** No IMA reference while production images
-  ship with IMA off (§5.2). When IMA is enabled, the RIM gains a
-  reference for PCR 10 and the verifier replays the event log against
-  it; the form of that reference is specified then.
+- **Runtime measurements.** No IMA reference. Production images up to
+  v2.1.0-rc14 ship with IMA off (§5.2). From the next release they
+  measure into PCR 10, 11 and 12, but the attestation agent quotes PCR
+  0 to 9 only (`TACTIQ_PCR_SPEC` in `tactiq-agent.service`), so no
+  verifier sees those values. When a release quotes them, the RIM gains
+  a reference and the verifier replays the event log against it; the
+  form of that reference is specified then.
 
 ### 5.8 Current state (v2.1.0-rc11)
 

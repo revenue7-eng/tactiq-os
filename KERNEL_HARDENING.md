@@ -140,7 +140,11 @@ rootfs work together; keeping out a file signed by someone else needs
 a production signer. The record is `measurements/ima-imasig-board-20261109.md`.
 
 A production image is unaffected by any of the above: it applies
-neither the signing class nor the policy.
+neither the signing class nor an appraise rule. From the next release
+after v2.1.0-rc14 it loads the measure rules of this policy alone
+(`tactiq-ima-measure.policy`, kept equal to them by
+`tests/ima/test_ima_policies.py`); not yet observed on a board under the
+release key.
 
 `CONFIG_IMA_APPRAISE_MODSIG=y`, which extends IMA appraisal to
 kernel module signatures, is not yet enabled. It is a Phase 3

@@ -12,7 +12,8 @@ checks the release artefacts against everything it adds:
   features      each debug image feature, image class and image hook of the
                 dev recipe maps to a check on the release rootfs, read with
                 debugfs: root is locked, PAM has no plain nullok, there is no
-                postinst logging, no IMA policy.
+                postinst logging, no IMA appraise rule (the release policy
+                measures only, tactiq-ima-measure-policy).
 
 Two modes:
 
@@ -53,11 +54,11 @@ FEATURE_CHECKS = {
     'empty-root-password': 'root-locked',
     'post-install-logging': 'postinst-logging',
 }
-CLASS_CHECKS = {'ima-evm-rootfs': 'no-ima-policy'}
+CLASS_CHECKS = {'ima-evm-rootfs': 'no-appraise-policy'}
 INHERIT_CHECKS = {'create-spdx': None}   # None: build side only, nothing in the rootfs
 VARIABLE_CHECKS = {'EXTRA_USERS_PARAMS': 'root-locked'}
 HOOK_CHECKS = {
-    'tactiq_ima_policy_mode': 'no-ima-policy',
+    'tactiq_ima_policy_mode': 'no-appraise-policy',
 }
 
 
@@ -181,9 +182,16 @@ def check_rootfs(fs, checks):
         text = fs.read('/etc/default/postinst')
         if text is not None and 'POSTINST_LOGGING=1' in text:
             problems.append('/etc/default/postinst enables postinst logging')
-    if 'no-ima-policy' in checks:
-        if fs.read('/etc/ima/ima-policy') is not None:
-            problems.append('/etc/ima/ima-policy is present (development IMA policy)')
+    if 'no-appraise-policy' in checks:
+        # A release carries a policy that measures (tactiq-ima-measure-policy).
+        # What the development profile adds is appraisal, keyed to the in-tree
+        # IMA key: an appraise rule in a release refuses its unsigned files, or
+        # accepts files signed with a public key.
+        text = fs.read('/etc/ima/ima-policy')
+        for l in (text or '').splitlines():
+            if l.split()[:1] == ['appraise']:
+                problems.append('/etc/ima/ima-policy has an appraise rule '
+                                '(development IMA policy): %s' % l.strip())
     return problems
 
 

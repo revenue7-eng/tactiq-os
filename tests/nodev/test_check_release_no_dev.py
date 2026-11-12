@@ -68,7 +68,7 @@ class NoDevTest(unittest.TestCase):
         for p in ('openssh-sshd', 'jq', 'tactiq-status', 'libtss2-tcti-mssim', 'curl'):
             self.assertIn(p, self.dev['packages'])
         self.assertEqual(self.checks, {'root-locked', 'pam-nullok', 'postinst-logging',
-                                       'no-ima-policy'})
+                                       'no-appraise-policy'})
 
     def test_unknown_addition_is_reported(self):
         with tempfile.NamedTemporaryFile('w', suffix='.bb', delete=False) as f:
@@ -127,8 +127,23 @@ class NoDevTest(unittest.TestCase):
         self.refused({'/etc/default/postinst': 'POSTINST_LOGGING=1\nLOGFILE=/var/log/x\n'},
                      'postinst logging')
 
-    def test_ima_policy(self):
-        self.refused({'/etc/ima/ima-policy': 'measure func=BPRM_CHECK\n'}, 'ima-policy')
+    def test_ima_appraise_policy(self):
+        self.refused({'/etc/ima/ima-policy': 'measure func=BPRM_CHECK\n'
+                      'appraise func=BPRM_CHECK appraise_type=imasig\n'}, 'appraise rule')
+
+    def test_development_ima_policy_refused(self):
+        self.refused({'/etc/ima/ima-policy': text(os.path.join(
+            ROOT, 'recipes-security', 'ima-policy', 'files', 'tactiq-ima-appraise.policy'))},
+            'appraise rule')
+
+    def test_release_ima_policy_accepted(self):
+        # The release image carries this file (tactiq-ima-measure-policy).
+        self.assertEqual(self.rootfs({'/etc/ima/ima-policy': text(os.path.join(
+            ROOT, 'recipes-security', 'ima-policy', 'files', 'tactiq-ima-measure.policy'))}), [])
+
+    def test_commented_appraise_is_not_a_rule(self):
+        self.assertEqual(self.rootfs({'/etc/ima/ima-policy':
+                                      '# appraise func=BPRM_CHECK\nmeasure func=BPRM_CHECK\n'}), [])
 
 
 if __name__ == '__main__':
