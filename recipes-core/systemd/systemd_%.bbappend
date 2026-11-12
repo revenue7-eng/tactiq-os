@@ -26,3 +26,11 @@ do_install:append() {
     install -d ${D}${sysconfdir}/systemd/system
     ln -sf /dev/null ${D}${sysconfdir}/systemd/system/systemd-pstore.service
 }
+
+# systemd-resolved answers LLMNR (port 5355, TCP and UDP) on every interface
+# by default, and mDNS where enabled. The image has no use for link-local
+# name resolution, and these answers can be spoofed on a shared OT segment.
+# Built-in defaults off: the same options openembedded-core sets under
+# DISTRO_FEATURES zeroconf, applied here unconditionally. Seen on the board
+# listening on 0.0.0.0:5355 and [::]:5355 (2026-11-08).
+EXTRA_OEMESON += "-Ddefault-llmnr=no -Ddefault-mdns=no"
