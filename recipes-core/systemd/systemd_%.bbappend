@@ -33,4 +33,4 @@ do_install:append() {
 # Built-in defaults off: the same options openembedded-core sets under
 # DISTRO_FEATURES zeroconf, applied here unconditionally. Seen on the board
 # listening on 0.0.0.0:5355 and [::]:5355 (2026-11-08).
-EXTRA_OEMESON += "-Ddefault-llmnr=no -Ddefault-mdns=no"
+EXTRA_OEMESON:append:tactiq = " -Ddefault-llmnr=no -Ddefault-mdns=no"
