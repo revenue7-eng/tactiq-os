@@ -289,7 +289,9 @@ naming them. That image enforces: its command line carries no
 access requires a signature, not a digest. Its signer is the public
 development key, so this holds the image to its own policy and does
 not stop anyone who signs with that key. A production image carries
-no policy.
+no appraise rule: up to v2.1.0-rc14 no IMA policy at all, from the next
+release a policy that measures only (not yet observed on a board under
+the release key).
 
 ### Physical attacker
 

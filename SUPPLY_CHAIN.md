@@ -214,7 +214,8 @@ sha256sum -c SHA256SUMS
   `tactiq_vault_data_t`, which after the label split covers delivered
   artifacts alone; anything delivered onto `/data/tactiq` must arrive
   signed. A production image applies neither the
-  signing class nor the policy.
+  signing class nor an appraise rule; from the next release after
+  v2.1.0-rc14 it measures only.
 
 The complete chain of trust from the silicon root to the running
 attestation agent, including per-stage status, is documented in

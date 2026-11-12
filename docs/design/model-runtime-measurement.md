@@ -253,9 +253,11 @@ script refuses it as well.
    nothing into 8 or 9. A verifier binding the rootfs therefore reads PCR 6,
    not PCR 8. Evidence: `measurements/logs/llm-latency-20261029-board.log`.
 
-   For the release image the item stays open exactly as written: that image
+   For the release image the item stays open. Up to v2.1.0-rc14 that image
    carries no IMA policy, so the runtime binary is not measured there and none
-   of the PCR 11 measurements happen either.
+   of the PCR 11 measurements happen either. From the next release it carries
+   the same measure rules (`tactiq-ima-measure.policy`), not yet observed on a
+   board under the release key, and the agent still quotes PCR 0 to 9 only.
 2. **C API reach.** Confirm against `libtensorflow-lite-c_2.21.0` headers
    whether internal tensors are reachable; if they are, the C API may be
    preferable for a smaller surface.
