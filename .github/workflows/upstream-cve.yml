@@ -1,0 +1,35 @@
+# Upstream can reassess a CVE after we closed it with a "not built" status:
+# reject it, or name code outside the path our reason names. Nothing in this
+# repository changes when that happens, so this job runs on a schedule as
+# well as on changes to the status file or its check.
+name: upstream-cve
+
+on:
+  schedule:
+    - cron: '37 3 * * 1'
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - conf/distro/include/tactiq-cve-status.inc
+      - scripts/check-cve-status.py
+      - tests/cvestatus/**
+      - .github/workflows/upstream-cve.yml
+
+permissions:
+  contents: read
+
+jobs:
+  records:
+    name: Not-built statuses against current linux-vulns records
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Fetch linux-vulns
+        run: git clone --depth 1 https://git.kernel.org/pub/scm/linux/security/vulns.git "$RUNNER_TEMP/vulns"
+      - name: Check statuses against the records
+        run: |
+          python3 scripts/check-cve-status.py \
+            --status conf/distro/include/tactiq-cve-status.inc \
+            --static --vulns "$RUNNER_TEMP/vulns"
