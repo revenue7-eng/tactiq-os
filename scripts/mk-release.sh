@@ -301,6 +301,22 @@ echo "==> network clients"
 bash "${SCRIPT_DIR}/check-network-clients.sh" "${DEPLOY}/${PREFIX}.manifest"
 
 # ---------------------------------------------------------------------------
+# CVE status gate.
+#
+# The image build stops when a "not built" CVE status names kernel code the
+# build compiles (tactiq-cve-status-check.bbclass, #317). The images it made
+# before that task ran are already in the deploy dir and stay there until the
+# next build of the image replaces them. This gate runs the same check on the
+# SBOM this release publishes, so a release is never taken from a build the
+# check refused (measurements/cve-status-check-kernel-20261113.md, Limits).
+# ---------------------------------------------------------------------------
+echo "==> cve status"
+python3 -I "${SCRIPT_DIR}/check-cve-status.py" \
+    --status "${SCRIPT_DIR}/../conf/distro/include/tactiq-cve-status.inc" \
+    --spdx "${DEPLOY}/${PREFIX}.spdx.json" \
+    || { echo "::error:: CVE status check failed on ${PREFIX}.spdx.json; the image build refused this rootfs." >&2; exit 1; }
+
+# ---------------------------------------------------------------------------
 # Image identity gate.
 #
 # The gate above ties the deploy tree to the tag. This one ties the image to

@@ -141,6 +141,10 @@ jobs:
           python3 scripts/check-cve-status.py \
             --status conf/distro/include/tactiq-cve-status.inc --static
           python3 tests/cvestatus/test_check_cve_status.py
+          # A refused build leaves its images in the deploy dir; the release
+          # script runs the same check on the SBOM it publishes.
+          grep -q 'check-cve-status.py' scripts/mk-release.sh \
+            || { echo "::error::mk-release.sh no longer runs the CVE status check"; exit 1; }
 
       - name: Assert production image profile is hardened
         run: |
