@@ -29,6 +29,39 @@ def spdx(files, purpose='source'):
     return {'@context': 'https://spdx.org/rdf/3.0.1/spdx-context.jsonld', '@graph': graph}
 
 
+def record(files):
+    """A kernel CNA record shaped like linux-vulns cve/published/*/CVE-*.json."""
+    return {'dataType': 'CVE_RECORD',
+            'containers': {'cna': {'affected': [
+                {'product': 'Linux', 'programFiles': files},
+                {'product': 'Linux', 'programFiles': files}]}}}
+
+
+# The five 2026 entries, with the programFiles of their linux-vulns records as
+# of 40859ff8f (2026-11-16).
+RECORDS = {
+    'CVE-2026-43326': ['kernel/sched/ext.c', 'kernel/sched/sched.h'],
+    'CVE-2026-63941': ['arch/arm64/include/asm/kvm_host.h',
+                       'arch/arm64/kvm/hyp/include/hyp/switch.h',
+                       'arch/arm64/kvm/nested.c', 'arch/arm64/kvm/sys_regs.c'],
+    'CVE-2026-74334': ['drivers/infiniband/core/nldev.c',
+                       'drivers/infiniband/core/restrack.c',
+                       'drivers/infiniband/core/restrack.h',
+                       'drivers/infiniband/core/uverbs_cmd.c', 'include/rdma/ib_verbs.h'],
+    'CVE-2026-74558': ['Documentation/networking/af_xdp.rst', 'include/net/xsk_buff_pool.h',
+                       'net/xdp/xsk.c', 'net/xdp/xsk_buff_pool.c', 'net/xdp/xsk_queue.h'],
+    'CVE-2026-80899': ['Documentation/filesystems/erofs.rst', 'fs/erofs/Kconfig',
+                       'fs/erofs/Makefile', 'fs/erofs/data.c', 'fs/erofs/fscache.c',
+                       'fs/erofs/inode.c', 'fs/erofs/internal.h', 'fs/erofs/ishare.c',
+                       'fs/erofs/super.c', 'fs/erofs/zdata.c'],
+}
+
+# Headers from those records that the linux-yocto 6.18.54 build of
+# 2026-11-16 compiles.
+SHARED_HEADERS = ['kernel/sched/sched.h', 'arch/arm64/include/asm/kvm_host.h',
+                  'include/rdma/ib_verbs.h']
+
+
 class CheckCveStatus(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -140,6 +173,64 @@ class CheckCveStatus(unittest.TestCase):
         rc, out = self.run_check('--static', status=st)
         self.assertNotEqual(rc, 0, out)
         self.assertIn('two statuses', out)
+
+    # upstream records (--vulns)
+
+    def vulns(self, records=RECORDS, rejected=()):
+        root = os.path.join(self.tmp.name, 'vulns')
+        for cve, files in records.items():
+            state = 'rejected' if cve in rejected else 'published'
+            d = os.path.join(root, 'cve', state, cve.split('-')[1])
+            os.makedirs(d, exist_ok=True)
+            with open(os.path.join(d, cve + '.json'), 'w') as f:
+                json.dump(record(files), f)
+        os.makedirs(os.path.join(root, 'cve', 'published'), exist_ok=True)
+        return root
+
+    def test_upstream_records_as_read_pass(self):
+        rc, out = self.run_check('--static', '--vulns', self.vulns())
+        self.assertEqual(rc, 0, out)
+        self.assertIn('5 of 8 entries checked', out)
+        self.assertIn('no linux-vulns record for CVE-2023-3397', out)
+
+    def test_compiled_shared_header_is_a_note_not_a_failure(self):
+        s = self.write('s.json', spdx(BASE + SHARED_HEADERS))
+        rc, out = self.run_check('--spdx', s, '--vulns', self.vulns())
+        self.assertEqual(rc, 0, out)
+        self.assertIn('note: CVE-2026-43326: the record also names header(s)', out)
+
+    def test_upstream_rejected_cve_fails(self):
+        rc, out = self.run_check('--static', '--vulns', self.vulns(rejected=('CVE-2026-80899',)))
+        self.assertEqual(rc, 1, out)
+        self.assertIn('CVE-2026-80899: upstream has rejected', out)
+
+    def test_upstream_widened_to_code_outside_named_path_fails(self):
+        # Upstream reassesses: the flaw is also in fs/iomap, which we build.
+        recs = dict(RECORDS)
+        recs['CVE-2026-80899'] = RECORDS['CVE-2026-80899'] + ['fs/iomap/buffered-io.c']
+        rc, out = self.run_check('--static', '--vulns', self.vulns(recs))
+        self.assertEqual(rc, 1, out)
+        self.assertIn('outside fs/erofs: fs/iomap/buffered-io.c', out)
+
+    def test_record_code_compiled_fails(self):
+        recs = dict(RECORDS)
+        recs['CVE-2026-43326'] = ['kernel/sched/ext.c', 'kernel/sched/core.c']
+        s = self.write('s.json', spdx(BASE))
+        rc, out = self.run_check('--spdx', s, '--vulns', self.vulns(recs))
+        self.assertEqual(rc, 1, out)
+        self.assertIn('code the upstream record names is compiled: kernel/sched/core.c', out)
+
+    def test_record_without_code_file_fails(self):
+        recs = dict(RECORDS)
+        recs['CVE-2026-74558'] = ['include/net/xsk_buff_pool.h']
+        rc, out = self.run_check('--static', '--vulns', self.vulns(recs))
+        self.assertEqual(rc, 1, out)
+        self.assertIn('CVE-2026-74558: the upstream record names no code file', out)
+
+    def test_not_a_vulns_checkout_fails(self):
+        rc, out = self.run_check('--static', '--vulns', self.tmp.name)
+        self.assertEqual(rc, 1, out)
+        self.assertIn('not a linux-vulns checkout', out)
 
 
 if __name__ == '__main__':

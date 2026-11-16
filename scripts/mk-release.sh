@@ -309,11 +309,16 @@ bash "${SCRIPT_DIR}/check-network-clients.sh" "${DEPLOY}/${PREFIX}.manifest"
 # next build of the image replaces them. This gate runs the same check on the
 # SBOM this release publishes, so a release is never taken from a build the
 # check refused (measurements/cve-status-check-kernel-20261113.md, Limits).
+# It also reads the current upstream record of each kernel entry from
+# VULNS_DIR, so a status upstream has since rejected or widened stops the
+# release. VULNS_DIR is required here: a release must not skip that check.
 # ---------------------------------------------------------------------------
 echo "==> cve status"
+[[ -d "${VULNS_DIR}/cve/published" ]] || { echo "::error:: ${VULNS_DIR} is not a linux-vulns checkout; the CVE status gate needs it (set VULNS_DIR)." >&2; exit 1; }
 python3 -I "${SCRIPT_DIR}/check-cve-status.py" \
     --status "${SCRIPT_DIR}/../conf/distro/include/tactiq-cve-status.inc" \
     --spdx "${DEPLOY}/${PREFIX}.spdx.json" \
+    --vulns "${VULNS_DIR}" \
     || { echo "::error:: CVE status check failed on ${PREFIX}.spdx.json; the image build refused this rootfs." >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
