@@ -15,7 +15,8 @@ This document iterates as stages move from current state to fully
 verified. The per-stage table is updated row by row as each stage
 changes.
 
-Last reviewed: 2026-10-08 (key custody and roadmap steps 1 to 3).
+Last reviewed: 2026-11-16 (the chain diagram, initramfs, the root file
+system row, the attestation row, the kernel command line).
 
 ## Status
 
@@ -55,33 +56,37 @@ separately.
 
 ```
    SoC Boot ROM (immutable, vendor-shipped)
-         │  verifies next stage  ── via OTP-fused public key root
-         │  measures into PCR 0  ── via TPM driver in TEE/discrete TPM
+         │  target: verifies the next stage against an OTP-fused key
          ▼
    Vendor early-boot firmware (TPL/SPL, DDR init)
-         │  verifies next stage
-         │  measures into PCR 1
+         │  target: verifies U-Boot
          ▼
    U-Boot proper
-         │  verifies FIT signature
-         │  measures kernel + DTB + initramfs into PCRs 4–9
+         │  verifies the signature of the FIT configuration
+         │  PCR 0: U-Boot version string
+         │  PCR 1: device tree of that configuration, including /chosen
+         │         bootargs (kernel command line, dm-verity root hash)
+         │  PCR 8: kernel image
          ▼
-   FIT image: kernel + device tree + initramfs (composite, signed)
-         │  kernel takes over; IMA begins measuring file accesses
-         │  extends PCRs 10–12 with IMA runtime measurements
+   FIT image: kernel + device tree (signed configuration, no initramfs)
+         │  kernel creates the dm-verity target from dm-mod.create=
+         │  and mounts the root file system through it
          ▼
-   Kernel + initramfs (running)
-         │  IMA appraisal verifies file signatures on access
+   Kernel (running), root file system under dm-verity
+         │  IMA measures into PCRs 10–12 and appraises file signatures
          │  SELinux enforcing applies type-based MAC
          ▼
    Userspace under SELinux enforcing
-         │  attestation agent reads PCR state, signs payload
+         │  attestation agent has the TPM quote PCRs 0–9
          ▼
-   Signed attestation payload to remote verifier
+   Quoted attestation envelope to remote verifier
 ```
 
-The diagram describes the target. The per-stage table below
-describes the present state of each link.
+Lines marked "target" are not in place today. Every other line names
+what the stage does on the default `fit` boot path; the per-stage table
+below says what of it has been observed, on which image and under which
+key. IMA measurement and appraisal are in the development image only
+(rows below).
 
 ## Per-stage status
 
@@ -89,17 +94,19 @@ describes the present state of each link.
 |-------|----------|----------|-------|
 | Boot ROM → vendor early-boot firmware | OFF | n/a (root) | Verification depends on OTP fuses being burned for the public key root. Fuses are not burned on the reference development hardware in current bring-up. |
 | Vendor early-boot firmware → U-Boot | OFF | OFF | Depends on the previous stage; until the chain is anchored at the SoC ROM, this transition is not cryptographically gated. |
-| U-Boot → FIT image (kernel + DTB + initramfs) | OFF | PARTIAL | U-Boot is built with FIT signature support (`CONFIG_FIT_SIGNATURE`, `CONFIG_FIT_FULL_CHECK`, merged from `files/fit-signature.cfg`), and the public key of the development signer is injected into the control FDT as a required key. The default boot method is `fit` (`TACTIQ_BOOT_METHOD`, with kernel signing derived from it): `extlinux.conf` names `/fitImage` as both `KERNEL` and `FDT`, so `sysboot` hands the FIT to `bootm` and the device tree comes from the signed configuration, not from `fdt_addr_r`. On the reference development hardware this path verified the configuration signature with the `dev-fit` key for both the kernel and the device tree, and a FIT with one byte of the configuration signature altered in memory was refused. A FIT with no signature at all has not been tested. This does not make the chain verified. The development keys are public by design (`pki/README.md`), so anyone can produce a FIT this bootloader accepts. `extlinux.conf` itself is not verified: pointing it at a raw `Image` sends U-Boot back to `booti`, which loads the kernel without any check. The bootloader holding the key is not verified by the stage below it. Setting `TACTIQ_BOOT_METHOD = "extlinux"` restores the raw `booti` path. Measured boot is enabled (`files/measured-boot.cfg`). U-Boot records the bootloader version string into PCR 0. With U-Boot 2026.10 it records the device tree into PCR 1, ahead of the `bootargs` variable (U-Boot 2024.07 put the device tree into PCR 0; `scripts/mk-pcr-reference.py` maps each version it knows). On the `bootm` path the kernel command line is `/chosen` of that device tree, so it is measured as part of it, including the dm-verity root hash; the `bootargs` variable is empty, and its PCR 1 event is the same in every slot. On the `bootm` path the kernel is measured into PCR 8: on the reference development hardware PCR 8 equalled one extend of the zero register with the SHA-256 of the deployed `Image`, and PCR 0 was unchanged. On the `booti` path the events labelled `linux` (PCR 8) and `initrd` (PCR 9) hash the event name instead of the data and do not depend on the kernel. Whether SPL verifies `u-boot.itb` itself is a separate question, not established here: SPL carries its own control FDT and this configuration sets no SPL symbols. |
-| Kernel measures itself and initramfs | n/a | PARTIAL | Kernel TPM drivers are compiled in (`CONFIG_TCG_*`); IMA is configured at PCRs 10, 11 and 12. What the bootloader extends into PCRs 0–9 before handoff is described in the previous row; on the default `fit` boot path this includes the kernel image (PCR 8). |
+| U-Boot → FIT image (kernel + DTB) | OFF | PARTIAL | U-Boot is built with FIT signature support (`CONFIG_FIT_SIGNATURE`, `CONFIG_FIT_FULL_CHECK`, merged from `files/fit-signature.cfg`), and the public key of the development signer is injected into the control FDT as a required key. The default boot method is `fit` (`TACTIQ_BOOT_METHOD`, with kernel signing derived from it): `extlinux.conf` names `/fitImage` as both `KERNEL` and `FDT`, so `sysboot` hands the FIT to `bootm` and the device tree comes from the signed configuration, not from `fdt_addr_r`. On the reference development hardware this path verified the configuration signature with the `dev-fit` key for both the kernel and the device tree, and a FIT with one byte of the configuration signature altered in memory was refused. A FIT with no signature at all has not been tested. This does not make the chain verified. The development keys are public by design (`pki/README.md`), so anyone can produce a FIT this bootloader accepts. `extlinux.conf` itself is not verified: pointing it at a raw `Image` sends U-Boot back to `booti`, which loads the kernel without any check. The bootloader holding the key is not verified by the stage below it. Setting `TACTIQ_BOOT_METHOD = "extlinux"` restores the raw `booti` path. Measured boot is enabled (`files/measured-boot.cfg`). U-Boot records the bootloader version string into PCR 0. With U-Boot 2026.10 it records the device tree into PCR 1, ahead of the `bootargs` variable (U-Boot 2024.07 put the device tree into PCR 0; `scripts/mk-pcr-reference.py` maps each version it knows). On the `bootm` path the kernel command line is `/chosen` of that device tree, so it is measured as part of it, including the dm-verity root hash; the `bootargs` variable is empty, and its PCR 1 event is the same in every slot. On the `bootm` path the kernel is measured into PCR 8: on the reference development hardware PCR 8 equalled one extend of the zero register with the SHA-256 of the deployed `Image`, and PCR 0 was unchanged. On the `booti` path the events labelled `linux` (PCR 8) and `initrd` (PCR 9) hash the event name instead of the data and do not depend on the kernel. Whether SPL verifies `u-boot.itb` itself is a separate question, not established here: SPL carries its own control FDT and this configuration sets no SPL symbols. |
+| Kernel boot (no initramfs) | n/a | n/a | The kernel does not measure itself: U-Boot measures it into PCR 8 before handoff (row above). There is no initramfs: `CONFIG_BLK_DEV_INITRD=n` (`tactiq-security.cfg`), so nothing runs between the kernel and the root file system. Kernel TPM drivers are compiled in (`CONFIG_TCG_*`); IMA is configured at PCRs 10, 11 and 12 (rows below). |
+| Kernel → root file system | ON (development image, observed) | via PCR 1 | The kernel creates the dm-verity target itself from `dm-mod.create=` (`CONFIG_DM_INIT`, `tactiq-verity.cfg`) and mounts the root file system through it. The root hash is in `/chosen` `bootargs` of the slot device tree (`tactiq-slot-dtb.bb`), which is inside the signed FIT configuration, so it is covered by the configuration signature and measured into PCR 1. `do_image_bootext4` refuses to build a boot partition whose FIT does not carry the root hash of the root file system next to it. On the reference development hardware a slot whose root file system did not match the root hash in its FIT stopped with a verity error before userspace, and U-Boot booted the other slot (`measurements/lockdown-userns-board-20261110.md`). Not yet observed on a release image under the release key. The development keys are public, so on that image this shows the mechanism, not that the root file system came from TactiQ. `CONFIG_DM_VERITY_VERIFY_ROOTHASH_SIG` is built, but the build produces no signed root hash, so the kernel does not check one. |
 | Kernel runtime → file accesses | n/a | ON (dev) / OFF (production up to v2.1.0-rc14) | In the development image IMA measures file accesses and extends PCR 10 with executed and mapped code, PCR 11 with delivered artifacts labelled `tactiq_vault_data_t`, and PCR 12 with device identity labelled `tactiq_agent_state_t`. The `measure` rules live in `tactiq-ima-appraise.policy`, which reaches a device only through `ima-evm-rootfs` in `tactiq-image-dev.bb`; no build puts `ima_policy=` or `ima_appraise=` on the kernel command line (the `tactiq-dev-policy` override that did was removed in October 2026; the release command line is pinned in `security/cmdline-rock5a.json` and checked by `scripts/mk-release.sh`). Up to v2.1.0-rc14 the production image has neither, so no measure rules are loaded there and PCR 10, 11 and 12 carry no runtime measurements of the production system (`security/coverage-rock5a.v2.1.0-rc13.yaml`, lines 240-242). From the next release after v2.1.0-rc14 the production image installs `tactiq-ima-measure.policy` (`tactiq-ima-measure-policy`): the measure rules of the development policy and no appraise rule. That a production image loads it has not yet been observed on a board under the release key. The attestation agent quotes PCR 0 to 9 only (`TACTIQ_PCR_SPEC` in `tactiq-agent.service`), so these measurements reach no verifier. |
 | Kernel runtime → file access enforcement | ENFORCE (dev) / OFF (production) | n/a | `tactiq-image-dev` signs its whole rootfs at build time (`IMAGE_CLASSES += "ima-evm-rootfs"`) and ships the appraisal policy as `/etc/ima/ima-policy`. Its command line carries no `ima_appraise=`, and the kernel default is enforce, so a failed appraisal blocks the access. The policy appraises execution, executable mappings and reads of `tactiq_vault_data_t`, which after the label split covers delivered artifacts alone; each requires a signature (`appraise_type=imasig`), and a digest in `security.ima` is refused. The development signer is public by design (`pki/README.md`), so on this image appraisal shows the policy and the signed rootfs working together, not that a file came from TactiQ. Record: `measurements/ima-imasig-board-20261109.md`. `tactiq-image.bb` does not apply the class: a production image has no signatures and no appraise rule (from the next release it measures only, row above). |
 | Kernel → userspace MAC | ON | n/a | SELinux is enforcing from boot, with the targeted reference policy plus the TactiQ-specific modules from `meta-tactiq-selinux`. This is the strongest enforced boundary in the current chain. |
-| Userspace → attestation payload | PARTIAL | n/a | The agent advances a monotonic TPM NV counter, reads the PCR bank, builds a fixed-size canonical envelope and has the TPM quote the PCR bank under a restricted attestation key, the quote committing to the envelope (tactiq-attest DDR-004). The quote path has been exercised on swtpm with the image's tpm2-tools version, not yet on the discrete SLB9670; the earlier signed-envelope agent was. The attestation key is not yet bound to the endorsement key. The envelope's final field is a digest over an empty evidence bundle. Architectural specification in `ATTESTATION.md`. |
+| Userspace → attestation payload | PARTIAL | n/a | The agent advances a monotonic TPM NV counter, reads the PCR bank, builds a fixed-size canonical envelope and has the TPM quote the PCR bank under a restricted attestation key, the quote committing to the envelope (tactiq-attest DDR-004). On the reference development hardware the agent attests with that key on the discrete SLB9670 (`measurements/tpm-v1-retire-board-20261109.md`); in that record no envelope it wrote was checked off the device. Quotes of PCR 0 to 12 by the same key on that board, taken with `tpm2_quote`, are checked in `measurements/tpm-quotes-dev-20261015.md`. The attestation key is not yet bound to the endorsement key. The envelope's final field is a digest over an empty evidence bundle. Architectural specification in `ATTESTATION.md`. |
 
-The single ON row in the Verified column at the kernel-to-userspace
-boundary, and the IMA runtime measurements, which are ON in the
-development image only, are the parts of the chain that are working
-today. Everything above them in the boot order is either OFF or
+The ON rows in the Verified column (the root file system under
+dm-verity, observed on the development image, and SELinux at the
+kernel-to-userspace boundary), and the IMA runtime measurements, which
+are ON in the development image only, are the parts of the chain that
+are working today. Everything above them in the boot order is either OFF or
 PARTIAL. This is the gap surface, named explicitly so that it is
 not invisible.
 
@@ -195,18 +202,21 @@ or change SELinux to permissive mode, both of which would silently
 weaken the runtime guarantees described elsewhere in this
 documentation.
 
-Until FIT image signing is implemented, command-line parameters
-travel through an unsigned bootloader and are therefore modifiable
-by anyone who can write to the boot media. Once FIT signing is in
-place, command-line parameters become part of the signed FIT
-payload and are protected against modification along with the
-kernel image itself.
+On the default `fit` boot path the command line is `/chosen` `bootargs`
+of the device tree in the signed FIT configuration. It is covered by
+the configuration signature and measured into PCR 1 as part of the
+device tree; the U-Boot `bootargs` variable is empty. The release
+command line is pinned in `security/cmdline-rock5a.json` and checked
+by `scripts/mk-release.sh`.
 
-This means the kernel command line is part of the chain of trust,
-not a separate concern, and the current state is that this part of
-the chain is not yet anchored. This is the same observation made in
-`KERNEL_HARDENING.md`; it is mentioned here because the boot chain
-is where it gets resolved.
+What is still open is the same as for the FIT itself (U-Boot row
+above): `extlinux.conf` is not verified, and pointing it at a raw
+`Image` takes the `booti` path, where the command line comes from the
+unsigned `bootargs` variable. The bootloader that enforces the
+signature is not yet authenticated by the boot ROM, and the
+development keys are public. So the kernel command line is part of
+the chain of trust, and it is anchored only as far as the FIT
+signature is.
 
 ## TPM class
 
