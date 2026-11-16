@@ -125,3 +125,7 @@ a2e2abd386cb5e0507fb515e6006fe0affc1648e35cf567685157182760ec8c6  stop-fail-clos
 b1450dc23f49b2b1430059f2f173488f00db69530c626df4d55d110a9136b198  cve-status-check-20261112.md
 fcd55a980a4cd3ebd5402758fa8aff4cafbfe2578b14b498cf2f2e6de5482ac0  cve-status-check-20261112/pass-build.log
 a7a3e6757502b203c0a67899b5d483055dfb443fdf5368954d9e703751487d0a  cve-status-check-20261112/refuse-build.log
+d24a9bb47b1fe17212b0b7a0742126f605c2289cd984dfeaa45bff0f020f81b4  cve-status-check-kernel-20261113.md
+fcd55a980a4cd3ebd5402758fa8aff4cafbfe2578b14b498cf2f2e6de5482ac0  cve-status-check-kernel-20261113/pass-after-rollback.log
+19af0adc7d2323044faf8c809b3ee56d348fe358d4d79d87b6cf4bcf94bbd597  cve-status-check-kernel-20261113/refuse-kernel-build.log
+3c53f9315977964282b39d224852658d427c6cf4ddb11d661b292977d8dc6518  cve-status-check-kernel-20261113/kernel-config.txt
