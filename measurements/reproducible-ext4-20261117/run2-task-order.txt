@@ -1,0 +1,6 @@
+20261117-101224.509913 do_rootfs (471465): log.do_rootfs.471465
+20261117-102246.158413 do_rootfs_wicenv (487299): log.do_rootfs_wicenv.487299
+20261117-102248.464230 do_image_ext4 (487305): log.do_image_ext4.487305
+20261117-102308.820314 do_image_verity (487343): log.do_image_verity.487343
+20261117-102322.927824 do_deploy_verity_params (487359): log.do_deploy_verity_params.487359
+20261117-102325.143449 do_image_bootext4 (487367): log.do_image_bootext4.487367

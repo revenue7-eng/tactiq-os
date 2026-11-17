@@ -248,7 +248,21 @@ addtask image_wic after image_verity
 # is smaller than that ("bad block size 1024"). mke2fs picks 1024-byte blocks
 # for filesystems under 512 MB, which this rootfs is, so the block size is
 # fixed here. -i 4096 is the oe-core default for ext4 and is kept.
-EXTRA_IMAGECMD:ext4 = "-i 4096 -b 4096"
+#
+# The same rootfs tree must give the same ext4, so that the same inputs give
+# the same verity root hash. oe-core runs mkfs.ext4 and then fsck.ext4 -pfD
+# with nothing fixed: mkfs picks a random filesystem UUID and directory hash
+# seed and writes the current time into the superblock, and fsck writes the
+# current time again (last write, last checked). Two runs over one tree then
+# differ, tactiq-slot-dtb restored from sstate carries the root hash of an
+# earlier run, and the check in image_types_bootext4.bbclass stops the build.
+# -U and -E hash_seed fix the first two; E2FSPROGS_FAKE_TIME (mkfs) and
+# E2FSCK_TIME (fsck) fix the time. Nothing reads this UUID: the wks copies
+# the partition raw and the kernel mounts /dev/dm-0.
+TACTIQ_ROOTFS_FS_UUID ?= "5e2f0d7a-1c3b-4f6e-9a8d-2b7c4e1f0a93"
+EXTRA_IMAGECMD:ext4 = "-i 4096 -b 4096 -U ${TACTIQ_ROOTFS_FS_UUID} -E hash_seed=${TACTIQ_ROOTFS_FS_UUID}"
+export E2FSPROGS_FAKE_TIME = "${REPRODUCIBLE_TIMESTAMP_ROOTFS}"
+export E2FSCK_TIME = "${REPRODUCIBLE_TIMESTAMP_ROOTFS}"
 
 # tactiq-slot-dtb needs these parameters before this image completes: the FIT
 # it feeds goes into the boot partition of this image, so do_image_complete
@@ -257,8 +271,9 @@ EXTRA_IMAGECMD:ext4 = "-i 4096 -b 4096"
 # <image>-<machine>.ext4.verity-params.
 #
 # Not an sstate task. Restored from sstate, it published the parameters of a
-# rootfs from an earlier run while do_image_verity built a new one (the rootfs
-# is not bit-reproducible, so the root hash differs between runs), and the
+# rootfs from an earlier run while do_image_verity built a new one (the ext4
+# was not bit-reproducible before the settings above, so the root hash
+# differed between runs), and the
 # slot built from that device tree failed verity at boot. As a plain task it
 # only ever copies the parameters of the rootfs this build directory made.
 do_deploy_verity_params() {
