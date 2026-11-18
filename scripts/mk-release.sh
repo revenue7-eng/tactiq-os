@@ -125,6 +125,7 @@ IMAGE="${IMAGE:-tactiq-image}"
 BOARD="${BOARD:-rock5a}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VULNS_DIR="${VULNS_DIR:-$HOME/vulns-master}"
+VULNS_MAX_AGE_DAYS=7   # release gate: linux-vulns checkout at most this old
 BOOT_ENV="${BOOT_ENV:-${SCRIPT_DIR}/../meta-tactiq-bsp-rockchip/recipes-bsp/u-boot/files/tactiq-boot.env}"
 
 DEPLOY="${BUILDDIR}/tmp/deploy/images/${MACHINE}"
@@ -312,6 +313,10 @@ bash "${SCRIPT_DIR}/check-network-clients.sh" "${DEPLOY}/${PREFIX}.manifest"
 # It also reads the current upstream record of each kernel entry from
 # VULNS_DIR, so a status upstream has since rejected or widened stops the
 # release. VULNS_DIR is required here: a release must not skip that check.
+# It must also be current: a checkout left unpulled passes against records
+# upstream has since changed, so the check refuses a VULNS_DIR that is not a
+# git checkout or whose latest commit is older than VULNS_MAX_AGE_DAYS, and
+# prints the revision it read.
 # ---------------------------------------------------------------------------
 echo "==> cve status"
 [[ -d "${VULNS_DIR}/cve/published" ]] || { echo "::error:: ${VULNS_DIR} is not a linux-vulns checkout; the CVE status gate needs it (set VULNS_DIR)." >&2; exit 1; }
@@ -319,6 +324,7 @@ python3 -I "${SCRIPT_DIR}/check-cve-status.py" \
     --status "${SCRIPT_DIR}/../conf/distro/include/tactiq-cve-status.inc" \
     --spdx "${DEPLOY}/${PREFIX}.spdx.json" \
     --vulns "${VULNS_DIR}" \
+    --vulns-max-age "${VULNS_MAX_AGE_DAYS}" \
     || { echo "::error:: CVE status check failed on ${PREFIX}.spdx.json; the image build refused this rootfs." >&2; exit 1; }
 
 # ---------------------------------------------------------------------------

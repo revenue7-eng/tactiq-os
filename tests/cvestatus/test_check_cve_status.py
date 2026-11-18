@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -231,6 +232,39 @@ class CheckCveStatus(unittest.TestCase):
         rc, out = self.run_check('--static', '--vulns', self.tmp.name)
         self.assertEqual(rc, 1, out)
         self.assertIn('not a linux-vulns checkout', out)
+
+    # age of the checkout (--vulns-max-age)
+
+    def git_vulns(self, days_old):
+        """The records above as a git checkout whose only commit is days_old days old."""
+        root = self.vulns()
+        when = f'@{int(time.time()) - days_old * 86400} +0000'
+        env = dict(os.environ, GIT_AUTHOR_DATE=when, GIT_COMMITTER_DATE=when,
+                   GIT_AUTHOR_NAME='t', GIT_AUTHOR_EMAIL='t@example.org',
+                   GIT_COMMITTER_NAME='t', GIT_COMMITTER_EMAIL='t@example.org')
+        for cmd in (['init', '-q'], ['add', '-A'], ['commit', '-q', '-m', 'records']):
+            subprocess.run(['git', '-C', root, *cmd], env=env, check=True)
+        return root
+
+    def test_fresh_checkout_passes_and_names_its_revision(self):
+        rc, out = self.run_check('--static', '--vulns', self.git_vulns(1), '--vulns-max-age', '7')
+        self.assertEqual(rc, 0, out)
+        self.assertRegex(out, r'linux-vulns: [0-9a-f]{40} \(\d{4}-\d{2}-\d{2}\)')
+
+    def test_old_checkout_fails(self):
+        rc, out = self.run_check('--static', '--vulns', self.git_vulns(30), '--vulns-max-age', '7')
+        self.assertEqual(rc, 1, out)
+        self.assertIn('committed 30 days ago; the limit is 7', out)
+
+    def test_checkout_that_is_not_git_fails_the_age_check(self):
+        rc, out = self.run_check('--static', '--vulns', self.vulns(), '--vulns-max-age', '7')
+        self.assertEqual(rc, 1, out)
+        self.assertIn('is not a git checkout; its age cannot be checked', out)
+
+    def test_age_limit_without_records_is_refused(self):
+        rc, out = self.run_check('--static', '--vulns-max-age', '7')
+        self.assertEqual(rc, 2, out)
+        self.assertIn('--vulns-max-age needs --vulns', out)
 
 
 if __name__ == '__main__':

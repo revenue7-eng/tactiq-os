@@ -145,6 +145,9 @@ jobs:
           # script runs the same check on the SBOM it publishes.
           grep -q 'check-cve-status.py' scripts/mk-release.sh \
             || { echo "::error::mk-release.sh no longer runs the CVE status check"; exit 1; }
+          # ...against a linux-vulns checkout it requires to be current.
+          grep -q -- '--vulns-max-age' scripts/mk-release.sh \
+            || { echo "::error::mk-release.sh no longer checks the age of VULNS_DIR"; exit 1; }
 
       - name: Assert production image profile is hardened
         run: |
