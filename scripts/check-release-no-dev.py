@@ -173,9 +173,30 @@ class Rootfs:
         return [l.split()[0] for l in out.splitlines()
                 if l.startswith('  ') and l.split()]
 
+    def resolve(self, path):
+        """path with symlinks followed inside the image, as the kernel opens
+        it (ima-evm-keys installs x509_ima.der as a link to x509_evm.der), or
+        None when a link is missing, slow (debugfs shows no target) or loops."""
+        for _ in range(8):
+            stat = self._run('stat %s' % path)
+            if 'Inode:' not in stat:
+                return None
+            if 'Type: symlink' not in stat:
+                return path
+            m = re.search(r'Fast link dest: "(.*)"', stat)
+            if not m:
+                return None
+            target = m.group(1)
+            path = os.path.normpath(target if target.startswith('/')
+                                    else os.path.join(os.path.dirname(path), target))
+        return None
+
     def extract(self, path, dest):
-        """Copy path out of the image to dest; True when dest was written."""
-        self._run('dump %s %s' % (path, dest))
+        """Copy path (links followed) out of the image to dest; True when written."""
+        real = self.resolve(path)
+        if real is None:
+            return False
+        self._run('dump %s %s' % (real, dest))
         return os.path.isfile(dest)
 
     def extract_xattr(self, path, name, dest):
