@@ -35,12 +35,25 @@ CLEAN = {
 }
 
 
+# What a loadable release policy needs besides its text: an IMA signature on
+# the file and the signer certificate the kernel loads into .ima.
+SIGNED = {'security.selinux', 'security.ima', 'security.evm'}
+KEY = '/etc/keys/x509_ima.der'
+
+
 class FakeFs:
-    def __init__(self, files):
+    def __init__(self, files, xattrs=None):
         self.files = dict(files)
+        self.xa = dict(xattrs or {})
 
     def read(self, path):
         return self.files.get(path)
+
+    def exists(self, path):
+        return path in self.files
+
+    def xattrs(self, path):
+        return sorted(self.xa.get(path, {'security.selinux'}))
 
     def listdir(self, path):
         pre = path.rstrip('/') + '/'
@@ -54,14 +67,18 @@ class NoDevTest(unittest.TestCase):
         self.dev = nd.parse_dev_recipe(DEV_RECIPE)
         self.checks, self.unknown = nd.required_checks(self.dev)
 
-    def rootfs(self, changes=None):
+    def rootfs(self, changes=None, xattrs=None, signed_policy=True):
         files = dict(CLEAN)
         for path, v in (changes or {}).items():
             if v is None:
                 files.pop(path, None)
             else:
                 files[path] = v
-        return nd.check_rootfs(FakeFs(files), self.checks)
+        xa = dict(xattrs or {})
+        if signed_policy and '/etc/ima/ima-policy' in files:
+            files.setdefault(KEY, 'der')
+            xa.setdefault('/etc/ima/ima-policy', SIGNED)
+        return nd.check_rootfs(FakeFs(files, xa), self.checks)
 
     def test_dev_recipe_fully_covered(self):
         self.assertEqual(self.unknown, [])
@@ -140,6 +157,33 @@ class NoDevTest(unittest.TestCase):
         # The release image carries this file (tactiq-ima-measure-policy).
         self.assertEqual(self.rootfs({'/etc/ima/ima-policy': text(os.path.join(
             ROOT, 'recipes-security', 'ima-policy', 'files', 'tactiq-ima-measure.policy'))}), [])
+
+    def release_policy(self):
+        return {'/etc/ima/ima-policy': text(os.path.join(
+            ROOT, 'recipes-security', 'ima-policy', 'files', 'tactiq-ima-measure.policy'))}
+
+    def test_release_policy_unsigned_refused(self):
+        # The release image of 20.11.2026: the policy with only its SELinux
+        # label, and no /etc/keys at all. It froze at boot.
+        p = self.rootfs(self.release_policy(), signed_policy=False)
+        self.assertTrue(any('no IMA signature' in x for x in p), p)
+        self.assertTrue(any('x509_ima.der is missing' in x for x in p), p)
+
+    def test_release_policy_signed_without_key_refused(self):
+        p = self.rootfs(self.release_policy(),
+                        xattrs={'/etc/ima/ima-policy': SIGNED}, signed_policy=False)
+        self.assertEqual(p, ['/etc/keys/x509_ima.der is missing: the kernel has no key '
+                             'to verify the IMA policy with and the boot freezes'])
+
+    def test_release_policy_key_without_signature_refused(self):
+        changes = dict(self.release_policy(), **{KEY: 'der'})
+        p = self.rootfs(changes, signed_policy=False)
+        self.assertEqual(len(p), 1, p)
+        self.assertIn('no IMA signature', p[0])
+
+    def test_no_policy_needs_no_key(self):
+        # rc14 shipped no policy; nothing to load, nothing to verify.
+        self.assertEqual(self.rootfs(), [])
 
     def test_commented_appraise_is_not_a_rule(self):
         self.assertEqual(self.rootfs({'/etc/ima/ima-policy':
