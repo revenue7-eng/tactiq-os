@@ -83,14 +83,46 @@ IMAGE_INSTALL:append = " \
     tactiq-netperm \
     tactiq-cartridge-anchor \
 "
-# IMA measures and does not appraise: a release image is not signed with an
-# IMA key, so it carries the measurement rules of the development policy and
-# no appraise rule (tactiq-ima-measure-policy). An image that signs its rootfs
-# (ima-evm-rootfs, the development profile) installs its own policy, with the
-# same measurement rules and appraisal, and does not get this package.
+# IMA measures and does not appraise: a release image carries the measurement
+# rules of the development policy and no appraise rule
+# (tactiq-ima-measure-policy). An image that signs its rootfs (ima-evm-rootfs,
+# the development profile) installs its own policy, with the same measurement
+# rules and appraisal, and does not get this package.
+#
+# The kernel accepts a custom policy only when the policy file itself carries
+# an IMA signature that verifies against the .ima keyring ("signed policy file
+# required"), and systemd freezes the boot when the load fails. On 20.11.2026 a
+# release image built with the policy unsigned and without /etc/keys froze at
+# 2.3 s (cause=IMA-signature-required). So the release signs that one file
+# with the release IMA signer (IMA_EVM_PRIVKEY, a keygate anchor) and installs
+# the signer certificate (IMA_EVM_X509, ima-evm-keys) where the kernel loads
+# it into .ima (/etc/keys/x509_ima.der). Nothing else in the rootfs is signed
+# and nothing is appraised. scripts/check-release-no-dev.py refuses a release
+# rootfs where either half is missing.
+#
 # Evaluated when IMAGE_INSTALL is read, after a recipe that requires this one
 # has set IMAGE_CLASSES.
-IMAGE_INSTALL:append = " ${@'' if bb.utils.contains('IMAGE_CLASSES', 'ima-evm-rootfs', True, False, d) else 'tactiq-ima-measure-policy'}"
+IMAGE_INSTALL:append = " ${@'' if bb.utils.contains('IMAGE_CLASSES', 'ima-evm-rootfs', True, False, d) else 'tactiq-ima-measure-policy ima-evm-keys'}"
+do_rootfs[depends] += "ima-evm-utils-native:do_populate_sysroot"
+
+# After do_image's body and before do_image_<type> packs the filesystem, the
+# same point at which the development image signs its policy
+# (tactiq_ima_policy_mode). The policy is packaged at 0600 and labelled by the
+# build-time setfiles pass before this runs, so the portable signature covers
+# the mode and label it ships with. An image with ima-evm-rootfs signs its own
+# policy and is left alone here.
+tactiq_ima_release_sign_policy() {
+    if [ "${@bb.utils.contains('IMAGE_CLASSES', 'ima-evm-rootfs', '1', '', d)}" = "1" ]; then
+        return 0
+    fi
+    policy="${IMAGE_ROOTFS}${sysconfdir}/ima/ima-policy"
+    [ -f "$policy" ] || bbfatal "tactiq-ima-measure-policy is in the image but $policy is not"
+    [ -e "${IMAGE_ROOTFS}${sysconfdir}/keys/x509_ima.der" ] || \
+        bbfatal "no ${sysconfdir}/keys/x509_ima.der in the image: IMA_EVM_X509 (${IMA_EVM_X509}) does not exist, and the kernel could not verify the policy"
+    evmctl sign --imasig --portable -a sha256 --key "${IMA_EVM_PRIVKEY}" "$policy"
+}
+do_image[postfuncs] += "tactiq_ima_release_sign_policy"
+do_image[file-checksums] += "${@'${IMA_EVM_PRIVKEY}:%s' % os.path.exists('${IMA_EVM_PRIVKEY}')}"
 # No agentgateway here. The tool path (agentgateway, its config, tactiq-stop)
 # is installed in the development image only, until a release image has an
 # operator channel to stop and resume tool calls: without one the gateway

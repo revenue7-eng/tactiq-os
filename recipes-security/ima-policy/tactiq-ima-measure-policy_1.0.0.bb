@@ -3,9 +3,11 @@ DESCRIPTION = "Installs /etc/ima/ima-policy with the measurement rules of \
 the development policy and no appraise rule. systemd loads the file at boot \
 (the same path the development image uses), so execution, libraries, kernel \
 modules and the reads of delivered data are measured into PCR 10, 11 and 12 \
-as on the development image. Nothing is appraised: a release image carries \
-no IMA signatures. Pulled in by tactiq-image.bb only for an image without \
-ima-evm-rootfs, which installs its own policy."
+as on the development image. Nothing is appraised. The kernel loads only a \
+signed policy file, so tactiq-image.bb signs this one file at image time \
+(tactiq_ima_release_sign_policy) and installs the signer certificate. Pulled \
+in by tactiq-image.bb only for an image without ima-evm-rootfs, which \
+installs its own policy."
 HOMEPAGE = "https://github.com/revenue7-eng/tactiq-os"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"

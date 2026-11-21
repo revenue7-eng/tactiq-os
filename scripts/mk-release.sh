@@ -385,14 +385,18 @@ echo "==> image identity: ${ID_REV} ${ID_IMAGE} ${ID_MACHINE} ${ID_DATE}"
 # in recipes-core/images/tactiq-image-dev.bb; check-release-no-dev.py reads it
 # and checks this image against each addition: dev packages absent from the
 # manifest, root locked, PAM without plain nullok, no postinst logging, no IMA
-# policy. CI keeps the two from drifting apart
+# appraise rule. CI keeps the two from drifting apart
 # (--static): a dev addition with no release check fails there.
+# The same run checks that the kernel can load the IMA policy the image
+# carries: it reads the .config of the kernel this build produced, whose
+# CONFIG_SYSTEM_TRUSTED_KEYS must be readable here (K: mounted).
 # ---------------------------------------------------------------------------
 if [[ "$IMAGE" == "tactiq-image" ]]; then
     echo "==> no development content"
     if ! python3 "${SCRIPT_DIR}/check-release-no-dev.py" \
             --dev-recipe "${SCRIPT_DIR}/../recipes-core/images/tactiq-image-dev.bb" \
-            --manifest "${DEPLOY}/${PREFIX}.manifest" --rootfs "$ROOTFS_EXT4"; then
+            --manifest "${DEPLOY}/${PREFIX}.manifest" --rootfs "$ROOTFS_EXT4" \
+            --kernel-config "${BUILDDIR}/tmp/work-shared/${MACHINE}/kernel-build-artifacts/.config"; then
         if [[ "${ALLOW_DEV_CONTENT:-0}" == 1 ]]; then
             echo "::warning:: development content in the release image (ALLOW_DEV_CONTENT=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
         else
