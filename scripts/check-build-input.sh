@@ -3,7 +3,10 @@
 # check-build-input.sh — verify that the build directory builds what the
 # tree says it builds.
 #
-#   check-build-input.sh <layers-dir> <build-dir>
+#   check-build-input.sh <layers-dir> <build-dir> [target]
+#
+# target is the one given to init-build.sh: rock5a (default) or rpi4. It
+# selects the bblayers template the build directory is compared against.
 #
 # check-layers.sh answers "are the layers the ones recorded in the lock".
 # This answers the other half: "is the build assembled from those layers,
@@ -37,15 +40,20 @@
 #
 set -euo pipefail
 
-if [ $# -ne 2 ]; then
-  echo "usage: $0 <layers-dir> <build-dir>" >&2
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "usage: $0 <layers-dir> <build-dir> [rock5a|rpi4]" >&2
   exit 2
 fi
 
 LAYERS_DIR="$(cd "$1" && pwd)"
 BUILD_DIR="$(cd "$2" && pwd)"
+TARGET="${3:-rock5a}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TEMPLATE="${SCRIPT_DIR}/../conf/bblayers.conf.in"
+case "$TARGET" in
+  rock5a) TEMPLATE="${SCRIPT_DIR}/../conf/bblayers.conf.in";;
+  rpi4)   TEMPLATE="${SCRIPT_DIR}/../conf/bblayers-rpi4.conf.in";;
+  *) echo "ERROR: unknown target '${TARGET}' (known: rock5a, rpi4)" >&2; exit 2;;
+esac
 INIT_BUILD="${SCRIPT_DIR}/init-build.sh"
 BUILD_CONF="${BUILD_DIR}/conf/bblayers.conf"
 WORKSPACE="${BUILD_DIR}/workspace"
@@ -69,7 +77,7 @@ else
   grep -vE "^[[:space:]]*${BUILD_DIR}/workspace[[:space:]]*\\\\?[[:space:]]*$" \
     "$BUILD_CONF" > "${TMP}/actual" || true
   if diff -u "${TMP}/expected" "${TMP}/actual" > "${TMP}/diff" 2>&1; then
-    echo "OK    bblayers.conf matches conf/bblayers.conf.in in this tree"
+    echo "OK    bblayers.conf matches conf/$(basename "$TEMPLATE") in this tree"
   else
     echo "FAIL  bblayers.conf differs from the template it should have come from" >&2
     sed -n '3,$p' "${TMP}/diff" | sed 's/^/        /' >&2
@@ -158,11 +166,11 @@ if [ -f "$INIT_BUILD" ] && [ -f "$TEMPLATE" ]; then
         for (i=1;i<=NF;i++)
           if ($i ~ /LAYERS_DIR/) { sub(/.*LAYERS_DIR}\//,"",$i); split($i,a,"/"); print a[1] }
       }' "$TEMPLATE" | sort -u > "${TMP}/wired"
-  sed -n '/REQUIRED_LAYERS=(/,/^)/p' "$INIT_BUILD" \
+  sed -n "/^REQUIRED_LAYERS_${TARGET}=(/,/^)/p" "$INIT_BUILD" \
     | sed '1d;$d' | tr -s ' \t' '\n' | sed '/^$/d' | sort -u > "${TMP}/required"
   MISS="$(comm -23 "${TMP}/wired" "${TMP}/required" | tr '\n' ' ')"
   if [ -n "${MISS// /}" ]; then
-    echo "WARN  init-build.sh: REQUIRED_LAYERS does not list ${MISS% }, which the" >&2
+    echo "WARN  init-build.sh: REQUIRED_LAYERS_${TARGET} does not list ${MISS% }, which the" >&2
     echo "        template wires into BBLAYERS; its preflight check cannot catch a" >&2
     echo "        missing layer that the build then depends on" >&2
   fi

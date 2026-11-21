@@ -43,6 +43,7 @@ UPSTREAM = {
     "agentgateway": "upstream agentgateway, vendored",
     "rkbin": "Rockchip firmware blobs",
     "u-boot-rockchip": "upstream U-Boot with TactiQ patches and config",
+    "u-boot-tactiq-rpi": "upstream U-Boot with TactiQ patches and config",
 }
 
 
