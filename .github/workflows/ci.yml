@@ -130,7 +130,13 @@ jobs:
           # release. A new addition with no check fails here.
           python3 scripts/check-release-no-dev.py \
             --dev-recipe recipes-core/images/tactiq-image-dev.bb --static
-          python3 tests/nodev/test_check_release_no_dev.py
+          # Every test file in tests/nodev, so that a new one cannot be
+          # added without being run (test_ima_loadable.py, from #325, was
+          # not).
+          for t in tests/nodev/test_*.py; do
+            echo "== $t"
+            python3 -I "$t" || exit 1
+          done
 
       - name: Every "not built" CVE status names code a build can check
         run: |
