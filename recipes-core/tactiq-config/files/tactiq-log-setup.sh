@@ -35,10 +35,11 @@ rc=0
 step() {  # <description> <command...>
     desc="$1"
     shift
-    if "$@"; then
+    "$@"
+    status=$?
+    if [ "${status}" -eq 0 ]; then
         return 0
     fi
-    status=$?
     echo "tactiq-log-setup: FAILED (${status}): ${desc}: $*"
     rc=1
     return "${status}"
