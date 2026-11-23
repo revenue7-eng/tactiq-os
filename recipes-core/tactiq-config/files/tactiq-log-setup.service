@@ -10,6 +10,22 @@ Before=shutdown.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+# A new /data is an empty ext4 whose root carries no security.selinux, so
+# it reads as unlabeled_t, which tactiq_log.te grants tactiq_logsetup_t
+# nothing on: on the first boot the script cannot create /data/log
+# (measurements/logs/rock5t-stage1-uart-20261009.log, lines 669-675):
+# /data/log and the directories under it are not created and their relabel
+# fails. data-tactiq-dirs relabels /data, but only later, under multi-user.
+# Label the root here, before the script runs.
+# Through /bin/sh, so it runs in initrc_t, the domain tactiq_fixes.te
+# records for the relabel in data-tactiq-dirs and lets relabel unlabeled_t
+# to tactiq_vault_data_t. refpolicy gives init_t corecmd_exec_bin and
+# initrc_t corecmd_exec_all_executables; no rule letting init_t execute
+# setfiles_exec_t was found in init.te, systemd.te or this layer's policy.
+# Root only, not -R: the subtrees are labelled by the script and by
+# data-tactiq-dirs. "-": a failed relabel must not stop this unit, because
+# the journal and audit mounts require it.
+ExecStartPre=-/bin/sh -c 'restorecon -v /data'
 ExecStart=/usr/sbin/tactiq-log-setup
 TimeoutStartSec=60
 

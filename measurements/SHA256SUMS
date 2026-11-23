@@ -134,3 +134,6 @@ fcd55a980a4cd3ebd5402758fa8aff4cafbfe2578b14b498cf2f2e6de5482ac0  cve-status-che
 ec3e836654f9ebfb0f23e01ef088b9105e2fed39f027234401318394820929a9  reproducible-ext4-20261117/run1-root-hash.txt
 ec3e836654f9ebfb0f23e01ef088b9105e2fed39f027234401318394820929a9  reproducible-ext4-20261117/run2-root-hash.txt
 1639f7c40eb1b5f0d64ac33c07bc11d2487e71ade7e2afbf94f9853daaadce72  reproducible-ext4-20261117/run2-task-order.txt
+cf46d0affe6acf94744f1a3dc1484efe64601fe1899878fdf855ca494e3b00b8  data-root-label-board-20261123.md
+331516a9adea30d808dfdb8501f65786ac5cb4a643f6b0b63d53d122bddb3a78  data-root-label-board-20261123/board-session-a.log
+ec3625f753dbd8d8c01728e9ccdb27f578ad24791d9ef1ea36c5a1d216456899  data-root-label-board-20261123/pcr-ref-datafix-20261123.json
