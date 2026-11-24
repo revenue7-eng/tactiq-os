@@ -73,6 +73,11 @@
 #                        something the development profile adds (see "No
 #                        development content" below). For mechanics testing
 #                        ONLY; the output is NOT a valid release.
+#   ALLOW_UNLOADABLE_IMA_POLICY=1  let IMAGE=tactiq-image go when the image
+#                        carries an IMA policy the kernel will not load (see
+#                        "No development content" below). Not covered by
+#                        ALLOW_DEV_CONTENT. For mechanics testing ONLY; the
+#                        output is NOT a valid release and does not boot.
 #   ALLOW_CMDLINE_MISMATCH=1  let IMAGE=tactiq-image go when the kernel
 #                        command line of a slot differs from
 #                        security/cmdline-<board>.json (see "Kernel command
@@ -393,14 +398,35 @@ echo "==> image identity: ${ID_REV} ${ID_IMAGE} ${ID_MACHINE} ${ID_DATE}"
 # ---------------------------------------------------------------------------
 if [[ "$IMAGE" == "tactiq-image" ]]; then
     echo "==> no development content"
-    if ! python3 "${SCRIPT_DIR}/check-release-no-dev.py" \
+    # Exit status of the check: 1 development content, 4 an IMA policy the
+    # kernel will not load (the boot freezes), 5 both; anything else is an
+    # error of the check itself and is never waived. Each of the two has its
+    # own waiver, so ALLOW_DEV_CONTENT does not also let through a release
+    # that does not boot.
+    nodev_rc=0
+    python3 "${SCRIPT_DIR}/check-release-no-dev.py" \
             --dev-recipe "${SCRIPT_DIR}/../recipes-core/images/tactiq-image-dev.bb" \
             --manifest "${DEPLOY}/${PREFIX}.manifest" --rootfs "$ROOTFS_EXT4" \
-            --kernel-config "${BUILDDIR}/tmp/work-shared/${MACHINE}/kernel-build-artifacts/.config"; then
+            --kernel-config "${BUILDDIR}/tmp/work-shared/${MACHINE}/kernel-build-artifacts/.config" \
+        || nodev_rc=$?
+    case "$nodev_rc" in
+        0|1|4|5) ;;
+        *) echo "::error:: check-release-no-dev.py failed (exit ${nodev_rc}); see above." >&2
+           exit 1 ;;
+    esac
+    if (( nodev_rc & 1 )); then
         if [[ "${ALLOW_DEV_CONTENT:-0}" == 1 ]]; then
             echo "::warning:: development content in the release image (ALLOW_DEV_CONTENT=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
         else
             echo "::error:: development content in the release image; see above." >&2
+            exit 1
+        fi
+    fi
+    if (( nodev_rc & 4 )); then
+        if [[ "${ALLOW_UNLOADABLE_IMA_POLICY:-0}" == 1 ]]; then
+            echo "::warning:: the kernel will not load the IMA policy of the release image (ALLOW_UNLOADABLE_IMA_POLICY=1). THIS OUTPUT IS NOT A VALID RELEASE." >&2
+        else
+            echo "::error:: the kernel will not load the IMA policy of the release image, and the boot would freeze; see above." >&2
             exit 1
         fi
     fi
