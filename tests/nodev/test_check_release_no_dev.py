@@ -8,9 +8,11 @@ tests need no debugfs.
 """
 
 import importlib.util
+import io
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, '..', '..')
@@ -78,7 +80,8 @@ class NoDevTest(unittest.TestCase):
         if signed_policy and '/etc/ima/ima-policy' in files:
             files.setdefault(KEY, 'der')
             xa.setdefault('/etc/ima/ima-policy', SIGNED)
-        return nd.check_rootfs(FakeFs(files, xa), self.checks)
+        fs = FakeFs(files, xa)
+        return nd.check_rootfs(fs, self.checks) + nd.check_ima_present(fs)
 
     def test_dev_recipe_fully_covered(self):
         self.assertEqual(self.unknown, [])
@@ -188,6 +191,48 @@ class NoDevTest(unittest.TestCase):
     def test_commented_appraise_is_not_a_rule(self):
         self.assertEqual(self.rootfs({'/etc/ima/ima-policy':
                                       '# appraise func=BPRM_CHECK\nmeasure func=BPRM_CHECK\n'}), [])
+
+
+class ExitStatus(unittest.TestCase):
+    """main() keeps development content (1) apart from an IMA policy the
+    kernel will not load (4), so mk-release.sh can waive one and not the
+    other."""
+
+    def run_main(self, files, dev_problems=(), loadable=()):
+        fs = FakeFs(files, {})
+        argv = ['--dev-recipe', DEV_RECIPE, '--manifest', 'unused',
+                '--rootfs', 'unused', '--kernel-config', 'unused']
+        with mock.patch.object(nd, 'Rootfs', lambda path: fs), \
+             mock.patch.object(nd, 'check_manifest', return_value=list(dev_problems)), \
+             mock.patch.object(nd, 'check_ima_loadable', return_value=(list(loadable), False)), \
+             mock.patch('sys.stderr', new_callable=io.StringIO), \
+             mock.patch('sys.stdout', new_callable=io.StringIO):
+            return nd.main(argv)
+
+    def test_clean(self):
+        self.assertEqual(self.run_main(dict(CLEAN)), 0)
+
+    def test_dev_content_only(self):
+        self.assertEqual(self.run_main(dict(CLEAN), dev_problems=['dev package']),
+                         nd.EXIT_DEV_CONTENT)
+
+    def test_unloadable_policy_only(self):
+        self.assertEqual(self.run_main(dict(CLEAN), loadable=['does not verify']),
+                         nd.EXIT_IMA_UNLOADABLE)
+
+    def test_unsigned_policy_is_unloadable_not_dev_content(self):
+        files = dict(CLEAN, **{'/etc/ima/ima-policy': 'measure func=BPRM_CHECK\n'})
+        self.assertEqual(self.run_main(files), nd.EXIT_IMA_UNLOADABLE)
+
+    def test_both(self):
+        self.assertEqual(self.run_main(dict(CLEAN), dev_problems=['dev package'],
+                                       loadable=['does not verify']),
+                         nd.EXIT_DEV_CONTENT | nd.EXIT_IMA_UNLOADABLE)
+
+    def test_check_rootfs_leaves_ima_to_check_ima_present(self):
+        files = dict(CLEAN, **{'/etc/ima/ima-policy': 'measure func=BPRM_CHECK\n'})
+        self.assertEqual(nd.check_rootfs(FakeFs(files, {}),
+                                         {'root-locked', 'pam-nullok', 'postinst-logging'}), [])
 
 
 if __name__ == '__main__':

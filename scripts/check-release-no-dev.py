@@ -22,6 +22,12 @@ Two modes:
                 without a release check, or an explicit "build only" entry);
   default       also read --manifest and --rootfs and check the release.
 
+Exit status: 0 when nothing is found; otherwise the sum of 1 (development
+content, or a dev addition with no check) and 4 (the release carries an IMA
+policy the kernel will not load, so the boot freezes). The two are kept apart
+so that mk-release.sh can waive one without the other. Other values are
+errors of the script itself.
+
 Usage:
   check-release-no-dev.py --dev-recipe recipes-core/images/tactiq-image-dev.bb --static
   check-release-no-dev.py --dev-recipe recipes-core/images/tactiq-image-dev.bb \\
@@ -78,6 +84,10 @@ VARIABLE_CHECKS = {'EXTRA_USERS_PARAMS': 'root-locked'}
 HOOK_CHECKS = {
     'tactiq_ima_policy_mode': 'no-appraise-policy',
 }
+
+
+EXIT_DEV_CONTENT = 1
+EXIT_IMA_UNLOADABLE = 4
 
 
 def code_lines(path):
@@ -240,18 +250,6 @@ def check_rootfs(fs, checks):
         text = fs.read('/etc/default/postinst')
         if text is not None and 'POSTINST_LOGGING=1' in text:
             problems.append('/etc/default/postinst enables postinst logging')
-    # Not keyed to the dev recipe: a release that carries an IMA policy must
-    # be able to load it. The kernel accepts only a policy file with an IMA
-    # signature that verifies against the .ima keyring, loaded from
-    # /etc/keys/x509_ima.der, and systemd freezes the boot when the load
-    # fails (20.11.2026: unsigned policy, no /etc/keys, froze at 2.3 s).
-    if fs.read('/etc/ima/ima-policy') is not None:
-        if 'security.ima' not in fs.xattrs('/etc/ima/ima-policy'):
-            problems.append('/etc/ima/ima-policy has no IMA signature (security.ima): '
-                            'the kernel refuses the policy and the boot freezes')
-        if not fs.exists('/etc/keys/x509_ima.der'):
-            problems.append('/etc/keys/x509_ima.der is missing: the kernel has no key '
-                            'to verify the IMA policy with and the boot freezes')
     if 'no-appraise-policy' in checks:
         # A release carries a policy that measures (tactiq-ima-measure-policy).
         # What the development profile adds is appraisal, keyed to the in-tree
@@ -301,10 +299,27 @@ def cert_trusted(cert_der, bundle):
         return ' '.join((r.stderr + r.stdout).split())
 
 
+def check_ima_present(fs):
+    """A release that carries an IMA policy must be able to load it. Not keyed
+    to the dev recipe. The kernel accepts only a policy file with an IMA
+    signature that verifies against the .ima keyring, loaded from
+    /etc/keys/x509_ima.der, and systemd freezes the boot when the load fails
+    (20.11.2026: unsigned policy, no /etc/keys, froze at 2.3 s)."""
+    problems = []
+    if fs.read('/etc/ima/ima-policy') is not None:
+        if 'security.ima' not in fs.xattrs('/etc/ima/ima-policy'):
+            problems.append('/etc/ima/ima-policy has no IMA signature (security.ima): '
+                            'the kernel refuses the policy and the boot freezes')
+        if not fs.exists('/etc/keys/x509_ima.der'):
+            problems.append('/etc/keys/x509_ima.der is missing: the kernel has no key '
+                            'to verify the IMA policy with and the boot freezes')
+    return problems
+
+
 def check_ima_loadable(fs, kernel_config):
     """Problems with loading the IMA policy as the kernel will, and whether it
     was verified. Does nothing when there is no policy, or when check_rootfs
-    already reports the signature or the certificate as missing."""
+    already reports the signature or the certificate as missing (check_ima_present)."""
     if fs.read(IMA_POLICY) is None:
         return [], False
     if 'security.ima' not in fs.xattrs(IMA_POLICY) or not fs.exists(IMA_KEY):
@@ -369,6 +384,7 @@ def main(argv=None):
         print('check-release-no-dev: no IMAGE_INSTALL found in %s' % a.dev_recipe, file=sys.stderr)
         return 1
     checks, unknown = required_checks(dev)
+    ima_problems = []
     problems = ['the dev recipe adds %s, which has no release check in this script' % u
                 for u in unknown]
     if not a.static:
@@ -377,13 +393,16 @@ def main(argv=None):
         problems += check_manifest(a.manifest, dev['packages'])
         fs = Rootfs(a.rootfs)
         problems += check_rootfs(fs, checks)
-        ima_problems, ima_verified = check_ima_loadable(fs, a.kernel_config)
-        problems += ima_problems
+        ima_problems = check_ima_present(fs)
+        loadable, ima_verified = check_ima_loadable(fs, a.kernel_config)
+        ima_problems += loadable
 
-    if problems:
+    if problems or ima_problems:
         for p in problems:
             print('check-release-no-dev: %s' % p, file=sys.stderr)
-        return 1
+        for p in ima_problems:
+            print('check-release-no-dev: IMA policy not loadable: %s' % p, file=sys.stderr)
+        return (EXIT_DEV_CONTENT if problems else 0) | (EXIT_IMA_UNLOADABLE if ima_problems else 0)
     if a.static:
         print('    dev recipe: %d packages, %d rootfs checks, every addition covered'
               % (len(set(dev['packages'])), len(checks)))
