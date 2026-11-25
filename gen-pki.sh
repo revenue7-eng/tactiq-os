@@ -3,7 +3,8 @@
 # gen-pki.sh — generate signing hierarchies for TactiQ OS RAUC bundles.
 #
 #   ./gen-pki.sh dev    -> pki/dev/    unencrypted keys, CI-usable
-#   ./gen-pki.sh ima    -> pki/dev/    IMA appraisal leaf, existing hierarchy
+#   ./gen-pki.sh ima    -> pki/dev/    IMA CA and IMA appraisal leaf
+#   ./gen-pki.sh ima-ca -> pki/dev/    IMA CA for the existing IMA key
 #   ./gen-pki.sh fit    -> pki/dev/    U-Boot FIT signer, self-signed
 #   ./gen-pki.sh rim    -> pki/dev/    RIM signer leaf, existing hierarchy
 #   ./gen-pki.sh regsigner -> pki/dev/ AK registration signer leaf
@@ -13,7 +14,8 @@
 #   ./gen-pki.sh stopop    -> pki/dev/ operator key for stop releases
 #
 #   ./gen-pki.sh prod DIR          release RAUC hierarchy, encrypted keys
-#   ./gen-pki.sh ima-prod DIR      release IMA leaf from the release Signing CA
+#   ./gen-pki.sh ima-prod DIR      release IMA CA and IMA leaf
+#   ./gen-pki.sh ima-ca-prod DIR   release IMA CA for the existing IMA key
 #   ./gen-pki.sh fit-prod DIR      release U-Boot FIT signer, self-signed
 #   ./gen-pki.sh modsign-prod DIR  release kernel module signing key
 #   ./gen-pki.sh rim-prod CA_DIR DIR
@@ -144,11 +146,13 @@ case "$FLAVOUR" in
     ENC=""
     LEAF_DAYS=730
     ;;
-  ima)
+  ima|ima-ca)
     OUT="pki/dev"
     ORG="TactiQ"
+    ICA_CN="TactiQ OS DEVELOPMENT IMA CA - NOT FOR PRODUCTION"
     LEAF_CN="TactiQ OS DEVELOPMENT IMA Signer - NOT FOR PRODUCTION"
-    ENC=""
+    ENC=""                 # as the leaf: public on purpose, like all of pki/dev
+    ICA_DAYS=3650
     LEAF_DAYS=730
     ;;
   signer)
@@ -165,11 +169,13 @@ case "$FLAVOUR" in
     ENC=""
     LEAF_DAYS=3650         # U-Boot checks only the modulus, not the dates
     ;;
-  ima-prod)
+  ima-prod|ima-ca-prod)
     OUT="${2:-}"
     ORG="TactiQ"
+    ICA_CN="TactiQ OS Release IMA CA"
     LEAF_CN="TactiQ OS Release IMA Signer"
-    ENC=""
+    ENC="-aes-256-cbc"     # the IMA CA key only; the leaf key is read by bitbake
+    ICA_DAYS=3650
     LEAF_DAYS=730
     ;;
   modsign-prod)
@@ -250,8 +256,8 @@ case "$FLAVOUR" in
     LEAF_DAYS=1095
     ;;
   *)
-    echo "usage: $0 {dev|ima|fit|signer}" >&2
-    echo "       $0 {prod|ima-prod|fit-prod|modsign-prod} DIR" >&2
+    echo "usage: $0 {dev|ima|ima-ca|fit|signer}" >&2
+    echo "       $0 {prod|ima-prod|ima-ca-prod|fit-prod|modsign-prod} DIR" >&2
     echo "       $0 rim" >&2
     echo "       $0 rim-prod CA_DIR DIR" >&2
     echo "       $0 regsigner" >&2
@@ -314,7 +320,7 @@ done
 
 # Release flavours: DIR is mandatory and must be outside the repository.
 case "$FLAVOUR" in
-  prod|ima-prod|fit-prod|modsign-prod)
+  prod|ima-prod|ima-ca-prod|fit-prod|modsign-prod)
     if [ -z "$OUT" ]; then
       echo "ERROR: $FLAVOUR needs an output directory: $0 $FLAVOUR DIR" >&2
       exit 1
@@ -698,20 +704,37 @@ EOF
   exit 0
 fi
 
-if [ "$FLAVOUR" = "ima" ] || [ "$FLAVOUR" = "ima-prod" ]; then
-  for f in signing-ca.key.pem signing-ca.pem root-ca.pem; do
-    if [ ! -e "$OUT/$f" ]; then
-      echo "ERROR: $OUT/$f not found. Create the hierarchy first ($0 dev, or $0 prod DIR)." >&2
-      exit 1
-    fi
-  done
-  for f in ima-signer.key.pem ima-signer.pem ima-signer.der; do
+if [ "$FLAVOUR" = "ima" ] || [ "$FLAVOUR" = "ima-prod" ] \
+   || [ "$FLAVOUR" = "ima-ca" ] || [ "$FLAVOUR" = "ima-ca-prod" ]; then
+  if [ ! -d "$OUT" ]; then
+    echo "ERROR: $OUT is not a directory." >&2
+    exit 1
+  fi
+  for f in ima-ca.key.pem ima-ca.pem; do
     if [ -e "$OUT/$f" ]; then
-      echo "ERROR: $OUT/$f already exists. Refusing to reissue in place:" >&2
-      echo "       a new key invalidates every signature in a built rootfs." >&2
+      echo "ERROR: $OUT/$f already exists. Refusing to reissue the IMA CA in place:" >&2
+      echo "       its certificate is compiled into every kernel built since." >&2
       exit 1
     fi
   done
+  case "$FLAVOUR" in
+    ima|ima-prod)
+      for f in ima-signer.key.pem ima-signer.pem ima-signer.der; do
+        if [ -e "$OUT/$f" ]; then
+          echo "ERROR: $OUT/$f already exists. Refusing to reissue in place:" >&2
+          echo "       a new key invalidates every signature in a built rootfs." >&2
+          echo "       To put an existing key under its own CA: $0 ${FLAVOUR/ima/ima-ca} ..." >&2
+          exit 1
+        fi
+      done
+      ;;
+    *)
+      if [ ! -e "$OUT/ima-signer.key.pem" ]; then
+        echo "ERROR: $OUT/ima-signer.key.pem not found: $FLAVOUR keeps the existing key." >&2
+        exit 1
+      fi
+      ;;
+  esac
   cd "$OUT"
 elif [ "$FLAVOUR" = "signer" ]; then
   for f in signing-ca.key.pem signing-ca.pem root-ca.pem; do
@@ -726,11 +749,33 @@ elif [ -e "$OUT" ]; then
   exit 1
 fi
 
-if [ "$FLAVOUR" = "ima" ] || [ "$FLAVOUR" = "ima-prod" ]; then
-  # ------------------------------------------------------------ IMA leaf
-  # Issued from the existing dev Signing CA. No codeSigning EKU: the key
-  # signs file hashes through evmctl, not code objects, and RAUC must not
-  # accept it as a bundle signer.
+if [ "$FLAVOUR" = "ima" ] || [ "$FLAVOUR" = "ima-prod" ] \
+   || [ "$FLAVOUR" = "ima-ca" ] || [ "$FLAVOUR" = "ima-ca-prod" ]; then
+  # ------------------------------------------------- IMA CA and IMA leaf
+  # The IMA CA is a root of its own and issues the IMA leaf alone. Its
+  # certificate is the whole of IMA_EVM_ROOT_CA, the file compiled into the
+  # kernel's builtin keyring. .ima takes /etc/keys/x509_ima.der only if a
+  # builtin key signed it, so the IMA CA has to be there. Nothing else from
+  # this hierarchy goes there: the kernel trusts the builtin keyring for more
+  # than IMA (kernel modules, dm-verity root hash signatures), so it holds
+  # only CAs whose every leaf is a build key.
+  #
+  # ima / ima-prod make a new IMA key; ima-ca / ima-ca-prod keep the key in
+  # ima-signer.key.pem and reissue its certificate under the new CA. The
+  # subject key identifier, and with it the key id in every security.ima
+  # signature already made, stays the same; the script checks that.
+  cat > ima-ca.cnf <<'EOF'
+[req]
+distinguished_name = dn
+[dn]
+[v3_ca]
+basicConstraints       = critical, CA:TRUE, pathlen:0
+keyUsage               = critical, keyCertSign, cRLSign
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+EOF
+  # No codeSigning EKU: the key signs file hashes through evmctl, not code
+  # objects, and RAUC must not accept it as a bundle signer.
   cat > ima-signer.cnf <<'EOF'
 [v3_signer]
 basicConstraints       = critical, CA:FALSE
@@ -739,53 +784,81 @@ subjectKeyIdentifier   = hash
 authorityKeyIdentifier = keyid:always
 EOF
 
-  echo "[1/1] IMA appraisal signer (leaf)"
+  echo "[1/3] IMA CA (self-signed)"
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
-    $ENC -out ima-signer.key.pem
+    $ENC -out ima-ca.key.pem
+  openssl req -x509 -new -sha256 \
+    -key ima-ca.key.pem \
+    -days "$ICA_DAYS" \
+    -subj "/O=$ORG/CN=$ICA_CN" \
+    -config ima-ca.cnf -extensions v3_ca \
+    -out ima-ca.pem
+
+  case "$FLAVOUR" in
+    ima|ima-prod)
+      echo "[2/3] IMA appraisal signer key (new)"
+      # The leaf key has no passphrase: evmctl reads it inside bitbake.
+      openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
+        -out ima-signer.key.pem
+      OLD_SKID=""
+      ;;
+    *)
+      echo "[2/3] IMA appraisal signer key (kept: ima-signer.key.pem)"
+      OLD_SKID="$(openssl x509 -in ima-signer.pem -noout -ext subjectKeyIdentifier 2>/dev/null | tail -n 1 | tr -d ' ')"
+      ;;
+  esac
+
+  echo "[3/3] IMA appraisal signer certificate, issued by the IMA CA"
   openssl req -new -sha256 \
     -key ima-signer.key.pem \
     -subj "/O=$ORG/CN=$LEAF_CN" \
     -out ima-signer.csr
   openssl x509 -req -sha256 \
     -in ima-signer.csr \
-    -CA signing-ca.pem -CAkey signing-ca.key.pem -CAcreateserial \
+    -CA ima-ca.pem -CAkey ima-ca.key.pem -CAcreateserial \
     -days "$LEAF_DAYS" \
     -extfile ima-signer.cnf -extensions v3_signer \
-    -out ima-signer.pem
+    -out ima-signer.pem.tmp
   rm -f ima-signer.csr
 
+  openssl verify -CAfile ima-ca.pem ima-signer.pem.tmp
+  NEW_SKID="$(openssl x509 -in ima-signer.pem.tmp -noout -ext subjectKeyIdentifier | tail -n 1 | tr -d ' ')"
+  if [ -n "$OLD_SKID" ] && [ "$OLD_SKID" != "$NEW_SKID" ]; then
+    echo "ERROR: the reissued certificate names key $NEW_SKID, the old one $OLD_SKID." >&2
+    echo "       Signatures already made would not verify. Nothing replaced;" >&2
+    echo "       remove ima-ca.* before running again." >&2
+    rm -f ima-signer.pem.tmp
+    exit 1
+  fi
+
   # IMA_EVM_X509 is handed to evmctl, which expects DER.
-  openssl x509 -in ima-signer.pem -outform der -out ima-signer.der
-
-  # IMA_EVM_ROOT_CA is compiled into the kernel's builtin keyring. The leaf
-  # is included alongside the two CAs: with
-  # CONFIG_IMA_KEYRINGS_PERMIT_SIGNED_BY_BUILTIN_OR_SECONDARY the kernel
-  # verifies file signatures against keys it holds, so the signing
-  # certificate itself has to be one of them.
-  cat root-ca.pem signing-ca.pem ima-signer.pem > system-trusted-bundle.pem
+  openssl x509 -in ima-signer.pem.tmp -outform der -out ima-signer.der.tmp
+  mv ima-signer.pem.tmp ima-signer.pem
+  mv ima-signer.der.tmp ima-signer.der
+  cp ima-ca.pem system-trusted-bundle.pem
 
   echo
-  echo "---- verification ----------------------------------------------"
-  openssl verify -CAfile root-ca.pem -untrusted signing-ca.pem ima-signer.pem
-  echo
-  echo "leaf key usage:"
-  openssl x509 -in ima-signer.pem -noout -text \
-    | grep -A1 -E 'X509v3 (Key Usage|Extended Key Usage)'
-  echo
-  openssl x509 -in ima-signer.pem -noout -subject -enddate
+  echo "leaf key id (subject key identifier): $NEW_SKID${OLD_SKID:+ (unchanged)}"
+  openssl x509 -in ima-ca.pem -noout -subject -enddate -fingerprint -sha256
+  openssl x509 -in ima-signer.pem -noout -subject -issuer -enddate
 
   cat <<EOF
 
 ---- files ------------------------------------------------------
+$OUT/ima-ca.pem                  PUBLIC  -> the IMA CA certificate
+$OUT/ima-ca.key.pem              PRIVATE -> issues the IMA leaf, nothing else
 $OUT/ima-signer.pem              PUBLIC  -> certificate
 $OUT/ima-signer.der              PUBLIC  -> IMA_EVM_X509, passed to evmctl
-$OUT/system-trusted-bundle.pem   PUBLIC  -> IMA_EVM_ROOT_CA, into the kernel
+$OUT/system-trusted-bundle.pem   PUBLIC  -> IMA_EVM_ROOT_CA, into the kernel:
+                                            the IMA CA certificate alone
 $OUT/ima-signer.key.pem          PRIVATE -> IMA_EVM_PRIVKEY
 
 ---- next -------------------------------------------------------
 For dev the variables above are set in conf/distro/tactiq.conf; for a
 release build set IMA_EVM_KEY_DIR to this directory in local.conf.
-Every previously built image carries signatures from the old key.
+The kernel must be rebuilt: system-trusted-bundle.pem is compiled into it.
+For a release, move ima-ca.key.pem off the build set to the CA container
+after this run: the build reads only the leaf key and the certificates.
 EOF
   exit 0
 fi
