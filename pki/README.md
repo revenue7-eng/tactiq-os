@@ -63,7 +63,10 @@ Root CA no longer matches the keyring on the boards.
 build time. The image applies `IMAGE_CLASSES += "ima-evm-rootfs"`, and the
 class reads this key through the `IMA_EVM_*` variables in
 `conf/distro/tactiq.conf`. `ima-signer.der` is the public half.
-`system-trusted-bundle.pem` is compiled into the kernel keyring.
+`ima-ca.pem` is the IMA CA, a root of its own that issues this leaf and
+nothing else. `system-trusted-bundle.pem` is that certificate alone, and it
+is compiled into the kernel's builtin keyring: no other CA of `pki/dev/`
+goes there.
 `root-ca.x509` carries the root certificate; its name follows the
 encoding the kernel expects, but the file itself is PEM, not DER.
 
@@ -72,17 +75,22 @@ key: without it, nobody outside can rebuild a dev image and verify that
 its signatures are what they claim. A production image applies neither the
 signing class nor the policy, so this key does not reach one.
 
-`./gen-pki.sh ima` issues this leaf from the dev Signing CA and writes all
-four files. It works inside an existing hierarchy rather than creating
-one, and refuses if `ima-signer.*` is already there: a reissued key
-invalidates every signature in a rootfs that was already built. To replace
-the key, delete the four files first and rebuild the image.
+`./gen-pki.sh ima` makes the IMA CA and a new leaf and writes all the
+files. It refuses if `ima-signer.*` or `ima-ca.*` is already there: a
+reissued key invalidates every signature in a rootfs that was already
+built, and the IMA CA certificate is in every kernel built since. To
+replace the key, delete those files first and rebuild the image.
+`./gen-pki.sh ima-ca` keeps `ima-signer.key.pem`, makes the IMA CA and
+reissues the leaf certificate under it; the key id in existing signatures
+does not change. `ima-prod DIR` and `ima-ca-prod DIR` do the same for a
+release, with a passphrase on the IMA CA key.
 
-The files committed here were made by hand in July, before the branch
-existed. Rerunning the script produces a different key, because RSA generation is
-not deterministic. The certificate comes out the same in every respect
-that matters: extensions, criticality, issuer. What the branch reproduces
-is the procedure, not the file.
+The leaf key committed here was made by hand in July, before the branch
+existed; the IMA CA and the leaf certificate were made from it by
+`./gen-pki.sh ima-ca`. Rerunning the script produces a different key,
+because RSA generation is not deterministic. The certificates come out the
+same in every respect that matters: extensions, criticality, issuer. What
+the branch reproduces is the procedure, not the file.
 
 The development image enforces appraisal: its command line carries no
 `ima_appraise=`, and the kernel default is enforce. Since this key is

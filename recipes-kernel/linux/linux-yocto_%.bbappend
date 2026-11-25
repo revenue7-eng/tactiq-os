@@ -19,6 +19,10 @@ SRC_URI += "file://tactiq-netfilter-legacy.cfg"
 SRC_URI += "file://tactiq-ot-disable.cfg"
 SRC_URI += "file://tactiq-verity.cfg"
 SRC_URI += "file://tactiq-ima-keyring.cfg"
+# features/ima/ima.scc would be applied after these fragments and turn the
+# secondary keyring back on; tactiq-ima.cfg carries its values instead.
+KERNEL_FEATURES:remove:tactiq = "features/ima/ima.scc"
+SRC_URI:append:tactiq = " file://tactiq-ima.cfg"
 SRC_URI += "file://tactiq-lockup.cfg"
 SRC_URI += "file://tactiq-pstore.cfg"
 

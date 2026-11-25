@@ -643,11 +643,18 @@ fi
 #   - the RAUC keyring installed in the rootfs: the r2 release root;
 #   - RIM_ROOT_CA, when given: the r2 release root;
 #   - every kernel module in the rootfs: signed by the release module signing
-#     key (modinfo sig_key, the serial of its certificate).
+#     key (modinfo sig_key, the serial of its certificate);
+#   - the kernel's builtin keyring (CONFIG_SYSTEM_TRUSTED_KEYS): the release
+#     IMA CA alone, with no secondary keyring (check-kernel-keyrings.py). A
+#     wrong shape of the keyrings is refused even with ALLOW_UNPINNED_KEYS;
+#     only a fingerprint other than the pin is waived by it.
 # The pins change only with a key ceremony recorded in the key log.
 # ---------------------------------------------------------------------------
 RELEASE_ROOT_FP="8E:10:04:1E:BB:FC:CB:A0:36:62:1B:2E:45:36:87:D2:9A:50:D7:15:65:F2:99:CB:41:28:B4:CE:B9:65:FF:E8"
 RELEASE_MODSIGN_KEYID="66:2F:3A:D2:09:C2:14:8F:D4:B8:A2:29:BF:9E:CE:B3:64:2C:DE:DA"
+# Set from the output of gen-pki.sh ima-ca-prod at the key ceremony. Empty
+# until then, and an empty pin matches nothing.
+RELEASE_IMA_CA_FP=""
 if [[ "$IMAGE" == "tactiq-image" ]]; then
     echo "==> release key pins"
     pin_fail() {
@@ -685,6 +692,19 @@ if [[ "$IMAGE" == "tactiq-image" ]]; then
     [[ "$nmod" -gt 0 ]] || pin_fail "no kernel modules found under /usr/lib/modules in ${PREFIX}.ext4."
     [[ "$nbad" -eq 0 ]] || pin_fail "${nbad} of ${nmod} kernel modules are not signed by the release module key:${bad}"
     echo "    kernel modules: ${nmod}, all signed by the release module key"
+    kk_rc=0
+    python3 "${SCRIPT_DIR}/check-kernel-keyrings.py" \
+            --kernel-config "${BUILDDIR}/tmp/work-shared/${MACHINE}/kernel-build-artifacts/.config" \
+            --ima-ca-fp "$RELEASE_IMA_CA_FP" \
+        || kk_rc=$?
+    case "$kk_rc" in
+        0) ;;
+        2) pin_fail "the kernel builtin keyring does not hold the pinned release IMA CA; see above." ;;
+        1|3) echo "::error:: the kernel keyrings are not the release shape; see above." >&2
+             exit 1 ;;
+        *) echo "::error:: check-kernel-keyrings.py failed (exit ${kk_rc}); see above." >&2
+           exit 1 ;;
+    esac
 fi
 
 # buildinfo — full bitbake datastore snapshot (distro / layers / versions /
