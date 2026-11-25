@@ -1,0 +1,42 @@
+host: Linux 6.6.87.2-microsoft-standard-WSL2 x86_64
+swtpm: TPM emulator version 0.7.3, Copyright (c) 2014-2021 IBM Corp.
+tpm2-tools: tool="tpm2_load" version="5.6" tctis="libtss2-tctildr" tcti-default=tcti-device
+input 3f5fc5c0de992e458ff97a25c573937669477f5f29eff298e5d0e69d5a58c983  bind.pub
+input 6d1d1c85250f497715009e9ead214c5032c70fd28018474ce7828225a1c2c8db  bind.priv
+input dea0ace676ef56765d4f9f17662d348787dd54dd1327422f457504c816a2f3b2  bind.ctx
+input 869a52e47100222678c3dcab65eae12295f33e9bed96ba34d99a5a54d57bdf68  primary.ctx
+input 8755a3d4a19c6619b7d18efec13948e42b4bc70a301e92cbd51190070df1ee87  pop.digest
+== control: a primary created by this TPM from the same template
+$ tpm2_createprimary -C o -g sha256 -G ecc256 -c other-primary.ctx
+succeeded as expected
+== A: load the board's key blob under this TPM's primary
+$ tpm2_load -C other-primary.ctx -u bind.pub -r bind.priv -c a.ctx
+WARNING:esys:src/tss2-esys/api/Esys_Load.c:324:Esys_Load_Finish() Received TPM Error 
+ERROR:esys:src/tss2-esys/api/Esys_Load.c:112:Esys_Load() Esys Finish ErrorCode (0x000001df) 
+ERROR: Esys_Load(0x1DF) - tpm:parameter(1):integrity check failed
+ERROR: Unable to run tpm2_load
+refused as expected (rc=1)
+== B1: sign with the board's saved key context
+$ tpm2_sign -c bind.ctx -g sha256 -d -o b1.sig pop.digest
+WARNING:esys:src/tss2-esys/api/Esys_ContextLoad.c:279:Esys_ContextLoad_Finish() Received TPM Error 
+ERROR:esys:src/tss2-esys/api/Esys_ContextLoad.c:93:Esys_ContextLoad() Esys Finish ErrorCode (0x000001d5) 
+ERROR: Esys_ContextLoad(0x1D5) - tpm:parameter(1):structure is the wrong size
+ERROR: Incorrect handle value, got: "bind.ctx", expected expected [o|p|e|n|l] or a handle number
+ERROR: Unable to read PEM from provided BIO/file
+ERROR: Unable to fetch public/private portions of TSS PRIVKEY
+ERROR: Cannot make sense of object context "bind.ctx"
+ERROR: Invalid key authorization
+ERROR: Unable to run tpm2_sign
+refused as expected (rc=1)
+== B2: load the key blob under the board's saved primary context
+$ tpm2_load -C primary.ctx -u bind.pub -r bind.priv -c b2.ctx
+WARNING:esys:src/tss2-esys/api/Esys_ContextLoad.c:279:Esys_ContextLoad_Finish() Received TPM Error 
+ERROR:esys:src/tss2-esys/api/Esys_ContextLoad.c:93:Esys_ContextLoad() Esys Finish ErrorCode (0x000001d5) 
+ERROR: Esys_ContextLoad(0x1D5) - tpm:parameter(1):structure is the wrong size
+ERROR: Incorrect handle value, got: "primary.ctx", expected expected [o|p|e|n|l] or a handle number
+ERROR: Unable to read PEM from provided BIO/file
+ERROR: Unable to fetch public/private portions of TSS PRIVKEY
+ERROR: Cannot make sense of object context "primary.ctx"
+ERROR: Unable to run tpm2_load
+refused as expected (rc=1)
+RESULT: no signature produced on the other TPM
