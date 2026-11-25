@@ -1,0 +1,12 @@
+ok   bound key certified by the registered AK over n1: accept
+     certified name 000bda7dacc0667fda735e61887bf6193de9d39c8416a3df0069b59b19db6e22e60f, firmware 00070057004ceb02, resetCount 492, restartCount 0, clock 2059677333 ms
+ok   DPoP proof signed in the TPM by the bound key over n2: accept
+     cnf.jkt vaQ9ov9hz9fIHwpWQQb3dzd_4thzwLWp7W7AD1g1Oi0
+ok   pop.sig is the TPM signature over pop.digest: accept
+ok   pop.jwt signature is pop.sig: accept
+ok   control: exportable key certified by the same AK over n3: key_exportable
+ok   negative: certify.att against another challenge: nonce_mismatch
+ok   negative: certified name edited: certify_signature_invalid, key_not_certified
+ok   negative: DPoP payload edited: pop_signature_invalid
+ok   negative: DPoP proof against another challenge: pop_nonce_mismatch
+PASSED: 9 of 9 checks gave the expected result

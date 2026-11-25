@@ -1,0 +1,259 @@
+root@tactiq-rock5a:/# for t in tpm2_create tpm2_load tpm2_certify tpm2_sign tpm2_readpublic tpm2_getrandom base64 sha256sum; do printf '%s %s\n' "$t" "$(command -v $t || echo MISSING)"; done; tpm2_getcap handles-persistent; mount | grep ' /data '; df -h /data | tail -n 1
+tpm2_create /bin/tpm2_create
+tpm2_load /bin/tpm2_load
+tpm2_certify /bin/tpm2_certify
+tpm2_sign /bin/tpm2_sign
+tpm2_readpublic /bin/tpm2_readpublic
+tpm2_getrandom /bin/tpm2_getrandom
+base64 MISSING
+sha256sum /bin/sha256sum
+- 0x81010100
+/dev/mmcblk0p5 on /data type ext4 (rw,nosuid,nodev,noexec,noatime,fscontext=system_u:object_r:tactiq_data_fs_t:s0,seclabel)
+/dev/mmcblk0p5            3.8G    234.8M      3.4G   6% /data
+root@tactiq-rock5a:/# CL=$(cat /proc/cmdline); se=$(getenforce 2>/dev/null || echo NO-SELINUX); P=/sys/kernel/security/ima/policy; if [ -r $P ]; then ima="appraise-rules=$(grep -c '^appraise ' $P) measure-rules=$(grep -c '^measure ' $P)"; else ima=NO-POLICY-READ; fi; ip=$(echo "$CL" | sed -n 's/.*ima_appraise=\([^ ]*\).*/\1/p'); [ -z "$ip" ] && ip=none; rt=$(echo "$CL" | sed -n 's/.*\(root=[^ ]*\).*/\1/p'); dm=$(cat /sys/block/dm-*/dm/name 2>/dev/null | tr '\n' ' '); [ -z "$dm" ] && dm=NONE; sl=$(echo "$CL" | sed -n 's/.*rauc\.slot=\([^ ]*\).*/\1/p'); printf 'SELINUX %s\nIMA     %s cmdline=%s\nROOT    %s\nDM      %s\nSLOT    %s\n' "$se" "$ima" "$ip" "$rt" "$dm" "$sl"
+SELINUX Enforcing
+IMA     appraise-rules=4 measure-rules=8 cmdline=none
+ROOT    root=/dev/dm-0
+DM      rootfs
+SLOT    B
+root@tactiq-rock5a:/# ^C
+root@tactiq-rock5a:/# for t in hexdump xxd od printf; do printf '%s %s\n' "$t" "$(command -v $t || echo MISSING)"; done; printf 'ab' > /tmp/hx; hexdump -v -e '1/1 "%02x"' /tmp/hx; echo; head -n 6 /etc/os-release; cat /etc/tactiq-release 2>/dev/null | head -n 5
+hexdump /bin/hexdump
+xxd MISSING
+od /bin/od
+printf printf
+6162
+ID=tactiq
+NAME="TactiQ OS"
+VERSION="2.1.0 (hardened-edge)"
+VERSION_ID=2.1.0
+VERSION_CODENAME="hardened-edge"
+PRETTY_NAME="TactiQ OS 2.1.0 (hardened-edge)"
+TACTIQ_OS_VERSION=2.1.0
+TACTIQ_OS_CODENAME=hardened-edge
+TACTIQ_BUILD_MACHINE=tactiq-rock5a
+TACTIQ_META_TACTIQ_GIT=v2.1.0-rc14
+TACTIQ_IMAGE_NAME=tactiq-image-dev
+root@tactiq-rock5a:/# ^C
+root@tactiq-rock5a:/# mkdir -p /data/l4
+root@tactiq-rock5a:/# cd /data/l4
+root@tactiq-rock5a:/data/l4# tpm2_createprimary -C o -g sha256 -G ecc256 -c primary.ctx
+name-alg:
+  value: sha256
+  raw: 0xb
+attributes:
+  value: fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|decrypt
+  raw: 0x30072
+type:
+  value: ecc
+  raw: 0x23
+curve-id:
+  value: NIST p256
+  raw: 0x3
+kdfa-alg:
+  value: null
+  raw: 0x10
+kdfa-halg:
+  value: (null)
+  raw: 0x0
+scheme:
+  value: null
+  raw: 0x10
+scheme-halg:
+  value: (null)
+  raw: 0x0
+sym-alg:
+  value: aes
+  raw: 0x6
+sym-mode:
+  value: cfb
+  raw: 0x43
+sym-keybits: 128
+x: 25ca1b9d43aa5ec61b5263d8b7fd5e9e1b8048029b820e928ce3cac917365af0
+y: 2b71b7db0a7cd96a8e0b771c8bfc73abbb8cbda58126d032e78ef9e9f101d572
+root@tactiq-rock5a:/data/l4# tpm2_create -C primary.ctx -G ecc256:ecdsa-sha256 -a "fixedtpm|fixedparent|sensitivedataorigin|userwithauth|sign" -u bind.pub -r bind.priv
+ERROR: Incorrect handle value, got: "primary.ctx", expected expected [o|p|e|n|l] or a handle number
+ERROR: Unable to read as BIO file
+ERROR: Unable to fetch public/private portions of TSS PRIVKEY
+ERROR: Cannot make sense of object context "primary.ctx"
+ERROR: Unable to run tpm2_create
+root@tactiq-rock5a:/data/l4# ^C
+root@tactiq-rock5a:/data/l4# ls -lZ /data/l4
+-rw-rw----    1 root     root     unconfined_u:object_r:tactiq_vault_data_t:s0      1063 Oct 12 04:26 primary.ctx
+root@tactiq-rock5a:/data/l4# dmesg | grep -i avc | tail -n 8
+root@tactiq-rock5a:/data/l4# ^C
+root@tactiq-rock5a:/data/l4# id -Z; echo "TCTI=$TPM2TOOLS_TCTI"
+unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+TCTI=
+root@tactiq-rock5a:/data/l4# mkdir -p /tmp/l4
+root@tactiq-rock5a:/data/l4# cd /tmp/l4
+root@tactiq-rock5a:/tmp/l4# tpm2_createprimary -C o -g sha256 -G ecc256 -c primary.ctx > /dev/null; echo rc=$?
+rc=0
+root@tactiq-rock5a:/tmp/l4# tpm2_create -C primary.ctx -G ecc256:ecdsa-sha256 -a "fixedtpm|fixedparent|sensitivedataorigin|userwithauth|sign" -u bind.pub -r bind.priv; echo rc=$?
+name-alg:
+  value: sha256
+  raw: 0xb
+attributes:
+  value: fixedtpm|fixedparent|sensitivedataorigin|userwithauth|sign
+  raw: 0x40072
+type:
+  value: ecc
+  raw: 0x23
+curve-id:
+  value: NIST p256
+  raw: 0x3
+kdfa-alg:
+  value: null
+  raw: 0x10
+kdfa-halg:
+  value: (null)
+  raw: 0x0
+scheme:
+  value: ecdsa
+  raw: 0x18
+scheme-halg:
+  value: sha256
+  raw: 0xb
+sym-alg:
+  value: null
+  raw: 0x10
+sym-mode:
+  value: (null)
+  raw: 0x0
+sym-keybits: 0
+x: 7c56ffb899f645daa1d69954e50de4be4e600fce14bc7a6befd6a80e23a1a55b
+y: e5c75f7bc618aa289ff5a3251c102324c3ccb263af961c52e5d0718d519b0a9b
+rc=0
+root@tactiq-rock5a:/tmp/l4# ls -lZ /tmp/l4; tpm2_getcap handles-transient
+-rw-rw----    1 root     root     unconfined_u:object_r:user_tmp_t:s0        96 Oct 12 04:28 bind.priv
+-rw-rw----    1 root     root     unconfined_u:object_r:user_tmp_t:s0        90 Oct 12 04:28 bind.pub
+-rw-rw----    1 root     root     unconfined_u:object_r:user_tmp_t:s0      1063 Oct 12 04:28 primary.ctx
+root@tactiq-rock5a:/tmp/l4# ^C
+root@tactiq-rock5a:/tmp/l4# tpm2_load -C primary.ctx -u bind.pub -r bind.priv -c bind.ctx -n bind.name
+root@tactiq-rock5a:/tmp/l4# tpm2_readpublic -c bind.ctx -f pem -o bind.pem
+name: 000bda7dacc0667fda735e61887bf6193de9d39c8416a3df0069b59b19db6e22e60f
+qualified name: 000b1ae61dafea66fd035c1004e5641ee9db4f3aaeeef6908a704ecb368d29b7a61c
+name-alg:
+  value: sha256
+  raw: 0xb
+attributes:
+  value: fixedtpm|fixedparent|sensitivedataorigin|userwithauth|sign
+  raw: 0x40072
+type:
+  value: ecc
+  raw: 0x23
+curve-id:
+  value: NIST p256
+  raw: 0x3
+kdfa-alg:
+  value: null
+  raw: 0x10
+kdfa-halg:
+  value: (null)
+  raw: 0x0
+scheme:
+  value: ecdsa
+  raw: 0x18
+scheme-halg:
+  value: sha256
+  raw: 0xb
+sym-alg:
+  value: null
+  raw: 0x10
+sym-mode:
+  value: (null)
+  raw: 0x0
+sym-keybits: 0
+x: 7c56ffb899f645daa1d69954e50de4be4e600fce14bc7a6befd6a80e23a1a55b
+y: e5c75f7bc618aa289ff5a3251c102324c3ccb263af961c52e5d0718d519b0a9b
+root@tactiq-rock5a:/tmp/l4# tpm2_certify -c bind.ctx -C 0x81010100 -g sha256 -q e113b510dfb6cd589b486edc441c8954f8aa65369e1062dd16ccb2ffbd97958a -o certify.att -s certify.sig
+root@tactiq-rock5a:/tmp/l4# for f in bind.pub bind.name certify.att certify.sig; do printf '%s ' $f; hexdump -v -e '1/1 "%02x"' $f; echo; done; cat bind.pem; ls -l /tmp/l4
+bind.pub 00580023000b00040072000000100018000b0003001000207c56ffb899f645daa1d69954e50de4be4e600fce14bc7a6befd6a80e23a1a55b0020e5c75f7bc618aa289ff5a3251c102324c3ccb263af961c52e5d0718d519b0a9b
+bind.name 000bda7dacc0667fda735e61887bf6193de9d39c8416a3df0069b59b19db6e22e60f
+certify.att ff54434780170022000b47dd0060f902fa2dc607d706f078a4885474200ec8a93570d4c2a4a06cb4a2c90020e113b510dfb6cd589b486edc441c8954f8aa65369e1062dd16ccb2ffbd97958a000000007ac42e95000001ec000000000100070057004ceb020022000bda7dacc0667fda735e61887bf6193de9d39c8416a3df0069b59b19db6e22e60f0022000b1ae61dafea66fd035c1004e5641ee9db4f3aaeeef6908a704ecb368d29b7a61c
+certify.sig 0018000b0020be14928a130e2952b9ac2ad55af9438ac7b367944c697670cd1886c243c2fa910020e8e9a2c02636ea74e0d5a9f7ac1eafd87c039732065d375e189d98662ec11461
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfFb/uJn2Rdqh1plU5Q3kvk5gD84U
+vHpr79aoDiOhpVvlx197xhiqKJ/1oyUcECMkw8yyY6+WHFLl0HGNUZsKmw==
+-----END PUBLIC KEY-----
+-rw-rw----    1 root     root          1061 Oct 12 04:30 bind.ctx
+-rw-rw----    1 root     root            34 Oct 12 04:30 bind.name
+-rw-rw----    1 root     root           178 Oct 12 04:30 bind.pem
+-rw-rw----    1 root     root            96 Oct 12 04:28 bind.priv
+-rw-rw----    1 root     root            90 Oct 12 04:28 bind.pub
+-rw-rw----    1 root     root           173 Oct 12 04:30 certify.att
+-rw-rw----    1 root     root            72 Oct 12 04:30 certify.sig
+-rw-rw----    1 root     root          1063 Oct 12 04:28 primary.ctx
+root@tactiq-rock5a:/tmp/l4# ^C
+root@tactiq-rock5a:/tmp/l4# printf '\xc9\x90\x5a\xb8\x33\xd7\x38\x3c\x7b\xa8\xe9\xf5\x15\x93\x38\x02\x61\x42\x37\x1c\x75\xb3\x7a\xd0\x0e\x42\xfe\x6d\x11\xd4\x20\x20' > pop.digest
+root@tactiq-rock5a:/tmp/l4# hexdump -v -e '1/1 "%02x"' pop.digest; echo
+c9905ab833d7383c7ba8e9f5159338026142371c75b37ad00e42fe6d11d42020
+root@tactiq-rock5a:/tmp/l4# tpm2_sign -c bind.ctx -g sha256 -d -o pop.sig pop.digest
+root@tactiq-rock5a:/tmp/l4# hexdump -v -e '1/1 "%02x"' pop.sig; echo
+0018000b0020ff7c1cd09ea88d254d6c842a1f166f21a3d310f14985cc2cd010f40bda673fa40020ac0d010e3e24023ce7fd0730a9d3b977498fad1aae25f822b9c7cbab6e867c97
+root@tactiq-rock5a:/tmp/l4# ^C
+root@tactiq-rock5a:/tmp/l4# for f in bind.priv bind.ctx primary.ctx; do printf '%s ' $f; hexdump -v -e '1/1 "%02x"' $f; echo; done
+bind.priv 005e0020607dde914e4655131c26171d1f90c95ba43ab8668cae91a2ba6faf274e6201420010ea0edce685ea74c1c9c618fd3c8dc18d2894ed255541af6eb74ce412f54bfbb1be22fc3281370aee16014b16203ea1b67399ae98f6c83615c97c
+bind.ctx badcc0de000000014000000180000000000000000000000f040b00000000037d00201cf9725b59b86bd81d47aa5424f326b52089c483fc04db998937073770e7bb540359a65c4491d443d745a1fef5ee2fd97b36f7314bb2826172a56f6455e066a493e3dc46c3e08dd8f3d4eb56fbd68b228eb24c97baa8f44a2dce52d4ae3852c5c9b55d69fba27d38b578f59f54a02e1ae418d61d5046d0acb23c2eea1a748c3d145dc5b47cabf6d5a4206448e3749c7bfc42c3f59c3be7a1709a8a8846f34314fc452aefd264e6f85117a2b4f0d09556bca1112cc8ec30136e66ad25d27aa4665d36fa9b2a588b990792e2062f4ba14b8d86ba445ecfd10494694b819603edee7107a39db2ddaf7da431f2111e23aceb7b0c415390ab4d27c59577928c228c7e40a809538261ca50f9b390d18afa0d515d1bb8942d7acdd7feaedb8a6ec032c6c490f488dff303c83e9577b425d829d13b517302aaf36d01ddc527be41722183b862911619e0f65ad7b419f6fff30e19aa6f6b4220674e4eec5f1d31f6d14eddeb31d255680db4fae504498cb25de5b35a0d64a39fed8b60455722105b824e215e5763251ee6af2cbe3ca0591f3e7dde89369ac233b83765168eafe6309667b2743b2bc897bbf709577643390471c22737bc2696d1abeacc7de5373209303ea7aaf81385bea9eb749f24336e55ca96d9bdc26893b5e72171908b89b51aabb57b5ff01d28a5739e1130eaecfe8bcf884082c46b1fa7650183fad7b3fdf18edc513ea9b952963597ccb19619152166742c9f541a51dc3d46497d4020100e79d73a8f0a4d9f29711cd92075a4a2374d2e8bcc7be3a7f7e5976992f105734949351323356f217e3085a25ca47b61acfe06c7535efea0a285363c5b1572065a5bce3f4c0aa64706eb351b8753ebd77fe60e4be43ea6b86f5531d7f5451ae3323d2c6ba1bfc67b4dc1c18364c627b25ff2901c1c84d28d6935b090e5e3c5a8d6c9ab80aadcea177f58be75f659f635d9e18f398075c7b78f04fb88507ba2a526a9fbc1ee993bf509b3eb48e9cc7411e14fff5f806849ab170b5a8d8481e00ac968b6b4f5a4c33991b08b37c91cf4a0c40bc7d73afd1fba8ed9d36ac80aa3b9f60f682c0226772f80e37f0a6571d0959f48a4a312b8b977239bf3cee82d65082fd5aede391214c92f6ff9140bf63621a2dfeb5e62df75146fb4923d47d9a2b4829ce00e87596b8c134cd7931b244989ed1c507023a2c80a26d66743ce125ae6971cf21a699d634fcee8071ce86fdbbcc1b48147b0f0c24ece7970cecc1a2b000080fffffe0022000bda7dacc0667fda735e61887bf6193de9d39c8416a3df0069b59b19db6e22e60f0000000100580023000b00040072000000100018000b0003001000207c56ffb899f645daa1d69954e50de4be4e600fce14bc7a6befd6a80e23a1a55b0020e5c75f7bc618aa289ff5a3251c102324c3ccb263af961c52e5d0718d519b0a9b
+primary.ctx badcc0de0000000140000001800000000000000000000006040d00000000037d0020c568e26b675cf95905d0b5453fb65955f0f6914f618f8fb1d2bcba84e0bb319f0359fb11635f5215e7bcb52938dffd319bf034009f4484d26d4986e99cbb55f1802bdb4fb72620e6d375842882e716798e9a263a7da4d3953eb5f168e08664569eee1df69467d4b840168bf696945ece7fc9d4ab6c87eb03bc177264fdfb0903b24e6d298dea832d0c11a5c67b7fd811406a1374f2b49fdfae6a4a730f77ebdd5835e72623bf02ca550b1188a3a95234ac982ea121daa19093c93b14085e87dba90b36a810f12aeda1ffa4da415ea2f98e340054971ee4e2e9d69ff0a092fe5a6ba6934984811e5cf73033d062f5ca36df6b1f35d7cfb57b4b344c64ef34b1a55aa7f5abb21be39c7e34948347c231291d1b0f3e0a5a78e4cfc500b01269289f2f2fc72b28df4a15202cbb3a868131d16b25766752d3331e981a5931bb6127f5c45a26027673de74ef351c2defe3eabc269e4d989384f33937102b332d27195c808e71e7f2fc4b2a30fdbaa63e955e9ed35035cdc25ac5c5aed4cb7ea29537e5526a79d6e7756487b4a036b13ce69256ae1d4dc052c5f015077a8a8ea1d2b0acc8c8c91b8b9fa7b7efad191d515ecf24fc09bddfc37bc1bd752778f714b072022bac62835a3a99132021d02663b3bdda844a356c39e3727be77e688f9e3907bf71ee15996c53a81729b9fe72e21b3db1dfdcedb7050a68a379bed6728a885652bcc33072abbdfb782ca76f35d15af6304a8c506aa46873eb0f5714df66fdd07140ab566a7a1f413002bd8954520dfe72421d6c4f74f004b26d6eb12fa32a3a89cdf6e64852787be0c65cb9ea9c7607cddc199d3214571a089a9cc7d09e7248d0648c64bffed69a77faf73967f0b5d7b3c4a1447efa39e18fed94c106eddd7c18e7d83bbe55ef25b375bbd862cec1f35e5d208b430dbb542a5414edcf09381d7b751eb0b8e7c4b0929abd907f04645ab2f967dc4481ed8f8a253b4e0bee1e501ecb1ec15bb003846eb2f9b7185508647919eff62549e1e521f0e8bbb6680dbd48c228102c0c9dc18a36bc0355e463014d662f0d631226ff98c47673a60cd118389fdecb5e317fa109fea4f7ac235b0ad0c0f5435b4c9da8c202b37ab148618d410c5f79dcc11844e0ddf937e730e4d5e4b68857bf26bee92d4c6a05290ff9d35631fe107b457fa99285c64b84287b6f9a5b0a53179ac6ef4fecc64dbd4cc0eb45b656bfddf50daa6f9466f302bf817ec143e5ef08c6aec66ad9f6a6000080ffffff0022000b737031a2f0e4e52d6ea339de7ba696c182ee0bf68cfbbafa99ba709fc45abe7e00000001005a0023000b000300720000000600800043001000030010002025ca1b9d43aa5ec61b5263d8b7fd5e9e1b8048029b820e928ce3cac917365af000202b71b7db0a7cd96a8e0b771c8bfc73abbb8cbda58126d032e78ef9e9f101d572
+root@tactiq-rock5a:/tmp/l4# tpm2_sign -v
+tool="tpm2_sign" version="5.8" tctis="libtss2-tctildr" tcti-default=tcti-device
+root@tactiq-rock5a:/tmp/l4# ^C
+root@tactiq-rock5a:/tmp/l4# tpm2_create -C primary.ctx -G ecc256:ecdsa-sha256 -a "sensitivedataorigin|userwithauth|sign" -u exp.pub -r exp.priv
+name-alg:
+  value: sha256
+  raw: 0xb
+attributes:
+  value: sensitivedataorigin|userwithauth|sign
+  raw: 0x40060
+type:
+  value: ecc
+  raw: 0x23
+curve-id:
+  value: NIST p256
+  raw: 0x3
+kdfa-alg:
+  value: null
+  raw: 0x10
+kdfa-halg:
+  value: (null)
+  raw: 0x0
+scheme:
+  value: ecdsa
+  raw: 0x18
+scheme-halg:
+  value: sha256
+  raw: 0xb
+sym-alg:
+  value: null
+  raw: 0x10
+sym-mode:
+  value: (null)
+  raw: 0x0
+sym-keybits: 0
+x: 2f81dddc62f4ea366bdb4e2f106d822d473d6ca83e108aca9fb911a8a42d6f15
+y: 261ffbf526c3ce07dfa33dab790d3f5d5f8101caf7c2ee81445847e0edd65503
+root@tactiq-rock5a:/tmp/l4# tpm2_load -C primary.ctx -u exp.pub -r exp.priv -c exp.ctx -n exp.name
+root@tactiq-rock5a:/tmp/l4# tpm2_certify -c exp.ctx -C 0x81010100 -g sha256 -q ae6515f4b3e2cb0c5edab0b8cab1f1445fafc6c67f85cdc115501863abaaa50e -o exp.att -s exp.sig
+root@tactiq-rock5a:/tmp/l4# for f in exp.pub exp.name exp.att exp.sig; do printf '%s ' $f; hexdump -v -e '1/1 "%02x"' $f; echo; done
+exp.pub 00580023000b00040060000000100018000b0003001000202f81dddc62f4ea366bdb4e2f106d822d473d6ca83e108aca9fb911a8a42d6f150020261ffbf526c3ce07dfa33dab790d3f5d5f8101caf7c2ee81445847e0edd65503
+exp.name 000baa9a7b1ee0b99a7c9e9df16f2a223762e5f3aa2ac401af80004eaa5cef2210f6
+exp.att ff54434780170022000b47dd0060f902fa2dc607d706f078a4885474200ec8a93570d4c2a4a06cb4a2c90020ae6515f4b3e2cb0c5edab0b8cab1f1445fafc6c67f85cdc115501863abaaa50e000000007ace27a0000001ec000000000100070057004ceb020022000baa9a7b1ee0b99a7c9e9df16f2a223762e5f3aa2ac401af80004eaa5cef2210f60022000ba8873f2068d771d97689d7379f397e3c5c726457e3f3453bd3599843bba12edb
+exp.sig 0018000b00204c4f44df09d654bc71871aa132109a3322969d6cfcfe78c67b404dec8e3a0d7800203b0dfbee1b64e514eb6f70ebcffa9acc8d3571fc7d8a6fc845b5d27b2055ad8f
+root@tactiq-rock5a:/tmp/l4# ^C
+root@tactiq-rock5a:/tmp/l4# sha256sum bind.pub bind.name bind.priv bind.ctx primary.ctx certify.att certify.sig pop.digest pop.sig exp.pub exp.name exp.att exp.sig
+3f5fc5c0de992e458ff97a25c573937669477f5f29eff298e5d0e69d5a58c983  bind.pub
+92f245e615c24b981e0eb291ee52cdb61abaf21ab99728e6542becad75d3d930  bind.name
+6d1d1c85250f497715009e9ead214c5032c70fd28018474ce7828225a1c2c8db  bind.priv
+dea0ace676ef56765d4f9f17662d348787dd54dd1327422f457504c816a2f3b2  bind.ctx
+869a52e47100222678c3dcab65eae12295f33e9bed96ba34d99a5a54d57bdf68  primary.ctx
+44bb5627dc0bb4c950bf42c70abf031e676c031c51a4b3edf09dd94a5b616c6b  certify.att
+4edfbde6219686efd9331721c01e9a1cb92baa1f0853f1f08f2486d1edff6518  certify.sig
+8755a3d4a19c6619b7d18efec13948e42b4bc70a301e92cbd51190070df1ee87  pop.digest
+5c5440da5f1e526f3485a9c25e8664306388b3e6710aa97161d5f8934de91ceb  pop.sig
+c1ea0fdd2b382f4799c6de4722229d54226d4fd51312cef7195ed24d9cabeac7  exp.pub
+e7370028998b452cf24fbe42cdb0ebf9d807c4e4328ad51828d7364f2fa2a9e2  exp.name
+20d165902b73d68d7dc84dc44293bfbf52131b5b8f33e805d125e47338cd4992  exp.att
+f6f336a26e5094c6b2b954481d6050eff8edff984a45da44686a7e7f1f2e87bd  exp.sig
+root@tactiq-rock5a:/tmp/l4# ^C
+root@tactiq-rock5a:/tmp/l4#
