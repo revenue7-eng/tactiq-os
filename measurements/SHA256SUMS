@@ -162,3 +162,6 @@ b6b855465c9af62e750aca888f758fd7078211bea3c975aab264e2a1a69ded51  tpm-bound-key-
 5c5440da5f1e526f3485a9c25e8664306388b3e6710aa97161d5f8934de91ceb  tpm-bound-key-dev-20261125/pop.sig
 c9905ab833d7383c7ba8e9f5159338026142371c75b37ad00e42fe6d11d42020  tpm-bound-key-dev-20261125/pop.signing_input
 869a52e47100222678c3dcab65eae12295f33e9bed96ba34d99a5a54d57bdf68  tpm-bound-key-dev-20261125/primary.ctx
+0fe61a1d950e4b9471f602c11529f9098142d5532adc4a659fc72b4b5f9dee2c  tpm-owner-closed-dev-20261126.md
+905c32c7abce5bb9e68c9f70ac6ca00e3d0e31d36e771b811ab9b50fc2cc80a8  tpm-owner-closed-dev-20261126/board-console-close-owner.log
+7c56a42b1c50b34a58239cab5587a9fad265fd667df503c685c112ad4313f91f  tpm-owner-closed-dev-20261126/close-owner-swtpm.log

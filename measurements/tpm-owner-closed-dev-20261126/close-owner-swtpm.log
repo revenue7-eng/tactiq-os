@@ -1,0 +1,57 @@
+== close-owner refuses to run
+ok    before provisioning: refused
+ok    before the stop counter: refused
+ok    with an 8-byte value: refused
+ok    with the same value twice: refused
+ok    and changed nothing
+== close-owner
+srk: 0x81000001 persisted
+owner: authorization set, empty refused, new value accepted
+lockout: authorization set (not probed: a failed lockout authorization locks it)
+endorsement: left empty
+remove /tmp/tmp.WLIzY1tE6c/owner.auth and /tmp/tmp.WLIzY1tE6c/lockout.auth from this device
+== a process with TPM access and no secret
+ok    evict the AK: refused
+ok    evict the SRK: refused
+ok    delete the epoch counter: refused
+ok    delete the stop counter: refused
+ok    define a new index: refused
+ok    create an owner primary: refused
+ok    move the TPM clock forward: refused
+ok    set a new owner auth: refused
+== what keeps working without the secret
+ok    AK still in place
+ok    agent attest
+ok    trip: increment the stop counter
+ok    read the stop counter
+ok    SRK persisted
+ok    create a key under the SRK
+ok    load it
+ok    AK certifies it
+== with the secret: rotation
+ok    close-owner again with the values in force
+ok    the old owner value: refused
+ok    the new owner value
+ok    close-owner again without the value in force: refused
+RESULT: all checks held
+== close-owner refuses to run
+ok    before provisioning: refused
+ok    before the stop counter: refused
+ok    with an 8-byte value: refused
+ok    with the same value twice: refused
+ok    and changed nothing
+== close-owner NOT run (--no-close): the refusals below must fail
+== a process with TPM access and no secret
+FAIL  evict the AK: succeeded
+FAIL  delete the epoch counter: succeeded
+FAIL  delete the stop counter: succeeded
+FAIL  define a new index: succeeded
+FAIL  create an owner primary: succeeded
+FAIL  move the TPM clock forward: succeeded
+FAIL  set a new owner auth: succeeded
+== what keeps working without the secret
+FAIL  AK still in place: failed
+FAIL  agent attest: failed
+FAIL  trip: increment the stop counter: failed
+FAIL  read the stop counter: failed
+RESULT: FAILED
