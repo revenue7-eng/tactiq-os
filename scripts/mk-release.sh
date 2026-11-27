@@ -654,7 +654,7 @@ RELEASE_ROOT_FP="8E:10:04:1E:BB:FC:CB:A0:36:62:1B:2E:45:36:87:D2:9A:50:D7:15:65:
 RELEASE_MODSIGN_KEYID="66:2F:3A:D2:09:C2:14:8F:D4:B8:A2:29:BF:9E:CE:B3:64:2C:DE:DA"
 # Set from the output of gen-pki.sh ima-ca-prod at the key ceremony. Empty
 # until then, and an empty pin matches nothing.
-RELEASE_IMA_CA_FP=""
+RELEASE_IMA_CA_FP="74:91:90:77:E5:34:49:AB:2F:5D:01:72:6F:F7:A5:73:90:A6:EF:88:F3:7F:55:F1:A2:85:94:D0:8F:8E:4E:4B"
 if [[ "$IMAGE" == "tactiq-image" ]]; then
     echo "==> release key pins"
     pin_fail() {
