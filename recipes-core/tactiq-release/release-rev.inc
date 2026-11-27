@@ -12,8 +12,8 @@
 # Between releases these hold the tag the working tree descends from and its
 # release date, which is what a development build should report.
 
-TACTIQ_OS_RELEASE_REV = "v2.1.0-rc14"
-TACTIQ_OS_RELEASE_DATE = "2026-10-12"
+TACTIQ_OS_RELEASE_REV = "v2.1.0-rc15"
+TACTIQ_OS_RELEASE_DATE = "2026-11-27"
 
 # Rollback index written into every configuration of the kernel FIT
 # (recipes-kernel/linux/linux-yocto-fitimage.bbappend) and held by U-Boot
